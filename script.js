@@ -205,19 +205,20 @@ async function loadAllData(isUpdate = false, isBackground = false) {
    3. UI初期化・更新・タブ切り替え
    ============================================== */
 function initUI() {
-  // 部屋プルダウン初期化
   updateRoomSelect();
   renderGroupButtons();
   
   currentFloor = 7;
   currentTimelineFloor = 7;
 
-  renderDualMaps(); // 7階・6階一括描画
-  switchFloor(7);   // 初期表示
-  switchTab('map-view');
+  renderDualMaps(); 
+  switchFloor(7);
+  
+  // ★変更: 最初はメイン画面を表示
+  switchTab('main'); 
+  
   initCustomTimePickers();
   updateRefreshTime();
-  // ▼▼▼ 追加: 自動更新を開始 ▼▼▼
   startPolling();
 }
 /* ==============================================
@@ -331,37 +332,27 @@ function updateRoomSelect() {
 
 /* ==============================================
    修正版: switchTab
-   (履歴タブ削除に伴い、タブハイライト処理を調整)
+   (メイン画面と履歴画面の切り替えのみ行う)
    ============================================== */
 function switchTab(tabName) {
-    // すべてのビューとタブの非アクティブ化
+    // すべてのビューを非アクティブ化
     document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     
-    // 対象ビューの表示
-    const targetView = document.getElementById('view-' + tabName);
-    if(targetView) targetView.classList.add('active');
-    
-    // タブのハイライト制御
-    const tabs = document.querySelectorAll('.nav-item');
-    // tabs[0]=マップ, tabs[1]=予約一覧。履歴はメニューに入ったのでタブ制御から除外
-    if(tabName === 'map-view' && tabs[0]) tabs[0].classList.add('active');
-    if(tabName === 'timeline' && tabs[1]) tabs[1].classList.add('active');
-    
-    // 各モードごとの初期化処理
-    if (tabName === 'map-view') {
-        setTimeout(() => { switchFloor(currentFloor); }, 50);
-    } else if (tabName === 'timeline') {
-        setTimeout(() => {
-            document.querySelectorAll('#view-timeline .floor-tab').forEach(tab => tab.classList.remove('active'));
-            const activeTab = document.getElementById(`timeline-tab-${currentTimelineFloor}f`);
-            if(activeTab) activeTab.classList.add('active');
-            
-            renderVerticalTimeline('all');
-            setTimeout(scrollToNow, 50); 
-        }, 0);
-    } else if (tabName === 'logs') {
+    if (tabName === 'logs') {
+        // 履歴画面を表示
+        const logView = document.getElementById('view-logs');
+        if(logView) logView.classList.add('active');
         renderLogs();
+    } else {
+        // メイン画面（マップ+一覧）を表示
+        // 引数が 'map-view' や 'timeline' であってもメインを表示する
+        const mainView = document.getElementById('view-main');
+        if(mainView) mainView.classList.add('active');
+        
+        setTimeout(() => {
+            switchFloor(currentFloor); // 現在の階で再描画
+            setTimeout(scrollToNow, 50);
+        }, 50);
     }
 }
 
@@ -412,17 +403,20 @@ function renderDualMaps() {
     });
 }
 
+/* ==============================================
+   統合版: switchFloor
+   (マップとタイムラインを同時に切り替える)
+   ============================================== */
 function switchFloor(floor) {
     currentFloor = floor;
-    // タブ切り替え
-    const mapContainer = document.getElementById('view-map-view');
-    if(mapContainer) {
-        mapContainer.querySelectorAll('.floor-tab').forEach(tab => tab.classList.remove('active'));
-    }
+    currentTimelineFloor = floor; // タイムライン用の変数も同期
+
+    // タブの見た目更新
+    document.querySelectorAll('.floor-tab').forEach(tab => tab.classList.remove('active'));
     const activeTab = document.getElementById(`tab-${floor}f`);
     if(activeTab) activeTab.classList.add('active');
 
-    // 表示エリア切り替え
+    // マップ表示の切り替え
     const area7 = document.getElementById('area-7f');
     const area6 = document.getElementById('area-6f');
     if(area7) area7.classList.remove('active');
@@ -430,25 +424,23 @@ function switchFloor(floor) {
     
     const activeArea = document.getElementById(`area-${floor}f`);
     if(activeArea) activeArea.classList.add('active');
-}
 
+    // タイムラインの再描画
+    renderVerticalTimeline('all');
+}
 /* ==============================================
-   修正版: selectRoomFromMap
-   (予約表の表示処理を削除し、ピンのハイライトのみ行う)
+   統合版: selectRoomFromMap
+   (クリックされた部屋へスクロールし、ハイライトする)
    ============================================== */
 function selectRoomFromMap(element) {
   const roomId = element.getAttribute('data-room-id');
   const roomObj = masterData.rooms.find(r => String(r.roomId) === String(roomId));
   
-  if (!roomObj) {
-    alert("エラー: 指定された部屋ID (" + roomId + ") が見つかりません。");
-    return;
-  }
+  if (!roomObj) return;
 
-  // 選択中の部屋IDを更新
   currentMapRoomId = roomId;
 
-  // すべてのピンから選択クラスを外し、クリックしたピンだけに付与
+  // ピンの選択状態を更新
   document.querySelectorAll('.map-click-area').forEach(pin => {
       pin.classList.remove('selected-room');
       if (String(pin.getAttribute('data-room-id')) === String(roomId)) {
@@ -456,8 +448,9 @@ function selectRoomFromMap(element) {
       }
   });
 
-  console.log("部屋が選択されました: " + roomObj.roomName);
-  // ここにあった「renderVerticalTimeline」などの呼び出しはすべて削除しました
+  // タイムラインを再描画してスクロールさせる
+  // 第2引数 true でスクロール実行
+  renderVerticalTimeline('all', true);
 }
 
 /* ==============================================
