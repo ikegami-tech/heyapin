@@ -487,7 +487,7 @@ function drawTimeAxis(containerId) {
 }
 /* ==============================================
    修正版: renderVerticalTimeline
-   (階数の自動判別機能を追加)
+   (横スクロール対応・ドラッグ操作追加)
    ============================================== */
 function renderVerticalTimeline(mode) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -498,7 +498,6 @@ function renderVerticalTimeline(mode) {
         dateInputId = 'timeline-date';
         timeAxisId = 'time-axis-all';
         
-        // タイムラインタブで選択中の階の部屋を取得
         const floorConfig = mapConfig[currentTimelineFloor];
         if (floorConfig) {
             const floorRoomIds = floorConfig.areas.map(area => area.id);
@@ -510,33 +509,24 @@ function renderVerticalTimeline(mode) {
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
         
-        // ▼▼▼ 修正箇所: 選択された部屋IDから階数を逆引きして特定する ▼▼▼
-        let targetFloor = currentFloor; // 初期値
-
-        // mapConfig内を検索して、currentMapRoomId が含まれる階を探す
+        // 選択された部屋IDから階数を特定して全部屋取得
+        let targetFloor = currentFloor; 
         if (currentMapRoomId) {
             for (const [fKey, config] of Object.entries(mapConfig)) {
-                // その階のエリアIDリストに、選択中の部屋IDが含まれているか確認
                 const hasRoom = config.areas.some(area => String(area.id) === String(currentMapRoomId));
                 if (hasRoom) {
-                    targetFloor = fKey; // 見つかったらその階をターゲットにする
+                    targetFloor = fKey;
                     break;
                 }
             }
         }
-
-        // 特定した階 (targetFloor) の全部屋を取得
         const floorConfig = mapConfig[targetFloor]; 
-
         if (floorConfig) {
             const floorRoomIds = floorConfig.areas.map(area => area.id);
             targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(r.roomId));
         } else { 
-            // 万が一見つからない場合は選択した部屋だけ表示
             targetRooms = masterData.rooms.filter(r => String(r.roomId) === String(currentMapRoomId));
         }
-        // ▲▲▲ 修正ここまで ▲▲▲
-
     } else { return; }
 
     // --- コンテナの初期化 ---
@@ -569,7 +559,7 @@ function renderVerticalTimeline(mode) {
 
         container.style.width = "100%";
         container.style.maxWidth = "100vw";
-        container.style.overflowX = "auto";
+        container.style.overflowX = "auto"; // ★横スクロールを許可
         container.style.minWidth = "0";
         container.style.overscrollBehavior = (mode === 'map') ? "auto" : "contain";
 
@@ -578,10 +568,46 @@ function renderVerticalTimeline(mode) {
         container.style.alignItems = "flex-start";
         container.style.position = "relative";
         container.style.boxSizing = "border-box";
-        container.style.setProperty('cursor', 'default', 'important');
+        container.style.setProperty('cursor', 'default', 'important'); // 初期カーソル
         container.style.userSelect = "none";
         container.style.webkitUserSelect = "none";
     }
+
+    // ▼▼▼ ドラッグスクロール機能の追加 (ここが重要) ▼▼▼
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+    let hasDragged = false; // クリック誤爆防止フラグ
+
+    if (container) {
+        container.addEventListener('mousedown', (e) => {
+            isDown = true;
+            hasDragged = false;
+            container.style.cursor = 'grabbing'; // 掴んでいるカーソル
+            startX = e.pageX - container.offsetLeft;
+            scrollLeft = container.scrollLeft;
+        });
+        container.addEventListener('mouseleave', () => {
+            isDown = false;
+            container.style.cursor = 'default';
+        });
+        container.addEventListener('mouseup', () => {
+            isDown = false;
+            container.style.cursor = 'default';
+        });
+        container.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - container.offsetLeft;
+            const walk = (x - startX) * 2; // スクロール速度（2倍速）
+            
+            // 少しでも動いたらドラッグとみなす
+            if (Math.abs(walk) > 5) hasDragged = true;
+            
+            container.scrollLeft = scrollLeft - walk;
+        });
+    }
+    // ▲▲▲ ドラッグスクロール機能 終了 ▲▲▲
 
     // --- 時間軸と高さ計算 ---
     const rawDateVal = document.getElementById(dateInputId).value;
@@ -677,7 +703,6 @@ function renderVerticalTimeline(mode) {
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
 
-        // ★選択中の部屋ならハイライト用クラスを追加
         if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
             col.classList.add('target-highlight');
             setTimeout(() => {
@@ -722,6 +747,9 @@ function renderVerticalTimeline(mode) {
         }
 
         body.onclick = (e) => {
+            // ★ドラッグ直後の場合はクリック処理（予約作成）をキャンセル
+            if (hasDragged) return;
+
             if (e.target.closest('.v-booking-bar')) return;
             const rect = body.getBoundingClientRect();
             const clickY = e.clientY - rect.top;
@@ -784,6 +812,8 @@ function renderVerticalTimeline(mode) {
                   `;
 
                 bar.onclick = (e) => {
+                    // ★ドラッグ直後の場合は詳細表示をキャンセル
+                    if (hasDragged) return;
                     e.stopPropagation();
                     openDetailModal(res);
                 };
