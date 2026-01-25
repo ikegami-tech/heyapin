@@ -1461,32 +1461,44 @@ textarea#input-note::placeholder {
   }
 }
 /* ==============================================
-   33. マップ検索のUI修正 (追加分)
+   33. マップ検索の修正 (再修正版)
    ============================================== */
 
-/* 選択された部屋のハイライト表示 */
-.map-click-area.active-room {
-  background-color: rgba(231, 76, 60, 0.7) !important; /* 赤っぽく強調 */
-  border: 3px solid #c0392b !important; /* 枠線を太く */
-  z-index: 100 !important; /* 最前面に */
-  box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
-  transform: scale(1.02); /* ほんの少し大きく */
+/* 選択された部屋の見た目 (光らせず、色を濃くして枠線をつけるだけ) */
+.map-click-area.selected-room {
+  background-color: rgba(44, 62, 80, 0.6) !important; /* 濃いグレー/紺色で選択感を出す */
+  border: 2px solid #2c3e50 !important; /* 実線の枠 */
+  color: white !important;
+  z-index: 50;
 }
 
-/* マップ下のタイムラインエリアを「予約一覧」と同じスクロール形式にする */
+/* マップ下の表示エリアを「予約一覧」と同じようなボックスにする */
 #map-timeline-section .calendar-scroll-area {
-  height: 60vh !important;       /* 高さを画面の60%に固定 */
-  min-height: 400px !important;  /* 最低でも400px確保 */
-  overflow-y: auto !important;   /* 縦スクロールを有効化 */
-  display: flex !important;
-  border: 1px solid #ddd;
+  /* ★重要: ここで高さを指定しないと中身が消えます */
+  height: 300px !important;       
+  overflow-y: auto !important;    /* 縦スクロール許可 */
   background: white;
-  margin-top: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  
+  /* Flexbox設定（時間軸と中身を横並びにするため必須） */
+  display: flex !important;       
+  flex-direction: row !important;
+  align-items: flex-start !important;
 }
 
-/* マップ下のコンテナ設定上書き */
+/* マップ下のタイムラインコンテナ */
 #rooms-container-map {
-  height: auto !important;       /* 中身に合わせる（親がスクロールするのでOK） */
+  flex: 1;                        /* 横幅いっぱい使う */
+  height: auto !important;        /* 高さは中身なり親なりに合わせる */
+  min-height: 100%;               /* 親の高さ(300px)を埋める */
+  position: relative;
+  overflow-y: visible !important; /* 親側でスクロールさせるのでここはvisible */
+}
+
+/* 時間軸の調整 */
+#time-axis-map {
+  height: auto !important;
   min-height: 100%;
-  overflow-y: visible !important; 
+  background: #f9f9f9;
 }
