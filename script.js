@@ -494,8 +494,8 @@ function drawTimeAxis(containerId) {
   }
 }
 /* ==============================================
-   完全修正版: renderVerticalTimeline
-   (マップ・一覧のスクロール挙動を統一し、斜め移動完全対応)
+   決定版: renderVerticalTimeline
+   (表示消失バグ修正・全方向スクロール・ハイライト機能)
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -537,40 +537,52 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     } else { return; }
 
-    // --- 2. コンテナの初期化 (修正版) ---
+    // --- 2. コンテナの初期化 ---
+    if (!targetRooms || targetRooms.length === 0) {
+        if (container) container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
+        return;
+    }
+
+    let savedScrollTop = 0;
+    let savedScrollLeft = 0;
+    
+    // スクロール位置の保持
+    if (container) {
+        savedScrollTop = container.scrollTop;
+        savedScrollLeft = container.scrollLeft;
+    }
+
     document.body.style.overflow = "hidden";
     if (container) {
         container.innerHTML = "";
         
-        // ★重要修正: CSS側の !important に負けないよう、こちらも !important で強制的に設定する
-        container.style.setProperty('height', '100%', 'important');       // 親枠の高さに収める
-        container.style.setProperty('overflow-y', 'auto', 'important');   // 縦スクロールを強制有効化
-        container.style.setProperty('overflow-x', 'auto', 'important');   // 横スクロールを強制有効化
-        
-        // マップモードの場合、親要素のスクロールを止めてコンテナ側でスクロールさせる
+        // ★重要修正: マップモードの親枠の高さを強制確保する (これが消失の原因)
         if (mode === 'map') {
-            const parent = container.closest('.calendar-scroll-area');
+            const parent = container.parentElement; // .calendar-scroll-area
             if (parent) {
-                parent.style.overflow = "hidden"; 
-                parent.style.display = "flex";
+                parent.style.height = '50vh';       // 画面半分の高さを確保
+                parent.style.minHeight = '300px';   // 最低でも300px
+                parent.style.display = 'flex';
+                parent.style.overflow = 'hidden';   // 親はスクロールしない
             }
         }
 
+        // コンテナ自体の設定 (ここがスクロールする)
+        container.style.cssText = ''; // 一旦スタイルをリセット
+        container.style.height = "100%";
         container.style.width = "100%";
-        container.style.maxWidth = "100vw";
-        container.style.minWidth = "0";
-        container.style.overscrollBehavior = "contain";
-
+        container.style.overflow = "auto"; // 縦横スクロール有効
         container.style.display = "flex";
         container.style.flexWrap = "nowrap";
         container.style.alignItems = "flex-start";
         container.style.position = "relative";
-        container.style.boxSizing = "border-box";
-        container.style.setProperty('cursor', 'default', 'important');
+        container.style.overscrollBehavior = "contain";
+        container.style.cursor = "default";
         container.style.userSelect = "none";
         container.style.webkitUserSelect = "none";
     }
-    // --- 3. ドラッグスクロール機能 (シンプル版) ---
+
+    // --- 3. ドラッグスクロール機能 (斜め移動対応) ---
     let isDown = false;
     let startX, startY;
     let startScrollLeft, startScrollTop;
@@ -581,11 +593,8 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             isDown = true;
             hasDragged = false;
             container.style.cursor = 'grabbing';
-            
             startX = e.pageX;
             startY = e.pageY;
-            
-            // コンテナ自体のスクロール位置を基準にする
             startScrollLeft = container.scrollLeft;
             startScrollTop = container.scrollTop;
         };
@@ -601,10 +610,8 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.onmousemove = (e) => {
             if (!isDown) return;
             e.preventDefault();
-            
             const x = e.pageX;
             const y = e.pageY;
-            
             const walkX = (x - startX) * 1.5; 
             const walkY = (y - startY) * 1.5;
 
@@ -612,7 +619,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 hasDragged = true;
             }
 
-            // コンテナ自身をスクロールさせるだけなのでシンプル
             container.scrollLeft = startScrollLeft - walkX;
             container.scrollTop = startScrollTop - walkY;
         };
@@ -675,27 +681,24 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     drawTimeAxis(timeAxisId);
     const axisContainer = document.getElementById(timeAxisId);
     if (axisContainer && container) {
-        // ★修正: 時間軸の高さをコンテナに合わせる (マップモード含む)
+        // 時間軸の設定
         axisContainer.style.height = "100%";
         axisContainer.style.overflow = "hidden";
         axisContainer.style.display = "block";
         
-        // ★修正: マップモードでもスクロール同期を有効にする
-        container.onscroll = () => { axisContainer.scrollTop = container.scrollTop; };
+        // スクロール同期 (縦方向)
+        container.onscroll = () => { 
+            axisContainer.scrollTop = container.scrollTop; 
+        };
         
-        // ホイール操作の同期
+        // ホイール同期
         axisContainer.onwheel = (e) => {
             e.preventDefault();
             container.scrollTop += e.deltaY;
             container.scrollLeft += e.deltaX;
         };
         
-        // リセット
         axisContainer.scrollTop = savedScrollTop;
-
-        // 中身の高さ設定 (ダミー要素で高さを確保し、スクロール可能にする)
-        // 既存の中身をクリアして再構築する前に、高さ用のスペーサーは不要(time-labelが積み重なるため)
-        // ただし、axisContainer自体のheightは100%にする必要がある
     }
 
     const axisHeader = axisContainer ? axisContainer.querySelector('.time-axis-header') : null;
@@ -865,12 +868,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.scrollLeft = savedScrollLeft;
         container.scrollTop = savedScrollTop;
         
-        // 軸の復元
         const axisContainerEnd = document.getElementById(timeAxisId);
-        if (axisContainerEnd) {
+        if (axisContainerEnd && mode === 'all') {
             axisContainerEnd.scrollTop = savedScrollTop;
-            
-            // スクロールバーのズレ補正
             const scrollBarHeight = container.offsetHeight - container.clientHeight;
             if (scrollBarHeight > 0) {
                 const spacer = document.createElement('div');
