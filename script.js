@@ -1,4 +1,4 @@
-//改定java//
+//部屋ピンjava//
 const API_URL = "https://script.google.com/macros/s/AKfycbxMdWVjU8TfjmLXMMai2O9lADK5-0dnwGShYSzZD-lQ53nzHP2h9GmmYrMiPst--odS/exec";
 const SESSION_KEY_USER = 'bookingApp_User';       // 保存するキー名(ユーザー)
 const SESSION_KEY_TIME = 'bookingApp_LoginTime';  // 保存するキー名(時間)
@@ -88,10 +88,6 @@ async function callAPI(params) {
   }
 }
 
-/* ==============================================
-   修正版: tryLogin
-   (ユーザー名表示のエラー対策済み)
-   ============================================== */
 async function tryLogin() {
   const id = document.getElementById('loginId').value.trim();
   const pass = document.getElementById('loginPass').value.trim();
@@ -109,17 +105,11 @@ async function tryLogin() {
     
     if (json.status === 'success') {
       currentUser = json.user;
-      
-      // ★修正: 表示場所があるか確認してから文字を入れる
-      const nameEl = document.getElementById('display-user-name');
-      if (nameEl) {
-          nameEl.innerText = currentUser.userName;
-      }
-
+      document.getElementById('display-user-name').innerText = currentUser.userName;
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app-screen').style.display = 'flex'; 
       
-      // セッション保存
+      // ★追加: ログイン成功時に情報をブラウザに保存する
       localStorage.setItem(SESSION_KEY_USER, JSON.stringify(currentUser));
       localStorage.setItem(SESSION_KEY_TIME, new Date().getTime().toString());
 
@@ -132,10 +122,8 @@ async function tryLogin() {
     alert("通信エラー: " + e.message);
   }
 }
-/* ==============================================
-   修正版: checkAutoLogin
-   (ユーザー名表示のエラー対策済み)
-   ============================================== */
+
+// ★追加: 自動ログイン判定関数
 function checkAutoLogin() {
   const storedUser = localStorage.getItem(SESSION_KEY_USER);
   const storedTime = localStorage.getItem(SESSION_KEY_TIME);
@@ -144,33 +132,31 @@ function checkAutoLogin() {
     const now = new Date().getTime();
     const loginTime = parseInt(storedTime, 10);
 
-    // 有効期間内の場合
+    // 経過時間をチェック (現在時刻 - ログイン時刻 < 12時間)
     if (now - loginTime < SESSION_DURATION) {
+      // 有効期間内なので、ログイン状態を復元
       try {
         currentUser = JSON.parse(storedUser);
-        
-        // ★修正: 表示場所があるか確認してから文字を入れる
-        const nameEl = document.getElementById('display-user-name');
-        if (nameEl) {
-            nameEl.innerText = currentUser.userName;
-        }
-
+        document.getElementById('display-user-name').innerText = currentUser.userName;
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'flex'; 
         
+        // データをロード
         loadAllData();
-        return; 
+        return; // 自動ログイン成功したらここで終了
       } catch (e) {
         console.error("保存データの読み込みに失敗しました", e);
       }
     } else {
-      // 期限切れ
+      // 12時間過ぎているので、期限切れとして情報を消す
       console.log("セッション有効期限切れです");
       localStorage.removeItem(SESSION_KEY_USER);
       localStorage.removeItem(SESSION_KEY_TIME);
     }
   }
+  // 自動ログインできない場合は、何もしない（ログイン画面のまま）
 }
+
 function logout() { 
   // ★追加: 保存されたログイン情報を削除
   localStorage.removeItem(SESSION_KEY_USER);
@@ -219,20 +205,19 @@ async function loadAllData(isUpdate = false, isBackground = false) {
    3. UI初期化・更新・タブ切り替え
    ============================================== */
 function initUI() {
+  // 部屋プルダウン初期化
   updateRoomSelect();
   renderGroupButtons();
   
   currentFloor = 7;
   currentTimelineFloor = 7;
 
-  renderDualMaps(); 
-  switchFloor(7);
-  
-  // ★変更: 最初はメイン画面を表示
-  switchTab('main'); 
-  
+  renderDualMaps(); // 7階・6階一括描画
+  switchFloor(7);   // 初期表示
+  switchTab('map-view');
   initCustomTimePickers();
   updateRefreshTime();
+  // ▼▼▼ 追加: 自動更新を開始 ▼▼▼
   startPolling();
 }
 /* ==============================================
@@ -315,20 +300,18 @@ function startPolling() {
     restartPolling(POLLING_INTERVAL_ACTIVE); // 最初はアクティブモード(20秒)でスタート
 }
 
-/* ==============================================
-   修正版: refreshUI
-   (統合後の view-main を対象に更新)
-   ============================================== */
 function refreshUI() {
-    renderLogs();
-    renderGroupButtons();
-    updateRoomSelect();
+  renderLogs();
+  renderGroupButtons();
+  updateRoomSelect();
 
-    // 統合されたメイン画面が表示されている場合のみ更新
-    const mainView = document.getElementById('view-main');
-    if (mainView && mainView.classList.contains('active')) {
-        renderVerticalTimeline('all');
-    }
+  if (document.getElementById('view-timeline').classList.contains('active')) {
+      renderVerticalTimeline('all');
+  } else if (document.getElementById('view-map-view').classList.contains('active')) {
+      if(document.getElementById('map-timeline-section').style.display !== 'none') {
+          renderVerticalTimeline('map');
+      }
+  }
 }
 
 function updateRoomSelect() {
@@ -348,27 +331,37 @@ function updateRoomSelect() {
 
 /* ==============================================
    修正版: switchTab
-   (メイン画面と履歴画面の切り替えのみ行う)
+   (履歴タブ削除に伴い、タブハイライト処理を調整)
    ============================================== */
 function switchTab(tabName) {
-    // すべてのビューを非アクティブ化
+    // すべてのビューとタブの非アクティブ化
     document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     
-    if (tabName === 'logs') {
-        // 履歴画面を表示
-        const logView = document.getElementById('view-logs');
-        if(logView) logView.classList.add('active');
-        renderLogs();
-    } else {
-        // メイン画面（マップ+一覧）を表示
-        // 引数が 'map-view' や 'timeline' であってもメインを表示する
-        const mainView = document.getElementById('view-main');
-        if(mainView) mainView.classList.add('active');
-        
+    // 対象ビューの表示
+    const targetView = document.getElementById('view-' + tabName);
+    if(targetView) targetView.classList.add('active');
+    
+    // タブのハイライト制御
+    const tabs = document.querySelectorAll('.nav-item');
+    // tabs[0]=マップ, tabs[1]=予約一覧。履歴はメニューに入ったのでタブ制御から除外
+    if(tabName === 'map-view' && tabs[0]) tabs[0].classList.add('active');
+    if(tabName === 'timeline' && tabs[1]) tabs[1].classList.add('active');
+    
+    // 各モードごとの初期化処理
+    if (tabName === 'map-view') {
+        setTimeout(() => { switchFloor(currentFloor); }, 50);
+    } else if (tabName === 'timeline') {
         setTimeout(() => {
-            switchFloor(currentFloor); // 現在の階で再描画
-            setTimeout(scrollToNow, 50);
-        }, 50);
+            document.querySelectorAll('#view-timeline .floor-tab').forEach(tab => tab.classList.remove('active'));
+            const activeTab = document.getElementById(`timeline-tab-${currentTimelineFloor}f`);
+            if(activeTab) activeTab.classList.add('active');
+            
+            renderVerticalTimeline('all');
+            setTimeout(scrollToNow, 50); 
+        }, 0);
+    } else if (tabName === 'logs') {
+        renderLogs();
     }
 }
 
@@ -419,20 +412,17 @@ function renderDualMaps() {
     });
 }
 
-/* ==============================================
-   統合版: switchFloor
-   (マップとタイムラインを同時に切り替える)
-   ============================================== */
 function switchFloor(floor) {
     currentFloor = floor;
-    currentTimelineFloor = floor; // タイムライン用の変数も同期
-
-    // タブの見た目更新
-    document.querySelectorAll('.floor-tab').forEach(tab => tab.classList.remove('active'));
+    // タブ切り替え
+    const mapContainer = document.getElementById('view-map-view');
+    if(mapContainer) {
+        mapContainer.querySelectorAll('.floor-tab').forEach(tab => tab.classList.remove('active'));
+    }
     const activeTab = document.getElementById(`tab-${floor}f`);
     if(activeTab) activeTab.classList.add('active');
 
-    // マップ表示の切り替え
+    // 表示エリア切り替え
     const area7 = document.getElementById('area-7f');
     const area6 = document.getElementById('area-6f');
     if(area7) area7.classList.remove('active');
@@ -440,34 +430,31 @@ function switchFloor(floor) {
     
     const activeArea = document.getElementById(`area-${floor}f`);
     if(activeArea) activeArea.classList.add('active');
-
-    // タイムラインの再描画
-    renderVerticalTimeline('all');
 }
+
 /* ==============================================
    修正版: selectRoomFromMap
-   (削除されたタイトル要素への書き込みを排除)
+   (第2引数でスクロール指示を出すように変更)
    ============================================== */
 function selectRoomFromMap(element) {
   const roomId = element.getAttribute('data-room-id');
   const roomObj = masterData.rooms.find(r => String(r.roomId) === String(roomId));
   
-  if (!roomObj) return;
+  if (!roomObj) {
+    alert("エラー: 指定された部屋ID (" + roomId + ") が見つかりません。");
+    return;
+  }
 
   currentMapRoomId = roomId;
-
-  // ピンのハイライト切り替え
-  document.querySelectorAll('.map-click-area').forEach(pin => {
-      pin.classList.remove('selected-room');
-      if (String(pin.getAttribute('data-room-id')) === String(roomId)) {
-          pin.classList.add('selected-room');
-      }
-  });
-
-  // ★重要: ここでタイトル（map-selected-room-name）に書き込む処理があったら削除する！
-  // 代わりにタイムラインを再描画してスクロールさせる
-  renderVerticalTimeline('all', true);
+  document.getElementById('map-timeline-section').style.display = 'block';
+  document.getElementById('map-selected-room-name').innerText = roomObj.roomName;
+  
+  // ★変更点: 第2引数に true を渡す（これで「クリックした時だけスクロールしてね」と伝えます）
+  renderVerticalTimeline('map', true);
+  
+  document.getElementById('map-timeline-section').scrollIntoView({behavior: 'smooth'});
 }
+
 /* ==============================================
    5. タイムライン関連処理
    ============================================== */
@@ -512,67 +499,149 @@ function drawTimeAxis(containerId) {
   }
 }
 /* ==============================================
-   統合版: renderVerticalTimeline
-   (古いIDへのアクセスを完全に削除・統合済み)
+   完全修正版: renderVerticalTimeline
+   (エラー解消・斜め移動・自動更新対策済み)
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
-    // 統合されたため、常に 'all' 用のIDを使用
-    const container = document.getElementById('rooms-container-all');
-    const dateInputId = 'timeline-date';
-    const timeAxisId = 'time-axis-all';
-    
-    if (!container) return; // エラー回避
+    let container, dateInputId, targetRooms, timeAxisId;
 
-    // 現在のフロア設定を使用
-    let targetFloor = currentFloor;
+    // --- 1. モード判定と対象部屋の取得 ---
+    if (mode === 'all') {
+        container = document.getElementById('rooms-container-all');
+        dateInputId = 'timeline-date';
+        timeAxisId = 'time-axis-all';
+        
+        const floorConfig = mapConfig[currentTimelineFloor];
+        if (floorConfig) {
+            const floorRoomIds = floorConfig.areas.map(area => area.id);
+            targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(r.roomId));
+        } else { targetRooms = []; }
 
-    // マップで特定の部屋が選ばれていて、その部屋が別の階にある場合
-    if (currentMapRoomId) {
-        for (const [fKey, config] of Object.entries(mapConfig)) {
-            const hasRoom = config.areas.some(area => String(area.id) === String(currentMapRoomId));
-            if (hasRoom) {
-                targetFloor = fKey;
-                break;
+    } else if (mode === 'map') {
+        container = document.getElementById('rooms-container-map');
+        dateInputId = 'map-date';
+        timeAxisId = 'time-axis-map';
+        
+        // 階数の自動判別
+        let targetFloor = currentFloor; 
+        if (currentMapRoomId) {
+            for (const [fKey, config] of Object.entries(mapConfig)) {
+                const hasRoom = config.areas.some(area => String(area.id) === String(currentMapRoomId));
+                if (hasRoom) {
+                    targetFloor = fKey;
+                    break;
+                }
             }
         }
-    }
+        const floorConfig = mapConfig[targetFloor]; 
+        if (floorConfig) {
+            const floorRoomIds = floorConfig.areas.map(area => area.id);
+            targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(r.roomId));
+        } else { 
+            targetRooms = masterData.rooms.filter(r => String(r.roomId) === String(currentMapRoomId));
+        }
+    } else { return; }
 
-    // 対象の部屋リストを取得
-    let targetRooms = [];
-    const floorConfig = mapConfig[targetFloor];
-    if (floorConfig) {
-        const floorRoomIds = floorConfig.areas.map(area => area.id);
-        targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(r.roomId));
-    }
-
+    // --- 2. コンテナの初期化 ---
     if (!targetRooms || targetRooms.length === 0) {
-        container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
+        if (container) container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
         return;
     }
 
-    let savedScrollTop = container.scrollTop;
-    let savedScrollLeft = container.scrollLeft;
+    let savedScrollTop = 0;
+    let savedScrollLeft = 0;
+    
+    // ▼ここを修正: mapWrapperを使わず、コンテナまたは親要素をターゲットにする
+    let vScrollTarget = null;
+    if (container) {
+        // マップモードなら親要素(.calendar-scroll-area)、一覧モードなら自分自身が縦スクロール対象
+        vScrollTarget = (mode === 'map') ? container.parentElement : container;
+        
+        savedScrollLeft = container.scrollLeft;
+        if(vScrollTarget) savedScrollTop = vScrollTarget.scrollTop;
+    }
 
     document.body.style.overflow = "hidden";
-    
-    // コンテナ初期化
-    container.innerHTML = "";
-    container.style.cssText = ''; 
-    container.style.height = "100%";
-    container.style.width = "100%";
-    container.style.overflow = "auto"; 
-    container.style.display = "flex";
-    container.style.flexWrap = "nowrap";
-    container.style.alignItems = "flex-start";
-    container.style.position = "relative";
-    container.style.overscrollBehavior = "contain";
-    container.style.cursor = "default";
-    container.style.userSelect = "none";
-    container.style.webkitUserSelect = "none";
+    if (container) {
+        container.innerHTML = "";
+        
+        if (mode === 'map') {
+            container.style.height = "auto";
+            container.style.overflowY = "visible"; 
+        } else {
+            container.style.height = "100%";
+            container.style.overflowY = "auto";
+        }
 
-    // --- 時間軸と高さ計算 ---
-    const dateInput = document.getElementById(dateInputId);
-    const rawDateVal = dateInput ? dateInput.value : new Date().toISOString().slice(0,10);
+        container.style.width = "100%";
+        container.style.maxWidth = "100vw";
+        container.style.overflowX = "auto";
+        container.style.minWidth = "0";
+        container.style.overscrollBehavior = (mode === 'map') ? "auto" : "contain";
+
+        container.style.display = "flex";
+        container.style.flexWrap = "nowrap";
+        container.style.alignItems = "flex-start";
+        container.style.position = "relative";
+        container.style.boxSizing = "border-box";
+        container.style.setProperty('cursor', 'default', 'important');
+        container.style.userSelect = "none";
+        container.style.webkitUserSelect = "none";
+    }
+
+    // --- 3. ドラッグスクロール機能 (斜め移動対応) ---
+    let isDown = false;
+    let startX, startY;
+    let startScrollLeft, startScrollTop;
+    let hasDragged = false;
+
+    if (container) {
+        container.onmousedown = (e) => {
+            isDown = true;
+            hasDragged = false;
+            container.style.cursor = 'grabbing';
+            
+            // クリック開始位置
+            startX = e.pageX;
+            startY = e.pageY;
+            
+            // スクロール開始位置
+            startScrollLeft = container.scrollLeft;
+            // vScrollTargetが取れていない場合は再取得
+            if (!vScrollTarget) vScrollTarget = (mode === 'map') ? container.parentElement : container;
+            startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
+        };
+
+        const stopDrag = () => {
+            isDown = false;
+            container.style.cursor = 'default';
+            setTimeout(() => { hasDragged = false; }, 50);
+        };
+        container.onmouseleave = stopDrag;
+        container.onmouseup = stopDrag;
+
+        container.onmousemove = (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            
+            const x = e.pageX;
+            const y = e.pageY;
+            const walkX = (x - startX) * 1.5; 
+            const walkY = (y - startY) * 1.5;
+
+            if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
+                hasDragged = true;
+            }
+
+            container.scrollLeft = startScrollLeft - walkX;
+            if (vScrollTarget) {
+                vScrollTarget.scrollTop = startScrollTop - walkY;
+            }
+        };
+    }
+
+    // --- 4. 時間軸と高さ計算 ---
+    const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     
     hourRowHeights = {}; 
@@ -627,55 +696,35 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
     drawTimeAxis(timeAxisId);
     const axisContainer = document.getElementById(timeAxisId);
-    if (axisContainer) {
-        axisContainer.style.height = "100%";
+    if (axisContainer && container) {
+        axisContainer.style.height = (mode === 'map') ? 'auto' : container.style.height;
         axisContainer.style.overflow = "hidden";
         axisContainer.style.display = "block";
         
-        container.onscroll = () => { axisContainer.scrollTop = container.scrollTop; };
-        axisContainer.onwheel = (e) => {
-            e.preventDefault();
-            container.scrollTop += e.deltaY;
-            container.scrollLeft += e.deltaX;
-        };
-        axisContainer.scrollTop = savedScrollTop;
+        if (mode === 'all') {
+            container.onscroll = () => { axisContainer.scrollTop = container.scrollTop; };
+            axisContainer.onwheel = (e) => {
+                e.preventDefault();
+                container.scrollTop += e.deltaY;
+                container.scrollLeft += e.deltaX;
+            };
+            axisContainer.scrollTop = savedScrollTop;
+        } else {
+            axisContainer.style.height = currentTop + "px";
+        }
+
+        const axisHeader = axisContainer.querySelector('.time-axis-header');
+        if (axisHeader) {
+            axisHeader.style.position = "sticky";
+            axisHeader.style.top = "0";
+            axisHeader.style.backgroundColor = "#fff";
+            axisHeader.style.zIndex = "20";
+            axisHeader.style.borderBottom = "1px solid #ddd";
+            axisHeader.style.boxSizing = "border-box";
+        }
     }
 
-    // --- ドラッグスクロール ---
-    let isDown = false;
-    let startX, startY, startScrollLeft, startScrollTop, hasDragged = false;
-
-    container.addEventListener('wheel', (e) => {
-        if (isDown) return;
-        e.preventDefault();
-        container.scrollTop += e.deltaY;
-        container.scrollLeft += e.deltaX;
-    }, { passive: false });
-
-    container.onmousedown = (e) => {
-        isDown = true; hasDragged = false;
-        container.style.cursor = 'grabbing';
-        startX = e.pageX; startY = e.pageY;
-        startScrollLeft = container.scrollLeft; startScrollTop = container.scrollTop;
-    };
-    const stopDrag = () => {
-        isDown = false; container.style.cursor = 'default';
-        setTimeout(() => { hasDragged = false; }, 50);
-    };
-    container.onmouseleave = stopDrag;
-    container.onmouseup = stopDrag;
-    container.onmousemove = (e) => {
-        if (!isDown) return;
-        e.preventDefault();
-        const x = e.pageX; const y = e.pageY;
-        const walkX = (x - startX) * 1.5; 
-        const walkY = (y - startY) * 1.5;
-        if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) hasDragged = true;
-        container.scrollLeft = startScrollLeft - walkX;
-        container.scrollTop = startScrollTop - walkY;
-    };
-
-    // --- 列の描画 ---
+    // --- 5. 列の描画 ---
     targetRooms.forEach(room => {
         const col = document.createElement('div');
         col.className = 'room-col';
@@ -686,31 +735,42 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
 
-        // ハイライト処理
-        if (String(room.roomId) === String(currentMapRoomId)) {
+        if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
             col.classList.add('target-highlight');
+            // クリック時のみスクロール
             if (shouldScroll) {
                 setTimeout(() => {
                     col.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                 }, 100);
             }
         }
-
+　　　
         col.addEventListener('click', (e) => {
+            // ドラッグ中の場合は選択しない
             if (hasDragged) return;
+            // モードがマップでない場合は何もしない（予約一覧モードの挙動を守る）
+            if (mode !== 'map') return;
+
+            // 1. グローバル変数を更新
             currentMapRoomId = room.roomId;
+
+            // 2. 他の列のハイライトを消して、自分につける
             container.querySelectorAll('.room-col').forEach(c => c.classList.remove('target-highlight'));
             col.classList.add('target-highlight');
 
+            // 3. マップ上のピンの選択状態を更新
             document.querySelectorAll('.map-click-area').forEach(pin => {
                 pin.classList.remove('selected-room');
                 if (String(pin.getAttribute('data-room-id')) === String(room.roomId)) {
                     pin.classList.add('selected-room');
                 }
             });
-            // ★以前ここにあったタイトル更新処理は完全に削除済み
-        });
 
+            // 4. タイトルテキストを更新
+            const titleEl = document.getElementById('map-selected-room-name');
+            if (titleEl) titleEl.innerText = room.roomName;
+        });
+        
         const header = document.createElement('div');
         header.className = 'room-header';
         header.innerText = room.roomName;
@@ -752,14 +812,17 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             if (e.target.closest('.v-booking-bar')) return;
             const rect = body.getBoundingClientRect();
             const clickY = e.clientY - rect.top;
-            let clickedHour = -1, clickedMin = 0;
+            
+            let clickedHour = -1;
+            let clickedMin = 0;
             for (let h = START_HOUR; h < END_HOUR; h++) {
                 const top = hourTops[h];
                 const bottom = hourTops[h + 1] !== undefined ? hourTops[h + 1] : (top + hourRowHeights[h]);
                 if (clickY >= top && clickY < bottom) {
                     clickedHour = h;
                     const height = bottom - top;
-                    if ((clickY - top) >= height / 2) clickedMin = 30;
+                    const relativeY = clickY - top;
+                    if (relativeY >= height / 2) clickedMin = 30;
                     break;
                 }
             }
@@ -770,16 +833,23 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         reservations.forEach(res => {
             const start = new Date(res._startTime);
             const end = new Date(res._endTime);
-            let sHour = start.getHours(), sMin = start.getMinutes();
-            let eHour = end.getHours(), eMin = end.getMinutes();
+            let sHour = start.getHours();
+            let sMin = start.getMinutes();
+            let eHour = end.getHours();
+            let eMin = end.getMinutes();
 
             if (sHour < START_HOUR) { sHour = START_HOUR; sMin = 0; }
             if (eHour >= END_HOUR) { eHour = END_HOUR; eMin = 0; }
 
             if (sHour < END_HOUR && (sHour > START_HOUR || (sHour === START_HOUR && sMin >= 0))) {
                 const topPx = hourTops[sHour] + (hourRowHeights[sHour] * (sMin / 60));
-                let bottomPx = (eHour === END_HOUR) ? hourTops[END_HOUR] : hourTops[eHour] + (hourRowHeights[eHour] * (eMin / 60));
-                let heightPx = Math.max(bottomPx - topPx, hourRowHeights[sHour] * (15 / 60));
+                let bottomPx = 0;
+                if (eHour === END_HOUR) bottomPx = hourTops[END_HOUR];
+                else bottomPx = hourTops[eHour] + (hourRowHeights[eHour] * (eMin / 60));
+
+                let heightPx = bottomPx - topPx;
+                const minHeightPx = hourRowHeights[sHour] * (15 / 60);
+                if (heightPx < minHeightPx) heightPx = minHeightPx;
 
                 const bar = document.createElement('div');
                 bar.className = `v-booking-bar type-${room.type}`;
@@ -791,12 +861,15 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 bar.style.width = "calc(100% - 4px)";
 
                 let displayTitle = getVal(res, ['title', 'subject', '件名', 'タイトル']) || '予約';
-                const timeRangeStr = `${start.getHours()}:${pad(start.getMinutes())}-${end.getHours()}:${pad(end.getMinutes())}`;
+                const startTimeStr = `${start.getHours()}:${pad(start.getMinutes())}`;
+                const endTimeStr = `${end.getHours()}:${pad(end.getMinutes())}`;
+                const timeRangeStr = `${startTimeStr}-${endTimeStr}`;
                 
                 bar.innerHTML = `
                       <div style="width:100%; font-weight:bold; font-size:0.85em; line-height:1.1; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${timeRangeStr}</div>
                       <div style="width:100%; font-weight:bold; font-size:0.9em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayTitle}</div>
                   `;
+
                 bar.onclick = (e) => {
                     if (hasDragged) return;
                     e.stopPropagation();
@@ -805,21 +878,33 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 body.appendChild(bar);
             }
         });
+
         col.appendChild(body);
         container.appendChild(col);
     });
 
+    // --- 6. スクロール復元処理 (自動更新時) ---
+    // ここで mapWrapper は使わず、vScrollTarget を使う
     if (container) {
         container.scrollLeft = savedScrollLeft;
-        container.scrollTop = savedScrollTop;
+        
+        // vScrollTargetが未定義なら再取得を試みる
+        if (!vScrollTarget) vScrollTarget = (mode === 'map') ? container.parentElement : container;
+        
+        if (vScrollTarget) {
+            vScrollTarget.scrollTop = savedScrollTop;
+        }
+        
         const axisContainerEnd = document.getElementById(timeAxisId);
-        if (axisContainerEnd) {
+        
+        if (mode === 'all' && axisContainerEnd) {
             axisContainerEnd.scrollTop = savedScrollTop;
             const scrollBarHeight = container.offsetHeight - container.clientHeight;
             if (scrollBarHeight > 0) {
                 const spacer = document.createElement('div');
                 spacer.style.height = scrollBarHeight + 'px'; 
-                spacer.style.width = '1px'; spacer.style.flexShrink = '0';
+                spacer.style.width = '1px';
+                spacer.style.flexShrink = '0';
                 axisContainerEnd.appendChild(spacer);
             }
         }
