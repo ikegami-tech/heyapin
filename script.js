@@ -1171,6 +1171,9 @@ function closeModal() { document.getElementById('bookingModal').style.display = 
    追加ヘルパー関数: 予約データから参加者IDリストを取り出す
    (saveBooking関数の直前などに貼り付けてください)
    ============================================== */
+/* ==============================================
+   追加ヘルパー関数: 予約データから参加者IDリストを取り出す
+   ============================================== */
 function getParticipantIdsFromRes(res) {
     const pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
     if (!pIds) return [];
@@ -1192,6 +1195,7 @@ function getParticipantIdsFromRes(res) {
 /* ==============================================
    修正版: 予約保存処理 (ダブルブッキング防止機能付き)
    ============================================== */
+// ▼▼▼ ここに 'async' が必須です！ ▼▼▼
 async function saveBooking() {
     // 1. フォーム値の取得
     const id = document.getElementById('edit-res-id').value;
@@ -1217,7 +1221,7 @@ async function saveBooking() {
         return;
     }
 
-    // 3. 時間の長さチェック (★前回のエラー箇所: 変数をここで定義します)
+    // 3. 時間の長さチェック
     const startParts = start.split(':');
     const endParts = end.split(':');
     const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
@@ -1233,23 +1237,19 @@ async function saveBooking() {
     const endTime = `${date.replace(/-/g, '/')} ${end}`;
     const pIds = Array.from(selectedParticipantIds).join(', ');
 
-    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    // 【重要】ダブルブッキング（重複）チェック処理
-    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+    // ▼▼▼ 重複チェック処理 ▼▼▼
     
     // (A) 今回予約しようとしている時間帯
     const newStartObj = new Date(startTime);
     const newEndObj = new Date(endTime);
 
-    // (B) チェック対象の参加者IDリスト (今回選択された人たち)
+    // (B) チェック対象の参加者IDリスト
     const checkTargets = Array.from(selectedParticipantIds);
 
     // (C) 全予約データをループして重複を確認
-    //     findを使うことで、1つでも重複が見つかればループを終了します
     const conflictFound = checkTargets.some(targetUserId => {
-        // そのユーザーが参加している、かつ時間が被っている予約を探す
         const conflictRes = masterData.reservations.find(existingRes => {
-            // ① 自分自身の編集は除外 (IDが一致する場合はスキップ)
+            // ① 自分自身の編集は除外
             if (id && String(existingRes.id) === String(id)) return false;
 
             // ② 時間の重複チェック
@@ -1257,27 +1257,19 @@ async function saveBooking() {
             const exEnd = new Date(existingRes._endTime || existingRes.endTime);
             if (isNaN(exStart.getTime()) || isNaN(exEnd.getTime())) return false;
 
-            // (既存開始 < 新規終了) かつ (既存終了 > 新規開始) なら時間は被っている
             const isTimeOverlap = (exStart < newEndObj && exEnd > newStartObj);
             if (!isTimeOverlap) return false;
 
             // ③ 参加者の重複チェック
-            // 既存予約の参加者リストを取得し、対象ユーザーが含まれているか確認
             const exMemberIds = getParticipantIdsFromRes(existingRes);
             return exMemberIds.includes(targetUserId);
         });
 
-        // 重複が見つかった場合、アラートを出して true を返す
         if (conflictRes) {
-            // ユーザー名の特定
             const conflictingUser = masterData.users.find(u => String(u.userId) === String(targetUserId));
             const userName = conflictingUser ? conflictingUser.userName : targetUserId;
-
-            // 部屋名の特定
             const roomObj = masterData.rooms.find(r => String(r.roomId) === String(conflictRes._resourceId || conflictRes.resourceId));
             const roomName = roomObj ? roomObj.roomName : "不明な部屋";
-
-            // 時間の整形
             const cStart = new Date(conflictRes._startTime || conflictRes.startTime);
             const cEnd = new Date(conflictRes._endTime || conflictRes.endTime);
             const timeStr = `${pad(cStart.getHours())}:${pad(cStart.getMinutes())} - ${pad(cEnd.getHours())}:${pad(cEnd.getMinutes())}`;
@@ -1292,15 +1284,13 @@ async function saveBooking() {
                 `--------------------------------\n` +
                 `同時刻に複数の部屋を予約することはできません。`
             );
-            return true; // 重複あり
+            return true;
         }
-        return false; // 重複なし
+        return false;
     });
 
-    // 重複が見つかった場合は、保存処理を中断して終了
     if (conflictFound) return;
-
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+    // ▲▲▲ 重複チェック終了 ▲▲▲
 
     // 4. APIへのデータ送信
     const params = {
@@ -1311,12 +1301,14 @@ async function saveBooking() {
         endTime: endTime,
         reserverId: currentUser.userId,
         operatorName: currentUser.userName,
-        participantIds: pIds, // カンマ区切りの文字列で送信
+        participantIds: pIds,
         title: title,
         note: note
     };
 
+    // ▼ awaitを使うため、関数自体に async が必要です
     const result = await callAPI(params);
+    
     if(result.status === 'success') {
         closeModal();
         loadAllData(true);
