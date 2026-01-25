@@ -484,10 +484,9 @@ function drawTimeAxis(containerId) {
       div.style.minHeight = height + "px";
       container.appendChild(div);
   }
-}
-/* ==============================================
+}/* ==============================================
    修正版: renderVerticalTimeline
-   (文法エラー修正済み・マップ全室表示・選択ハイライト)
+   (全室表示・選択ハイライト・文法エラー修正済み)
    ============================================== */
 function renderVerticalTimeline(mode) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -510,8 +509,7 @@ function renderVerticalTimeline(mode) {
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
         
-        // ★修正ポイント: マップモードでも「現在表示中の階 (currentFloor)」の全部屋を取得
-        // ここで const を忘れるとエラーになります
+        // ★マップモードでも「現在表示中の階 (currentFloor)」の全部屋を取得
         const floorConfig = mapConfig[currentFloor]; 
 
         if (floorConfig) {
@@ -535,7 +533,7 @@ function renderVerticalTimeline(mode) {
     // スクロール位置の保持
     const mapWrapper = document.querySelector('.map-wrapper');
     if (mode === 'map' && mapWrapper) {
-        // マップモードのときは親ラッパーのスクロール位置を保持する可能性あり（今回は下部表示なので影響小）
+        // マップモード時は必要に応じて調整
     } else if (container) {
         savedScrollTop = container.scrollTop;
         savedScrollLeft = container.scrollLeft;
@@ -574,7 +572,10 @@ function renderVerticalTimeline(mode) {
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     
-    // hourRowHeights をリセット（グローバル変数と仮定）
+    // hourRowHeights をリセット
+    // ※hourRowHeights変数が関数の外で定義されていない場合は、ここで let hourRowHeights = {}; とする必要がありますが
+    // 元のコードに合わせてグローバル変数として扱っています。
+    // もしエラーが出る場合はここを let hourRowHeights = {}; にしてください。
     for (let h = START_HOUR; h < END_HOUR; h++) hourRowHeights[h] = BASE_HOUR_HEIGHT;
 
     // 予約の重なり具合で高さを計算
@@ -667,7 +668,7 @@ function renderVerticalTimeline(mode) {
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
 
-        // ★修正ポイント: 選択中の部屋ならハイライト用クラスを追加
+        // ★選択中の部屋ならハイライト用クラスを追加
         if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
             col.classList.add('target-highlight'); // CSSで黄色くする
             
