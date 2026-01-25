@@ -450,7 +450,8 @@ function selectRoomFromMap(element) {
       }
   });
 
-  // タイムラインを再描画して、その部屋の位置までスクロール
+  // ★重要: ここでタイトル（map-selected-room-name）に書き込む処理があったら削除する！
+  // 代わりにタイムラインを再描画してスクロールさせる
   renderVerticalTimeline('all', true);
 }
 /* ==============================================
