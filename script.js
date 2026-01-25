@@ -1,5 +1,5 @@
 //改定java//
-const API_URL = "https://script.google.com/macros/s/AKfycbz7KxiuMZtvoKe_cxRMCaXQkE9bLvkbpMcsFksYKnXkpNfxmHFXtO_uaaalZv6qOw8O/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxMdWVjU8TfjmLXMMai2O9lADK5-0dnwGShYSzZD-lQ53nzHP2h9GmmYrMiPst--odS/exec";
 const SESSION_KEY_USER = 'bookingApp_User';       // 保存するキー名(ユーザー)
 const SESSION_KEY_TIME = 'bookingApp_LoginTime';  // 保存するキー名(時間)
 const SESSION_DURATION = 12 * 60 * 60 * 1000;     // 12時間 (ミリ秒)
@@ -435,28 +435,13 @@ function selectRoomFromMap(element) {
     alert("エラー: 指定された部屋ID (" + roomId + ") が見つかりません。");
     return;
   }
-
-  // 1. 他の部屋の選択状態を解除
-  document.querySelectorAll('.map-click-area').forEach(el => {
-    el.classList.remove('selected-room');
-  });
-
-  // 2. クリックした部屋を選択状態にする（CSSで色が変わります）
-  element.classList.add('selected-room');
-
-  // 3. マップ下のエリアを表示する
   currentMapRoomId = roomId;
-  const section = document.getElementById('map-timeline-section');
-  section.style.display = 'block'; // ★ここが重要（非表示を解除）
-  
+  document.getElementById('map-timeline-section').style.display = 'block';
   document.getElementById('map-selected-room-name').innerText = roomObj.roomName;
-  
-  // 4. タイムラインを描画
   renderVerticalTimeline('map');
-  
-  // 5. 表示されたエリアまでスクロール
-  section.scrollIntoView({behavior: 'smooth', block: 'center'});
+  document.getElementById('map-timeline-section').scrollIntoView({behavior: 'smooth'});
 }
+
 /* ==============================================
    5. タイムライン関連処理
    ============================================== */
@@ -501,7 +486,8 @@ function drawTimeAxis(containerId) {
   }
 }
 /* ==============================================
-   再修正版: renderVerticalTimeline
+   修正版v2: renderVerticalTimeline
+   (スマホタップ対応 & マップ時の滑らかスクロール対応)
    ============================================== */
 function renderVerticalTimeline(mode) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -520,55 +506,57 @@ function renderVerticalTimeline(mode) {
         container = document.getElementById('rooms-container-map');
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
-        // 選択中の部屋だけをターゲットにする
         targetRooms = masterData.rooms.filter(r => String(r.roomId) === String(currentMapRoomId));
     } else { return; }
 
     if (!targetRooms || targetRooms.length === 0) {
-        if (container) container.innerHTML = "<div style='padding:20px;'>部屋を選択してください。</div>";
+        if (container) container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
         return;
     }
 
     let savedScrollTop = 0;
+    let savedScrollLeft = 0;
     
-    // スクロール位置の保持
-    // マップモードの場合は、コンテナの親（.calendar-scroll-area）がスクロール主体になるためそこを見る
-    if (mode === 'map') {
-        const wrapper = document.querySelector('#map-timeline-section .calendar-scroll-area');
-        if(wrapper) savedScrollTop = wrapper.scrollTop;
+    // マップモードの場合、スクロール位置の保存対象は親ラッパーにする
+    const mapWrapper = document.querySelector('.map-wrapper');
+    if (mode === 'map' && mapWrapper) {
+        savedScrollTop = mapWrapper.scrollTop;
     } else if (container) {
         savedScrollTop = container.scrollTop;
+        savedScrollLeft = container.scrollLeft;
     }
 
     // コンテナ初期化
-    document.body.style.overflow = "hidden"; // 全体スクロールロック（アプリ挙動）
-    
+    document.body.style.overflow = "hidden";
     if (container) {
         container.innerHTML = "";
+        // マップモードと一覧モードでスタイルを分岐
+        if (mode === 'map') {
+            container.style.height = "auto";
+            container.style.overflowY = "visible"; // マップ時は中身に合わせて伸びる
+        } else {
+            container.style.height = "100%";
+            container.style.overflowY = "auto";    // 一覧時は枠内でスクロール
+        }
         container.style.width = "100%";
+        container.style.maxWidth = "100vw";
+        container.style.overflowX = "auto";
+        container.style.minWidth = "0";
         
-        // ★修正: マップモードでも予約一覧と同じFlexレイアウト構成を強制する
+        // ★修正: マップモード時は親へのスクロール連動(bubbling)を許可する
+        // これにより、強制スクロールJSを使わずに滑らかなネイティブスクロールが可能になります
+        container.style.overscrollBehavior = (mode === 'map') ? "auto" : "contain";
+
         container.style.display = "flex";
         container.style.flexWrap = "nowrap";
         container.style.alignItems = "flex-start";
         container.style.position = "relative";
-        
-        // カーソルや選択の設定
+        container.style.boxSizing = "border-box";
         container.style.setProperty('cursor', 'default', 'important');
         container.style.userSelect = "none";
         container.style.webkitUserSelect = "none";
-
-        // マップか一覧かで、縦スクロールの設定場所が異なるため分岐
-        if (mode === 'map') {
-             // マップの場合、親枠(.calendar-scroll-area)で高さを決めているので、ここはautoで良い
-             container.style.height = "auto";
-             container.style.overflowY = "visible"; 
-        } else {
-             // 一覧の場合、ここ自体がスクロールする
-             container.style.height = "100%";
-             container.style.overflowY = "auto";
-        }
     }
+
     // ==============================================
     // 【修正1】 ドラッグスクロール処理 (PCのみ有効化)
     // ==============================================
