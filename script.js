@@ -1169,10 +1169,7 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
 function closeModal() { document.getElementById('bookingModal').style.display = 'none'; }
 /* ==============================================
    追加ヘルパー関数: 予約データから参加者IDリストを取り出す
-   (saveBooking関数の直前などに貼り付けてください)
-   ============================================== */
-/* ==============================================
-   追加ヘルパー関数: 予約データから参加者IDリストを取り出す
+   (saveBooking関数の直前などに置いてください)
    ============================================== */
 function getParticipantIdsFromRes(res) {
     const pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
@@ -1182,20 +1179,18 @@ function getParticipantIdsFromRes(res) {
     if (Array.isArray(pIds)) {
         list = pIds;
     } else if (typeof pIds === 'string') {
-        // カンマや空白で区切られた文字列を配列化
         list = pIds.split(/[,、\s]+/);
     } else if (typeof pIds === 'number') {
         list = [pIds];
     }
     
-    // 空白を除去して文字列型に統一
     return list.map(id => String(id).trim()).filter(id => id !== "");
 }
 
 /* ==============================================
    修正版: 予約保存処理 (ダブルブッキング防止機能付き)
    ============================================== */
-// ▼▼▼ ここに 'async' が必須です！ ▼▼▼
+// ▼▼▼ ここに 'async' が必要です！ ▼▼▼
 async function saveBooking() {
     // 1. フォーム値の取得
     const id = document.getElementById('edit-res-id').value;
@@ -1207,7 +1202,7 @@ async function saveBooking() {
     const note = document.getElementById('input-note').value;
     const timePattern = /^([0-9]{1,2}):([0-9]{2})$/;
   
-    // 2. 基本的な入力チェック
+    // 2. 入力チェック
     if (!timePattern.test(start) || !timePattern.test(end)) {
         alert("時間は「09:00」のように半角数字とコロン(:)で入力してください。");
         return;
@@ -1221,7 +1216,7 @@ async function saveBooking() {
         return;
     }
 
-    // 3. 時間の長さチェック
+    // 時間の長さチェック
     const startParts = start.split(':');
     const endParts = end.split(':');
     const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
@@ -1238,21 +1233,16 @@ async function saveBooking() {
     const pIds = Array.from(selectedParticipantIds).join(', ');
 
     // ▼▼▼ 重複チェック処理 ▼▼▼
-    
-    // (A) 今回予約しようとしている時間帯
     const newStartObj = new Date(startTime);
     const newEndObj = new Date(endTime);
-
-    // (B) チェック対象の参加者IDリスト
     const checkTargets = Array.from(selectedParticipantIds);
 
-    // (C) 全予約データをループして重複を確認
     const conflictFound = checkTargets.some(targetUserId => {
         const conflictRes = masterData.reservations.find(existingRes => {
-            // ① 自分自身の編集は除外
+            // 自分自身の編集は除外
             if (id && String(existingRes.id) === String(id)) return false;
 
-            // ② 時間の重複チェック
+            // 時間の重複チェック
             const exStart = new Date(existingRes._startTime || existingRes.startTime);
             const exEnd = new Date(existingRes._endTime || existingRes.endTime);
             if (isNaN(exStart.getTime()) || isNaN(exEnd.getTime())) return false;
@@ -1260,7 +1250,7 @@ async function saveBooking() {
             const isTimeOverlap = (exStart < newEndObj && exEnd > newStartObj);
             if (!isTimeOverlap) return false;
 
-            // ③ 参加者の重複チェック
+            // 参加者の重複チェック
             const exMemberIds = getParticipantIdsFromRes(existingRes);
             return exMemberIds.includes(targetUserId);
         });
@@ -1306,7 +1296,7 @@ async function saveBooking() {
         note: note
     };
 
-    // ▼ awaitを使うため、関数自体に async が必要です
+    // ▼ async関数内なので await が使えます
     const result = await callAPI(params);
     
     if(result.status === 'success') {
