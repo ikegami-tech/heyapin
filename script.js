@@ -329,35 +329,40 @@ function updateRoomSelect() {
   }
 }
 
+/* ==============================================
+   修正版: switchTab
+   (履歴タブ削除に伴い、タブハイライト処理を調整)
+   ============================================== */
 function switchTab(tabName) {
-  document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  
-  const targetView = document.getElementById('view-' + tabName);
-  if(targetView) targetView.classList.add('active');
-  
-  const tabs = document.querySelectorAll('.nav-item');
-  if(tabName === 'map-view' && tabs[0]) tabs[0].classList.add('active');
-  if(tabName === 'timeline' && tabs[1]) tabs[1].classList.add('active');
-  if(tabName === 'logs' && tabs[2]) tabs[2].classList.add('active');
-  
-  if (tabName === 'map-view') {
-      setTimeout(() => { switchFloor(currentFloor); }, 50);
-  } else if (tabName === 'timeline') {
-      setTimeout(() => {
-          document.querySelectorAll('#view-timeline .floor-tab').forEach(tab => tab.classList.remove('active'));
-          const activeTab = document.getElementById(`timeline-tab-${currentTimelineFloor}f`);
-          if(activeTab) activeTab.classList.add('active');
-          
-          renderVerticalTimeline('all');
-
-          // ★追加: 描画が終わった直後に、赤線を中央にする処理を呼ぶ
-          setTimeout(scrollToNow, 50); 
-
-      }, 0);
-  } else if (tabName === 'logs') {
-      renderLogs();
-  }
+    // すべてのビューとタブの非アクティブ化
+    document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    
+    // 対象ビューの表示
+    const targetView = document.getElementById('view-' + tabName);
+    if(targetView) targetView.classList.add('active');
+    
+    // タブのハイライト制御
+    const tabs = document.querySelectorAll('.nav-item');
+    // tabs[0]=マップ, tabs[1]=予約一覧。履歴はメニューに入ったのでタブ制御から除外
+    if(tabName === 'map-view' && tabs[0]) tabs[0].classList.add('active');
+    if(tabName === 'timeline' && tabs[1]) tabs[1].classList.add('active');
+    
+    // 各モードごとの初期化処理
+    if (tabName === 'map-view') {
+        setTimeout(() => { switchFloor(currentFloor); }, 50);
+    } else if (tabName === 'timeline') {
+        setTimeout(() => {
+            document.querySelectorAll('#view-timeline .floor-tab').forEach(tab => tab.classList.remove('active'));
+            const activeTab = document.getElementById(`timeline-tab-${currentTimelineFloor}f`);
+            if(activeTab) activeTab.classList.add('active');
+            
+            renderVerticalTimeline('all');
+            setTimeout(scrollToNow, 50); 
+        }, 0);
+    } else if (tabName === 'logs') {
+        renderLogs();
+    }
 }
 
 /* ==============================================
@@ -2179,4 +2184,15 @@ async function sendContactFeedback() {
     document.getElementById('loading').style.display = 'none';
     alert("通信エラーが発生しました");
   }
+}
+/* ==============================================
+   追加機能: 歯車メニューから履歴を開く
+   ============================================== */
+function openHistoryFromMenu() {
+    // メニューを閉じる
+    const dropdown = document.getElementById("settings-dropdown");
+    if(dropdown) dropdown.classList.remove("show");
+
+    // 履歴画面（logs）に切り替える
+    switchTab('logs');
 }
