@@ -859,28 +859,66 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 bar.style.left = "2px";
                 bar.style.width = "calc(100% - 4px)";
 
-                let displayTitle = getVal(res, ['title', 'subject', '件名', 'タイトル']) || '予約';
+               /* === ここから修正範囲 === */
+
+let displayTitle = getVal(res, ['title', 'subject', '件名', 'タイトル']) || '予約';
 const startTimeStr = `${start.getHours()}:${pad(start.getMinutes())}`;
 const endTimeStr = `${end.getHours()}:${pad(end.getMinutes())}`;
 const timeRangeStr = `${startTimeStr}-${endTimeStr}`;
 
-// ▼▼▼ 追加: 予約者名の取得処理 ▼▼▼
-let displayName = res.operatorName || ''; // まず記録された名前を使用
-// ユーザーIDがあればマスタから最新の名前を引く
-if (res.reserverId || res.reserver_id) {
-    const rId = res.reserverId || res.reserver_id;
-    const rUser = masterData.users.find(u => String(u.userId) === String(rId));
-    if (rUser) displayName = rUser.userName;
-}
-if (!displayName) displayName = '(名前なし)';
-// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+// ▼▼▼ 修正: 表示名を「参加者」優先にする処理 ▼▼▼
+let displayNameText = "";
+let pNames = [];
 
-// ▼▼▼ 修正: 3行目に名前を表示するdivを追加 ▼▼▼
+// 1. 参加者データの取得
+let rawPIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
+if (rawPIds) {
+    let pList = [];
+    // 文字列か配列か数値かを判定して配列化
+    if (Array.isArray(rawPIds)) {
+        pList = rawPIds;
+    } else if (typeof rawPIds === 'string') {
+        pList = rawPIds.split(/[,、\s]+/); // カンマやスペースで分割
+    } else if (typeof rawPIds === 'number') {
+        pList = [rawPIds];
+    }
+
+    // IDから名前を引く
+    pList.forEach(pid => {
+        const cleanId = String(pid).trim();
+        if (cleanId) {
+            const u = masterData.users.find(user => String(user.userId) === cleanId);
+            pNames.push(u ? u.userName : cleanId);
+        }
+    });
+}
+
+// 2. 表示文字列の決定
+if (pNames.length > 0) {
+    // 参加者がいる場合：筆頭者 + 人数
+    displayNameText = pNames[0];
+    if (pNames.length > 1) {
+        displayNameText += ` (+${pNames.length - 1})`;
+    }
+} else {
+    // 参加者がいない場合：登録者(予約者)名を表示
+    displayNameText = res.operatorName || '';
+    if ((!displayNameText) && (res.reserverId || res.reserver_id)) {
+         const rId = res.reserverId || res.reserver_id;
+         const rUser = masterData.users.find(u => String(u.userId) === String(rId));
+         if (rUser) displayNameText = rUser.userName;
+    }
+}
+if (!displayNameText) displayNameText = '(名前なし)';
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
 bar.innerHTML = `
       <div style="width:100%; font-weight:bold; font-size:0.85em; line-height:1.1; margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${timeRangeStr}</div>
       <div style="width:100%; font-weight:bold; font-size:0.9em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayTitle}</div>
-      <div style="width:100%; font-size:0.85em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; opacity:0.9;">${displayName}</div>
+      <div style="width:100%; font-size:0.85em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; opacity:0.9;">${displayNameText}</div>
   `;
+
+/* === ここまで修正範囲 === */
                 bar.onclick = (e) => {
                     if (hasDragged) return;
                     e.stopPropagation();
