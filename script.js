@@ -918,11 +918,11 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 // 名前が特定できなかった場合のデフォルト
                 if (!displayNameText) displayNameText = '(名前なし)';
 
-                // 3. HTMLの生成
+               // 3. HTMLの生成
                 bar.innerHTML = `
                       <div style="width:100%; font-weight:bold; font-size:0.85em; line-height:1.1; margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${timeRangeStr}</div>
                       <div style="width:100%; font-weight:bold; font-size:0.9em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayTitle}</div>
-                      <div style="width:100%; font-size:0.85em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; opacity:0.9;">${displayNameText}</div>
+                      <div style="width:100%; font-weight:bold; font-size:0.85em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;">${displayNameText}</div>
                   `;
                 // ▲▲▲ 修正ここまで ▲▲▲
 
