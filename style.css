@@ -704,29 +704,6 @@ textarea#input-note::placeholder {
   justify-content: center;
   padding: 12px 0 !important; /* 上下の余白を確保 */
 }
-
-/* ==============================================
-   18. マップ下部の予約バーを「縦並び」に修正
-   ============================================== */
-#rooms-container-map .v-booking-bar {
-  flex-direction: column !important;       /* 縦並びにする */
-  justify-content: flex-start !important; /* 上寄せ */
-  align-items: flex-start !important;     /* 左寄せ */
-  flex-wrap: nowrap !important;           /* 折り返し禁止 */
-  padding: 4px !important;
-}
-
-/* 中身の要素のスタイルリセット */
-#rooms-container-map .v-booking-bar > div,
-#rooms-container-map .v-booking-bar > span {
-  width: 100% !important;                 /* 横幅いっぱい */
-  text-align: left !important;            /* 左寄せ */
-  margin: 0 !important;
-  white-space: nowrap !important;         /* 文字がはみ出たら...にする */
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-
 /* ==============================================
    19. 予約一覧(タイムライン)のフロア切替を表示
    ============================================== */
@@ -1482,4 +1459,34 @@ textarea#input-note::placeholder {
     font-size: 0.75rem;
     margin-left: 5px;
   }
+}
+/* ==============================================
+   33. マップ検索のUI修正 (追加分)
+   ============================================== */
+
+/* 選択された部屋のハイライト表示 */
+.map-click-area.active-room {
+  background-color: rgba(231, 76, 60, 0.7) !important; /* 赤っぽく強調 */
+  border: 3px solid #c0392b !important; /* 枠線を太く */
+  z-index: 100 !important; /* 最前面に */
+  box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+  transform: scale(1.02); /* ほんの少し大きく */
+}
+
+/* マップ下のタイムラインエリアを「予約一覧」と同じスクロール形式にする */
+#map-timeline-section .calendar-scroll-area {
+  height: 60vh !important;       /* 高さを画面の60%に固定 */
+  min-height: 400px !important;  /* 最低でも400px確保 */
+  overflow-y: auto !important;   /* 縦スクロールを有効化 */
+  display: flex !important;
+  border: 1px solid #ddd;
+  background: white;
+  margin-top: 10px;
+}
+
+/* マップ下のコンテナ設定上書き */
+#rooms-container-map {
+  height: auto !important;       /* 中身に合わせる（親がスクロールするのでOK） */
+  min-height: 100%;
+  overflow-y: visible !important; 
 }
