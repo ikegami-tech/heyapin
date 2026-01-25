@@ -537,44 +537,28 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     } else { return; }
 
-    // --- 2. コンテナの初期化 ---
-    if (!targetRooms || targetRooms.length === 0) {
-        if (container) container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
-        return;
-    }
-
-    let savedScrollTop = 0;
-    let savedScrollLeft = 0;
-    
-    // スクロール位置の保持 (コンテナ自体がスクロール主体になるためシンプルに)
-    if (container) {
-        savedScrollTop = container.scrollTop;
-        savedScrollLeft = container.scrollLeft;
-    }
-
+    // --- 2. コンテナの初期化 (修正版) ---
     document.body.style.overflow = "hidden";
     if (container) {
         container.innerHTML = "";
         
-        // ★修正ポイント: マップモードも一覧モードも設定を「完全に統一」する
-        // これによりドラッグ処理やスクロール同期が共通化され、不具合が解消します
-        container.style.height = "100%";       // 親要素いっぱいに広げる
-        container.style.overflowY = "auto";    // 縦スクロール有効
-        container.style.overflowX = "auto";    // 横スクロール有効
+        // ★重要修正: CSS側の !important に負けないよう、こちらも !important で強制的に設定する
+        container.style.setProperty('height', '100%', 'important');       // 親枠の高さに収める
+        container.style.setProperty('overflow-y', 'auto', 'important');   // 縦スクロールを強制有効化
+        container.style.setProperty('overflow-x', 'auto', 'important');   // 横スクロールを強制有効化
         
-        // マップモードの場合、親要素(.calendar-scroll-area)のスクロールを止める
+        // マップモードの場合、親要素のスクロールを止めてコンテナ側でスクロールさせる
         if (mode === 'map') {
             const parent = container.closest('.calendar-scroll-area');
             if (parent) {
-                parent.style.overflow = "hidden"; // 親はスクロールさせない
-                parent.style.display = "flex";    // 横並び配置を保証
+                parent.style.overflow = "hidden"; 
+                parent.style.display = "flex";
             }
         }
 
         container.style.width = "100%";
         container.style.maxWidth = "100vw";
         container.style.minWidth = "0";
-        // スマホでの引っ張り更新などを防ぐ
         container.style.overscrollBehavior = "contain";
 
         container.style.display = "flex";
@@ -586,7 +570,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.userSelect = "none";
         container.style.webkitUserSelect = "none";
     }
-
     // --- 3. ドラッグスクロール機能 (シンプル版) ---
     let isDown = false;
     let startX, startY;
