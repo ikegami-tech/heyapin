@@ -436,22 +436,26 @@ function selectRoomFromMap(element) {
     return;
   }
 
-  // ★追加: すべての部屋の選択状態を解除
+  // 1. 他の部屋の選択状態を解除
   document.querySelectorAll('.map-click-area').forEach(el => {
-    el.classList.remove('active-room');
+    el.classList.remove('selected-room');
   });
 
-  // ★追加: クリックされた部屋だけを選択状態にする
-  element.classList.add('active-room');
+  // 2. クリックした部屋を選択状態にする（CSSで色が変わります）
+  element.classList.add('selected-room');
 
+  // 3. マップ下のエリアを表示する
   currentMapRoomId = roomId;
-  document.getElementById('map-timeline-section').style.display = 'block';
+  const section = document.getElementById('map-timeline-section');
+  section.style.display = 'block'; // ★ここが重要（非表示を解除）
+  
   document.getElementById('map-selected-room-name').innerText = roomObj.roomName;
   
+  // 4. タイムラインを描画
   renderVerticalTimeline('map');
   
-  // スクロール位置の調整
-  document.getElementById('map-timeline-section').scrollIntoView({behavior: 'smooth', block: 'start'});
+  // 5. 表示されたエリアまでスクロール
+  section.scrollIntoView({behavior: 'smooth', block: 'center'});
 }
 /* ==============================================
    5. タイムライン関連処理
@@ -497,8 +501,7 @@ function drawTimeAxis(containerId) {
   }
 }
 /* ==============================================
-   修正版v3: renderVerticalTimeline
-   (マップ時も予約一覧と同じスクロールUIにする)
+   再修正版: renderVerticalTimeline
    ============================================== */
 function renderVerticalTimeline(mode) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -517,46 +520,54 @@ function renderVerticalTimeline(mode) {
         container = document.getElementById('rooms-container-map');
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
+        // 選択中の部屋だけをターゲットにする
         targetRooms = masterData.rooms.filter(r => String(r.roomId) === String(currentMapRoomId));
     } else { return; }
 
     if (!targetRooms || targetRooms.length === 0) {
-        if (container) container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
+        if (container) container.innerHTML = "<div style='padding:20px;'>部屋を選択してください。</div>";
         return;
     }
 
     let savedScrollTop = 0;
-    let savedScrollLeft = 0;
     
-    // ★変更: マップモードでもコンテナ自身のスクロール位置を保持するように統一
-    if (container) {
+    // スクロール位置の保持
+    // マップモードの場合は、コンテナの親（.calendar-scroll-area）がスクロール主体になるためそこを見る
+    if (mode === 'map') {
+        const wrapper = document.querySelector('#map-timeline-section .calendar-scroll-area');
+        if(wrapper) savedScrollTop = wrapper.scrollTop;
+    } else if (container) {
         savedScrollTop = container.scrollTop;
-        savedScrollLeft = container.scrollLeft;
     }
 
     // コンテナ初期化
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = "hidden"; // 全体スクロールロック（アプリ挙動）
+    
     if (container) {
         container.innerHTML = "";
-        
-        // ★変更: マップモードも「一覧」と同じスタイル設定にする
-        container.style.height = "100%";       // 親要素の高さに合わせる
-        container.style.overflowY = "auto";    // コンテナ自体がスクロールする
-        
         container.style.width = "100%";
-        container.style.maxWidth = "100vw";
-        container.style.overflowX = "auto";
-        container.style.minWidth = "0";
-        container.style.overscrollBehavior = "contain"; 
-
+        
+        // ★修正: マップモードでも予約一覧と同じFlexレイアウト構成を強制する
         container.style.display = "flex";
         container.style.flexWrap = "nowrap";
         container.style.alignItems = "flex-start";
         container.style.position = "relative";
-        container.style.boxSizing = "border-box";
+        
+        // カーソルや選択の設定
         container.style.setProperty('cursor', 'default', 'important');
         container.style.userSelect = "none";
         container.style.webkitUserSelect = "none";
+
+        // マップか一覧かで、縦スクロールの設定場所が異なるため分岐
+        if (mode === 'map') {
+             // マップの場合、親枠(.calendar-scroll-area)で高さを決めているので、ここはautoで良い
+             container.style.height = "auto";
+             container.style.overflowY = "visible"; 
+        } else {
+             // 一覧の場合、ここ自体がスクロールする
+             container.style.height = "100%";
+             container.style.overflowY = "auto";
+        }
     }
     // ==============================================
     // 【修正1】 ドラッグスクロール処理 (PCのみ有効化)
