@@ -88,6 +88,10 @@ async function callAPI(params) {
   }
 }
 
+/* ==============================================
+   修正版: tryLogin
+   (ユーザー名表示のエラー対策済み)
+   ============================================== */
 async function tryLogin() {
   const id = document.getElementById('loginId').value.trim();
   const pass = document.getElementById('loginPass').value.trim();
@@ -105,11 +109,17 @@ async function tryLogin() {
     
     if (json.status === 'success') {
       currentUser = json.user;
-      document.getElementById('display-user-name').innerText = currentUser.userName;
+      
+      // ★修正: 表示場所があるか確認してから文字を入れる
+      const nameEl = document.getElementById('display-user-name');
+      if (nameEl) {
+          nameEl.innerText = currentUser.userName;
+      }
+
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app-screen').style.display = 'flex'; 
       
-      // ★追加: ログイン成功時に情報をブラウザに保存する
+      // セッション保存
       localStorage.setItem(SESSION_KEY_USER, JSON.stringify(currentUser));
       localStorage.setItem(SESSION_KEY_TIME, new Date().getTime().toString());
 
@@ -122,8 +132,10 @@ async function tryLogin() {
     alert("通信エラー: " + e.message);
   }
 }
-
-// ★追加: 自動ログイン判定関数
+/* ==============================================
+   修正版: checkAutoLogin
+   (ユーザー名表示のエラー対策済み)
+   ============================================== */
 function checkAutoLogin() {
   const storedUser = localStorage.getItem(SESSION_KEY_USER);
   const storedTime = localStorage.getItem(SESSION_KEY_TIME);
@@ -132,31 +144,33 @@ function checkAutoLogin() {
     const now = new Date().getTime();
     const loginTime = parseInt(storedTime, 10);
 
-    // 経過時間をチェック (現在時刻 - ログイン時刻 < 12時間)
+    // 有効期間内の場合
     if (now - loginTime < SESSION_DURATION) {
-      // 有効期間内なので、ログイン状態を復元
       try {
         currentUser = JSON.parse(storedUser);
-        document.getElementById('display-user-name').innerText = currentUser.userName;
+        
+        // ★修正: 表示場所があるか確認してから文字を入れる
+        const nameEl = document.getElementById('display-user-name');
+        if (nameEl) {
+            nameEl.innerText = currentUser.userName;
+        }
+
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'flex'; 
         
-        // データをロード
         loadAllData();
-        return; // 自動ログイン成功したらここで終了
+        return; 
       } catch (e) {
         console.error("保存データの読み込みに失敗しました", e);
       }
     } else {
-      // 12時間過ぎているので、期限切れとして情報を消す
+      // 期限切れ
       console.log("セッション有効期限切れです");
       localStorage.removeItem(SESSION_KEY_USER);
       localStorage.removeItem(SESSION_KEY_TIME);
     }
   }
-  // 自動ログインできない場合は、何もしない（ログイン画面のまま）
 }
-
 function logout() { 
   // ★追加: 保存されたログイン情報を削除
   localStorage.removeItem(SESSION_KEY_USER);
