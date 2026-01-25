@@ -434,7 +434,7 @@ function switchFloor(floor) {
 
 /* ==============================================
    修正版: selectRoomFromMap
-   (第2引数でスクロール指示を出すように変更)
+   (予約表の表示処理を削除し、ピンのハイライトのみ行う)
    ============================================== */
 function selectRoomFromMap(element) {
   const roomId = element.getAttribute('data-room-id');
@@ -445,14 +445,19 @@ function selectRoomFromMap(element) {
     return;
   }
 
+  // 選択中の部屋IDを更新
   currentMapRoomId = roomId;
-  document.getElementById('map-timeline-section').style.display = 'block';
-  document.getElementById('map-selected-room-name').innerText = roomObj.roomName;
-  
-  // ★変更点: 第2引数に true を渡す（これで「クリックした時だけスクロールしてね」と伝えます）
-  renderVerticalTimeline('map', true);
-  
-  document.getElementById('map-timeline-section').scrollIntoView({behavior: 'smooth'});
+
+  // すべてのピンから選択クラスを外し、クリックしたピンだけに付与
+  document.querySelectorAll('.map-click-area').forEach(pin => {
+      pin.classList.remove('selected-room');
+      if (String(pin.getAttribute('data-room-id')) === String(roomId)) {
+          pin.classList.add('selected-room');
+      }
+  });
+
+  console.log("部屋が選択されました: " + roomObj.roomName);
+  // ここにあった「renderVerticalTimeline」などの呼び出しはすべて削除しました
 }
 
 /* ==============================================
@@ -499,58 +504,34 @@ function drawTimeAxis(containerId) {
   }
 }
 /* ==============================================
-   統合版: renderVerticalTimeline
-   (予約一覧の安定したロジックをマップ検索にも完全適用)
+   修正版: renderVerticalTimeline
+   (マップ下の表示ロジックを完全に削除)
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
-    let targetFloor;
 
-    // --- 1. 設定の振り分け ---
+    // --- 1. モード判定（マップ用ロジックは削除） ---
     if (mode === 'all') {
-        // [予約一覧タブ] の設定
         container = document.getElementById('rooms-container-all');
         dateInputId = 'timeline-date';
         timeAxisId = 'time-axis-all';
-        targetFloor = currentTimelineFloor; // タイムライン用の階数変数を使う
-
-    } else if (mode === 'map') {
-        // [マップ検索タブ] の設定
-        container = document.getElementById('rooms-container-map');
-        dateInputId = 'map-date';
-        timeAxisId = 'time-axis-map';
         
-        // マップでは「現在表示している階」を使う
-        // (ピンをクリックした場合は、そのピンがある階を優先するロジック)
-        targetFloor = currentFloor; 
-        if (currentMapRoomId) {
-            for (const [fKey, config] of Object.entries(mapConfig)) {
-                const hasRoom = config.areas.some(area => String(area.id) === String(currentMapRoomId));
-                if (hasRoom) {
-                    targetFloor = fKey;
-                    break;
-                }
-            }
-        }
-    } else { return; }
-
-    // --- 2. 部屋データの取得 (両モード共通) ---
-    // その階にある「すべての部屋」を取得します
-    const floorConfig = mapConfig[targetFloor];
-    if (floorConfig) {
-        const floorRoomIds = floorConfig.areas.map(area => area.id);
-        targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(r.roomId));
+        const floorConfig = mapConfig[currentTimelineFloor];
+        if (floorConfig) {
+            const floorRoomIds = floorConfig.areas.map(area => area.id);
+            targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(r.roomId));
+        } else { targetRooms = []; }
     } else {
-        targetRooms = [];
+        // 'map' モードなどが来たら何もしないで終了
+        return; 
     }
 
-    // --- 3. コンテナの初期化 ---
+    // --- 2. コンテナの初期化 ---
     if (!targetRooms || targetRooms.length === 0) {
         if (container) container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
         return;
     }
 
-    // スクロール位置の保持
     let savedScrollTop = 0;
     let savedScrollLeft = 0;
     if (container) {
@@ -562,11 +543,11 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     if (container) {
         container.innerHTML = "";
         
-        // ★重要: マップも一覧も「同じスタイル設定」にする
+        // スタイル設定（一覧モード用のみ）
         container.style.cssText = ''; 
         container.style.height = "100%";
         container.style.width = "100%";
-        container.style.overflow = "auto"; // 自身のスクロールを有効化
+        container.style.overflow = "auto"; 
         container.style.display = "flex";
         container.style.flexWrap = "nowrap";
         container.style.alignItems = "flex-start";
@@ -575,20 +556,63 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.cursor = "default";
         container.style.userSelect = "none";
         container.style.webkitUserSelect = "none";
-
-        // マップモードの場合、親枠(.calendar-scroll-area)の高さを確保し、親のスクロールは止める
-        if (mode === 'map') {
-            const parent = container.closest('.calendar-scroll-area');
-            if (parent) {
-                parent.style.height = '50vh';
-                parent.style.minHeight = '300px';
-                parent.style.display = 'flex';
-                parent.style.overflow = 'hidden'; // 親はスクロールさせない
-            }
-        }
     }
 
-    // --- 4. 時間軸と高さ計算 ---
+    // --- 3. マウスホイール強制スクロール機能 ---
+    if (container) {
+        container.addEventListener('wheel', (e) => {
+            // ドラッグ中は無視
+            // (isDown変数は下で定義されるが、巻き上げにより参照エラー防止のためここでチェックしないか、try-catchが必要だが
+            //  下のドラッグ処理で定義される変数を参照するのはスコープ的に危険なので、
+            //  シンプルに preventDefault してスクロールさせるだけにします)
+            e.preventDefault();
+            container.scrollTop += e.deltaY;
+            container.scrollLeft += e.deltaX;
+        }, { passive: false });
+    }
+
+    // --- 4. ドラッグスクロール機能 ---
+    let isDown = false;
+    let startX, startY;
+    let startScrollLeft, startScrollTop;
+    let hasDragged = false;
+
+    if (container) {
+        container.onmousedown = (e) => {
+            isDown = true;
+            hasDragged = false;
+            container.style.cursor = 'grabbing';
+            startX = e.pageX;
+            startY = e.pageY;
+            startScrollLeft = container.scrollLeft;
+            startScrollTop = container.scrollTop;
+        };
+
+        const stopDrag = () => {
+            isDown = false;
+            container.style.cursor = 'default';
+            setTimeout(() => { hasDragged = false; }, 50);
+        };
+        container.onmouseleave = stopDrag;
+        container.onmouseup = stopDrag;
+
+        container.onmousemove = (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX;
+            const y = e.pageY;
+            const walkX = (x - startX) * 1.5; 
+            const walkY = (y - startY) * 1.5;
+
+            if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
+                hasDragged = true;
+            }
+            container.scrollLeft = startScrollLeft - walkX;
+            container.scrollTop = startScrollTop - walkY;
+        };
+    }
+
+    // --- 5. 時間軸と高さ計算 ---
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     
@@ -649,11 +673,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         axisContainer.style.overflow = "hidden";
         axisContainer.style.display = "block";
         
-        // スクロール同期
         container.onscroll = () => { 
             axisContainer.scrollTop = container.scrollTop; 
         };
-        // ホイール同期
         axisContainer.onwheel = (e) => {
             e.preventDefault();
             container.scrollTop += e.deltaY;
@@ -672,56 +694,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         axisHeader.style.boxSizing = "border-box";
     }
 
-    // --- 5. ドラッグスクロール機能 (共通) ---
-    // マップも一覧も同じロジックで動かす
-    let isDown = false;
-    let startX, startY;
-    let startScrollLeft, startScrollTop;
-    let hasDragged = false;
-
-    if (container) {
-        // マウスホイール強制スクロール（ブラウザ互換性対策）
-        container.addEventListener('wheel', (e) => {
-            if (isDown) return;
-            e.preventDefault();
-            container.scrollTop += e.deltaY;
-            container.scrollLeft += e.deltaX;
-        }, { passive: false });
-
-        container.onmousedown = (e) => {
-            isDown = true;
-            hasDragged = false;
-            container.style.cursor = 'grabbing';
-            startX = e.pageX;
-            startY = e.pageY;
-            startScrollLeft = container.scrollLeft;
-            startScrollTop = container.scrollTop;
-        };
-
-        const stopDrag = () => {
-            isDown = false;
-            container.style.cursor = 'default';
-            setTimeout(() => { hasDragged = false; }, 50);
-        };
-        container.onmouseleave = stopDrag;
-        container.onmouseup = stopDrag;
-
-        container.onmousemove = (e) => {
-            if (!isDown) return;
-            e.preventDefault();
-            const x = e.pageX;
-            const y = e.pageY;
-            const walkX = (x - startX) * 1.5; 
-            const walkY = (y - startY) * 1.5;
-
-            if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
-                hasDragged = true;
-            }
-            container.scrollLeft = startScrollLeft - walkX;
-            container.scrollTop = startScrollTop - walkY;
-        };
-    }
-
     // --- 6. 列の描画 ---
     targetRooms.forEach(room => {
         const col = document.createElement('div');
@@ -732,39 +704,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.style.position = "relative";
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
-
-        // マップモード時のハイライト処理
-        if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
-            col.classList.add('target-highlight');
-            if (shouldScroll) {
-                setTimeout(() => {
-                    col.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                }, 100);
-            }
-        }
-
-        // 列クリックイベント
-        col.addEventListener('click', (e) => {
-            if (hasDragged) return;
-            if (mode !== 'map') return;
-
-            // 他のハイライトを消して自分につける
-            currentMapRoomId = room.roomId;
-            container.querySelectorAll('.room-col').forEach(c => c.classList.remove('target-highlight'));
-            col.classList.add('target-highlight');
-
-            // ピンの色を変える
-            document.querySelectorAll('.map-click-area').forEach(pin => {
-                pin.classList.remove('selected-room');
-                if (String(pin.getAttribute('data-room-id')) === String(room.roomId)) {
-                    pin.classList.add('selected-room');
-                }
-            });
-
-            // タイトル更新
-            const titleEl = document.getElementById('map-selected-room-name');
-            if (titleEl) titleEl.innerText = room.roomName;
-        });
 
         const header = document.createElement('div');
         header.className = 'room-header';
@@ -884,7 +823,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.scrollTop = savedScrollTop;
         
         const axisContainerEnd = document.getElementById(timeAxisId);
-        if (axisContainerEnd) {
+        if (axisContainerEnd && mode === 'all') {
             axisContainerEnd.scrollTop = savedScrollTop;
             const scrollBarHeight = container.offsetHeight - container.clientHeight;
             if (scrollBarHeight > 0) {
