@@ -1165,11 +1165,9 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
 }
 function closeModal() { document.getElementById('bookingModal').style.display = 'none'; }
 /* ==============================================
-   追加・修正箇所: 予約保存処理 (saveBooking)
+   追加ヘルパー関数: 予約データから参加者IDリストを取り出す
+   (saveBooking関数の直前などに貼り付けてください)
    ============================================== */
-
-// 【追加】予約オブジェクトから参加者IDの配列を抽出するヘルパー関数
-// (saveBooking関数の外側、例えばその直前などに置いてください)
 function getParticipantIdsFromRes(res) {
     const pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
     if (!pIds) return [];
@@ -1178,16 +1176,21 @@ function getParticipantIdsFromRes(res) {
     if (Array.isArray(pIds)) {
         list = pIds;
     } else if (typeof pIds === 'string') {
+        // カンマや空白で区切られた文字列を配列化
         list = pIds.split(/[,、\s]+/);
     } else if (typeof pIds === 'number') {
         list = [pIds];
     }
     
+    // 空白を除去して文字列型に統一
     return list.map(id => String(id).trim()).filter(id => id !== "");
 }
 
-// 【完全版】予約保存関数
+/* ==============================================
+   修正版: 予約保存処理 (ダブルブッキング防止機能付き)
+   ============================================== */
 async function saveBooking() {
+    // 1. フォーム値の取得
     const id = document.getElementById('edit-res-id').value;
     const room = document.getElementById('input-room').value;
     const date = document.getElementById('input-date').value;
@@ -1197,18 +1200,21 @@ async function saveBooking() {
     const note = document.getElementById('input-note').value;
     const timePattern = /^([0-9]{1,2}):([0-9]{2})$/;
   
-    // 1. 入力フォーマットチェック
+    // 2. 基本的な入力チェック
     if (!timePattern.test(start) || !timePattern.test(end)) {
         alert("時間は「09:00」のように半角数字とコロン(:)で入力してください。");
         return;
     }
-    if (start >= end) { alert("開始時間は終了時間より前に設定してください。"); return; }
+    if (start >= end) { 
+        alert("開始時間は終了時間より前に設定してください。"); 
+        return; 
+    }
     if (start < "07:00" || start > "21:00" || end < "07:00" || end > "21:00") {
         alert("利用時間は 7:00 〜 21:00 の範囲で設定してください。");
         return;
     }
 
-    // 2. 時間計算 (★ここがエラーの原因でした。復活させました)
+    // 3. 時間の長さチェック (★前回のエラー箇所: 変数をここで定義します)
     const startParts = start.split(':');
     const endParts = end.split(':');
     const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
@@ -1219,65 +1225,102 @@ async function saveBooking() {
         return;
     }
 
+    // 日時文字列の作成
     const startTime = `${date.replace(/-/g, '/')} ${start}`;
     const endTime = `${date.replace(/-/g, '/')} ${end}`;
     const pIds = Array.from(selectedParticipantIds).join(', ');
 
-    // ▼▼▼ ダブルブッキング（重複）チェック処理 ▼▼▼
+    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+    // 【重要】ダブルブッキング（重複）チェック処理
+    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
     
-    // (1) 今回予約しようとしている時間帯
+    // (A) 今回予約しようとしている時間帯
     const newStartObj = new Date(startTime);
     const newEndObj = new Date(endTime);
 
-    // (2) チェック対象の参加者IDリスト
+    // (B) チェック対象の参加者IDリスト (今回選択された人たち)
     const checkTargets = Array.from(selectedParticipantIds);
 
-    // (3) 全予約をループして重複チェック
-    for (const targetUserId of checkTargets) {
-        // 重複している予約を探す
+    // (C) 全予約データをループして重複を確認
+    //     findを使うことで、1つでも重複が見つかればループを終了します
+    const conflictFound = checkTargets.some(targetUserId => {
+        // そのユーザーが参加している、かつ時間が被っている予約を探す
         const conflictRes = masterData.reservations.find(existingRes => {
-            // 自分自身の編集は除外
+            // ① 自分自身の編集は除外 (IDが一致する場合はスキップ)
             if (id && String(existingRes.id) === String(id)) return false;
 
-            // 時間の重複チェック
+            // ② 時間の重複チェック
             const exStart = new Date(existingRes._startTime || existingRes.startTime);
             const exEnd = new Date(existingRes._endTime || existingRes.endTime);
-            
             if (isNaN(exStart.getTime()) || isNaN(exEnd.getTime())) return false;
 
-            // 時間が被っているか (既存開始 < 新規終了 AND 既存終了 > 新規開始)
+            // (既存開始 < 新規終了) かつ (既存終了 > 新規開始) なら時間は被っている
             const isTimeOverlap = (exStart < newEndObj && exEnd > newStartObj);
             if (!isTimeOverlap) return false;
 
-            // 参加者の重複チェック
+            // ③ 参加者の重複チェック
+            // 既存予約の参加者リストを取得し、対象ユーザーが含まれているか確認
             const exMemberIds = getParticipantIdsFromRes(existingRes);
             return exMemberIds.includes(targetUserId);
         });
 
-        // 重複が見つかった場合
+        // 重複が見つかった場合、アラートを出して true を返す
         if (conflictRes) {
+            // ユーザー名の特定
             const conflictingUser = masterData.users.find(u => String(u.userId) === String(targetUserId));
             const userName = conflictingUser ? conflictingUser.userName : targetUserId;
 
+            // 部屋名の特定
             const roomObj = masterData.rooms.find(r => String(r.roomId) === String(conflictRes._resourceId || conflictRes.resourceId));
             const roomName = roomObj ? roomObj.roomName : "不明な部屋";
 
+            // 時間の整形
             const cStart = new Date(conflictRes._startTime || conflictRes.startTime);
             const cEnd = new Date(conflictRes._endTime || conflictRes.endTime);
             const timeStr = `${pad(cStart.getHours())}:${pad(cStart.getMinutes())} - ${pad(cEnd.getHours())}:${pad(cEnd.getMinutes())}`;
 
             alert(
-                `重複エラー：\n` +
-                `「${userName}」さんは、同時刻に別の予約が入っています。\n\n` +
-                `場所: ${roomName}\n` +
-                `時間: ${timeStr}\n` +
-                `用件: ${getVal(conflictRes, ['title', 'subject']) || '(なし)'}`
+                `【登録エラー：重複予約】\n\n` +
+                `「${userName}」さんは、以下の予約と時間が重なっています。\n` +
+                `--------------------------------\n` +
+                `場所： ${roomName}\n` +
+                `時間： ${timeStr}\n` +
+                `用件： ${getVal(conflictRes, ['title', 'subject']) || '(なし)'}\n` +
+                `--------------------------------\n` +
+                `同時刻に複数の部屋を予約することはできません。`
             );
-            return; // 処理中断
+            return true; // 重複あり
         }
-    }
-    // ▲▲▲ 重複チェック終了 ▲▲▲
+        return false; // 重複なし
+    });
 
+    // 重複が見つかった場合は、保存処理を中断して終了
+    if (conflictFound) return;
+
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+    // 4. APIへのデータ送信
+    const params = {
+        action: id ? 'updateReservation' : 'createReservation',
+        reservationId: id,
+        resourceId: room,
+        startTime: startTime,
+        endTime: endTime,
+        reserverId: currentUser.userId,
+        operatorName: currentUser.userName,
+        participantIds: pIds, // カンマ区切りの文字列で送信
+        title: title,
+        note: note
+    };
+
+    const result = await callAPI(params);
+    if(result.status === 'success') {
+        closeModal();
+        loadAllData(true);
+    } else {
+        alert("エラー: " + result.message);
+    }
+}
     // 3. サーバーへ送信
     const params = {
         action: id ? 'updateReservation' : 'createReservation',
