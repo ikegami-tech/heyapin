@@ -1169,7 +1169,6 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
 function closeModal() { document.getElementById('bookingModal').style.display = 'none'; }
 /* ==============================================
    追加ヘルパー関数: 予約データから参加者IDリストを取り出す
-   (saveBooking関数の直前などに置いてください)
    ============================================== */
 function getParticipantIdsFromRes(res) {
     const pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
@@ -1179,18 +1178,19 @@ function getParticipantIdsFromRes(res) {
     if (Array.isArray(pIds)) {
         list = pIds;
     } else if (typeof pIds === 'string') {
+        // カンマや空白で区切られた文字列を配列化
         list = pIds.split(/[,、\s]+/);
     } else if (typeof pIds === 'number') {
         list = [pIds];
     }
     
+    // 空白を除去して文字列型に統一
     return list.map(id => String(id).trim()).filter(id => id !== "");
 }
 
 /* ==============================================
    修正版: 予約保存処理 (ダブルブッキング防止機能付き)
    ============================================== */
-// ▼▼▼ ここに 'async' が必要です！ ▼▼▼
 async function saveBooking() {
     // 1. フォーム値の取得
     const id = document.getElementById('edit-res-id').value;
@@ -1202,7 +1202,7 @@ async function saveBooking() {
     const note = document.getElementById('input-note').value;
     const timePattern = /^([0-9]{1,2}):([0-9]{2})$/;
   
-    // 2. 入力チェック
+    // 2. 基本的な入力チェック
     if (!timePattern.test(start) || !timePattern.test(end)) {
         alert("時間は「09:00」のように半角数字とコロン(:)で入力してください。");
         return;
@@ -1216,7 +1216,7 @@ async function saveBooking() {
         return;
     }
 
-    // 時間の長さチェック
+    // 3. 時間の長さチェック
     const startParts = start.split(':');
     const endParts = end.split(':');
     const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
@@ -1296,7 +1296,7 @@ async function saveBooking() {
         note: note
     };
 
-    // ▼ async関数内なので await が使えます
+    // ▼ awaitを使うため、関数自体に async が必要です
     const result = await callAPI(params);
     
     if(result.status === 'success') {
@@ -1306,29 +1306,6 @@ async function saveBooking() {
         alert("エラー: " + result.message);
     }
 }
-    // 3. サーバーへ送信
-    const params = {
-        action: id ? 'updateReservation' : 'createReservation',
-        reservationId: id,
-        resourceId: room,
-        startTime: startTime,
-        endTime: endTime,
-        reserverId: currentUser.userId,
-        operatorName: currentUser.userName,
-        participantIds: pIds,
-        title: title,
-        note: note
-    };
-
-    const result = await callAPI(params);
-    if(result.status === 'success') {
-        closeModal();
-        loadAllData(true);
-    } else {
-        alert("エラー: " + result.message);
-    }
-}
-
 async function deleteBooking() {
     const id = document.getElementById('edit-res-id').value;
     if (!id || !confirm("本当にこの予約を削除しますか？")) return;
