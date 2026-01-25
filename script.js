@@ -495,7 +495,7 @@ function drawTimeAxis(containerId) {
 }
 /* ==============================================
    修正版: renderVerticalTimeline
-   (斜めドラッグ移動・自動更新時の位置キープ対応)
+   (列クリックでの部屋選択切り替え機能を追加)
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -545,12 +545,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
     let savedScrollTop = 0;
     let savedScrollLeft = 0;
-    
-    // 現在のスクロール位置を保存（自動更新時のため）
-    // マップモードの場合、縦スクロールしているのは親要素(.calendar-scroll-area)なのでそこを見る
-    const vScrollTarget = (mode === 'map') ? container.parentElement : container;
+    let vScrollTarget = null;
 
     if (container) {
+        vScrollTarget = (mode === 'map') ? container.parentElement : container;
         savedScrollLeft = container.scrollLeft;
         if(vScrollTarget) savedScrollTop = vScrollTarget.scrollTop;
     }
@@ -583,65 +581,47 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.webkitUserSelect = "none";
     }
 
-    // --- 3. ドラッグスクロール機能 (斜め移動完全対応版) ---
+    // --- 3. ドラッグスクロール機能 ---
     let isDown = false;
     let startX, startY;
     let startScrollLeft, startScrollTop;
     let hasDragged = false;
 
     if (container) {
-        // マウスを押した時
         container.onmousedown = (e) => {
             isDown = true;
             hasDragged = false;
             container.style.cursor = 'grabbing';
-            
-            // クリック開始位置を記録
             startX = e.pageX;
             startY = e.pageY;
-            
-            // 横スクロールの開始位置
             startScrollLeft = container.scrollLeft;
-            
-            // 縦スクロールの開始位置 (マップモードなら親要素、一覧なら自分自身)
-            const targetV = (mode === 'map') ? container.parentElement : container;
-            startScrollTop = targetV ? targetV.scrollTop : 0;
+            if (!vScrollTarget) vScrollTarget = (mode === 'map') ? container.parentElement : container;
+            startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
         };
 
-        // マウスを離した時・枠外に出た時
         const stopDrag = () => {
             isDown = false;
             container.style.cursor = 'default';
-            // クリック判定を残すため、フラグオフを少し遅らせる
             setTimeout(() => { hasDragged = false; }, 50);
         };
         container.onmouseleave = stopDrag;
         container.onmouseup = stopDrag;
 
-        // マウスを動かした時
         container.onmousemove = (e) => {
             if (!isDown) return;
-            e.preventDefault(); // 文字選択などを防止
-            
+            e.preventDefault();
             const x = e.pageX;
             const y = e.pageY;
-            
-            // 移動量を計算 (1.5倍速で追従)
             const walkX = (x - startX) * 1.5; 
             const walkY = (y - startY) * 1.5;
 
-            // 5px以上動いたら「ドラッグした」とみなす
             if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
                 hasDragged = true;
             }
 
-            // 横スクロールを適用
             container.scrollLeft = startScrollLeft - walkX;
-            
-            // 縦スクロールを適用 (マップモードなら親要素を動かす)
-            const targetV = (mode === 'map') ? container.parentElement : container;
-            if (targetV) {
-                targetV.scrollTop = startScrollTop - walkY;
+            if (vScrollTarget) {
+                vScrollTarget.scrollTop = startScrollTop - walkY;
             }
         };
     }
@@ -709,13 +689,11 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         
         if (mode === 'all') {
             container.onscroll = () => { axisContainer.scrollTop = container.scrollTop; };
-            // 時間軸の上でホイールしたときも本体をスクロールさせる
             axisContainer.onwheel = (e) => {
                 e.preventDefault();
                 container.scrollTop += e.deltaY;
                 container.scrollLeft += e.deltaX;
             };
-            // 復元
             axisContainer.scrollTop = savedScrollTop;
         } else {
             axisContainer.style.height = currentTop + "px";
@@ -743,16 +721,43 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
 
-        // 選択された部屋のハイライト
+        // 初期表示時のハイライト判定
         if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
             col.classList.add('target-highlight');
-            // クリック時のみスクロール
             if (shouldScroll) {
                 setTimeout(() => {
                     col.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                 }, 100);
             }
         }
+
+        // ▼▼▼ 追加機能: 列クリックで部屋を選択状態にする処理 ▼▼▼
+        col.addEventListener('click', (e) => {
+            // ドラッグ中の場合は選択しない
+            if (hasDragged) return;
+            // モードがマップでない場合は何もしない（予約一覧モードの挙動を守る）
+            if (mode !== 'map') return;
+
+            // 1. グローバル変数を更新
+            currentMapRoomId = room.roomId;
+
+            // 2. 他の列のハイライトを消して、自分につける
+            container.querySelectorAll('.room-col').forEach(c => c.classList.remove('target-highlight'));
+            col.classList.add('target-highlight');
+
+            // 3. マップ上のピンの選択状態を更新
+            document.querySelectorAll('.map-click-area').forEach(pin => {
+                pin.classList.remove('selected-room');
+                if (String(pin.getAttribute('data-room-id')) === String(room.roomId)) {
+                    pin.classList.add('selected-room');
+                }
+            });
+
+            // 4. タイトルテキストを更新
+            const titleEl = document.getElementById('map-selected-room-name');
+            if (titleEl) titleEl.innerText = room.roomName;
+        });
+        // ▲▲▲ 追加ここまで ▲▲▲
 
         const header = document.createElement('div');
         header.className = 'room-header';
@@ -866,7 +871,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.appendChild(col);
     });
 
-    // --- 6. スクロール復元処理 (自動更新時) ---
+    // --- 6. スクロール復元処理 ---
     if (container) {
         container.scrollLeft = savedScrollLeft;
         if (vScrollTarget) {
