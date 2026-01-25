@@ -495,13 +495,12 @@ function drawTimeAxis(containerId) {
 }
 /* ==============================================
    修正版: renderVerticalTimeline
-   (自動更新時の画面飛び防止対策済み)
+   (斜めドラッグ移動・自動更新時の位置キープ対応)
    ============================================== */
-// ★変更点: 第2引数 shouldScroll (初期値false) を追加
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
 
-    // --- モード判定と対象部屋の取得 ---
+    // --- 1. モード判定と対象部屋の取得 ---
     if (mode === 'all') {
         container = document.getElementById('rooms-container-all');
         dateInputId = 'timeline-date';
@@ -538,7 +537,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     } else { return; }
 
-    // --- コンテナの初期化 ---
+    // --- 2. コンテナの初期化 ---
     if (!targetRooms || targetRooms.length === 0) {
         if (container) container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
         return;
@@ -548,9 +547,12 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     let savedScrollLeft = 0;
     
     // 現在のスクロール位置を保存（自動更新時のため）
+    // マップモードの場合、縦スクロールしているのは親要素(.calendar-scroll-area)なのでそこを見る
+    const vScrollTarget = (mode === 'map') ? container.parentElement : container;
+
     if (container) {
-        savedScrollTop = container.scrollTop;
         savedScrollLeft = container.scrollLeft;
+        if(vScrollTarget) savedScrollTop = vScrollTarget.scrollTop;
     }
 
     document.body.style.overflow = "hidden";
@@ -581,39 +583,62 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.webkitUserSelect = "none";
     }
 
-    // --- ドラッグスクロール機能 ---
+    // --- 3. ドラッグスクロール機能 (斜め移動対応) ---
     let isDown = false;
-    let startX;
-    let scrollLeft;
+    let startX, startY;
+    let startScrollLeft, startScrollTop;
     let hasDragged = false;
 
     if (container) {
-        container.addEventListener('mousedown', (e) => {
+        container.onmousedown = (e) => {
             isDown = true;
             hasDragged = false;
             container.style.cursor = 'grabbing';
-            startX = e.pageX - container.offsetLeft;
-            scrollLeft = container.scrollLeft;
-        });
-        container.addEventListener('mouseleave', () => {
+            
+            // クリック開始位置
+            startX = e.pageX;
+            startY = e.pageY;
+            
+            // スクロール開始位置
+            startScrollLeft = container.scrollLeft;
+            startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
+        };
+
+        const stopDrag = () => {
             isDown = false;
             container.style.cursor = 'default';
-        });
-        container.addEventListener('mouseup', () => {
-            isDown = false;
-            container.style.cursor = 'default';
-        });
-        container.addEventListener('mousemove', (e) => {
+            // ドラッグ終了直後はクリック判定を残すためにフラグは即座に消さない
+            setTimeout(() => { hasDragged = false; }, 50);
+        };
+        container.onmouseleave = stopDrag;
+        container.onmouseup = stopDrag;
+
+        container.onmousemove = (e) => {
             if (!isDown) return;
             e.preventDefault();
-            const x = e.pageX - container.offsetLeft;
-            const walk = (x - startX) * 2; 
-            if (Math.abs(walk) > 5) hasDragged = true;
-            container.scrollLeft = scrollLeft - walk;
-        });
+            
+            // 移動量を計算 (1.5倍速)
+            const x = e.pageX;
+            const y = e.pageY;
+            const walkX = (x - startX) * 1.5; 
+            const walkY = (y - startY) * 1.5;
+
+            // 5px以上動いたらドラッグとみなす
+            if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
+                hasDragged = true;
+            }
+
+            // 横スクロール反映
+            container.scrollLeft = startScrollLeft - walkX;
+            
+            // 縦スクロール反映 (斜め移動)
+            if (vScrollTarget) {
+                vScrollTarget.scrollTop = startScrollTop - walkY;
+            }
+        };
     }
 
-    // --- 時間軸と高さ計算 ---
+    // --- 4. 時間軸と高さ計算 ---
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     
@@ -676,12 +701,14 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         
         if (mode === 'all') {
             container.onscroll = () => { axisContainer.scrollTop = container.scrollTop; };
-            axisContainer.scrollTop = savedScrollTop;
+            // 時間軸の上でホイールしたときも本体をスクロールさせる
             axisContainer.onwheel = (e) => {
                 e.preventDefault();
                 container.scrollTop += e.deltaY;
                 container.scrollLeft += e.deltaX;
             };
+            // 復元
+            axisContainer.scrollTop = savedScrollTop;
         } else {
             axisContainer.style.height = currentTop + "px";
         }
@@ -697,7 +724,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
-    // --- 列の描画 ---
+    // --- 5. 列の描画 ---
     targetRooms.forEach(room => {
         const col = document.createElement('div');
         col.className = 'room-col';
@@ -708,9 +735,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
 
+        // 選択された部屋のハイライト
         if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
             col.classList.add('target-highlight');
-            // ★変更点: shouldScroll が true (クリック時) の場合のみスクロールする
+            // クリック時のみスクロール
             if (shouldScroll) {
                 setTimeout(() => {
                     col.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -755,7 +783,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
 
         body.onclick = (e) => {
-            if (hasDragged) return; // ドラッグ後のクリックは無効化
+            if (hasDragged) return; 
             if (e.target.closest('.v-booking-bar')) return;
             const rect = body.getBoundingClientRect();
             const clickY = e.clientY - rect.top;
@@ -818,7 +846,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                   `;
 
                 bar.onclick = (e) => {
-                    if (hasDragged) return; // ドラッグ後のクリックは無効化
+                    if (hasDragged) return;
                     e.stopPropagation();
                     openDetailModal(res);
                 };
@@ -830,14 +858,11 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.appendChild(col);
     });
 
-    // --- スクロール復元処理 ---
+    // --- 6. スクロール復元処理 (自動更新時) ---
     if (container) {
-        // ★重要: 自動更新の時は、ここで以前のスクロール位置に戻します
-        if (mode === 'map' && mapWrapper) {
-             mapWrapper.scrollTop = savedScrollTop;
-        } else {
-             container.scrollTop = savedScrollTop;
-             container.scrollLeft = savedScrollLeft;
+        container.scrollLeft = savedScrollLeft;
+        if (vScrollTarget) {
+            vScrollTarget.scrollTop = savedScrollTop;
         }
         
         const axisContainerEnd = document.getElementById(timeAxisId);
