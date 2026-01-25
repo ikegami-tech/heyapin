@@ -484,9 +484,10 @@ function drawTimeAxis(containerId) {
       div.style.minHeight = height + "px";
       container.appendChild(div);
   }
-}/* ==============================================
+}
+/* ==============================================
    修正版: renderVerticalTimeline
-   (全室表示・選択ハイライト・文法エラー修正済み)
+   (マップ全室表示・選択ハイライト・スクロール補正・バグ修正済)
    ============================================== */
 function renderVerticalTimeline(mode) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -532,9 +533,9 @@ function renderVerticalTimeline(mode) {
     
     // スクロール位置の保持
     const mapWrapper = document.querySelector('.map-wrapper');
-    if (mode === 'map' && mapWrapper) {
-        // マップモード時は必要に応じて調整
-    } else if (container) {
+    // マップモードの場合、親要素のスクロール位置を取得する場合があるが、
+    // ここでは単純にコンテナのスクロール位置を見る（または描画後にハイライト位置へ飛ぶ）
+    if (container) {
         savedScrollTop = container.scrollTop;
         savedScrollLeft = container.scrollLeft;
     }
@@ -573,9 +574,7 @@ function renderVerticalTimeline(mode) {
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     
     // hourRowHeights をリセット
-    // ※hourRowHeights変数が関数の外で定義されていない場合は、ここで let hourRowHeights = {}; とする必要がありますが
-    // 元のコードに合わせてグローバル変数として扱っています。
-    // もしエラーが出る場合はここを let hourRowHeights = {}; にしてください。
+    hourRowHeights = {}; 
     for (let h = START_HOUR; h < END_HOUR; h++) hourRowHeights[h] = BASE_HOUR_HEIGHT;
 
     // 予約の重なり具合で高さを計算
@@ -791,14 +790,6 @@ function renderVerticalTimeline(mode) {
         container.appendChild(col);
     });
 
-    // スクロール復元処理
-    if (container) {
-        if (mode === 'all') {
-             container.scrollTop = savedScrollTop;
-             container.scrollLeft = savedScrollLeft;
-        }
-    }
-}
     // ==============================================
     // 【修正箇所】スクロール復元 & ズレ補正
     // ==============================================
@@ -813,7 +804,7 @@ function renderVerticalTimeline(mode) {
         
         const axisContainerEnd = document.getElementById(timeAxisId);
         
-        // 2. ★追加：予約一覧モードの場合、横スクロールバーの分だけ時間軸の下に詰め物をする
+        // 2. 予約一覧モードの場合、横スクロールバーの分だけ時間軸の下に詰め物をする
         if (mode === 'all' && axisContainerEnd) {
             axisContainerEnd.scrollTop = savedScrollTop;
             
