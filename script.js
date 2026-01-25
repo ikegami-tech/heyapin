@@ -860,15 +860,27 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 bar.style.width = "calc(100% - 4px)";
 
                 let displayTitle = getVal(res, ['title', 'subject', '件名', 'タイトル']) || '予約';
-                const startTimeStr = `${start.getHours()}:${pad(start.getMinutes())}`;
-                const endTimeStr = `${end.getHours()}:${pad(end.getMinutes())}`;
-                const timeRangeStr = `${startTimeStr}-${endTimeStr}`;
-                
-                bar.innerHTML = `
-                      <div style="width:100%; font-weight:bold; font-size:0.85em; line-height:1.1; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${timeRangeStr}</div>
-                      <div style="width:100%; font-weight:bold; font-size:0.9em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayTitle}</div>
-                  `;
+const startTimeStr = `${start.getHours()}:${pad(start.getMinutes())}`;
+const endTimeStr = `${end.getHours()}:${pad(end.getMinutes())}`;
+const timeRangeStr = `${startTimeStr}-${endTimeStr}`;
 
+// ▼▼▼ 追加: 予約者名の取得処理 ▼▼▼
+let displayName = res.operatorName || ''; // まず記録された名前を使用
+// ユーザーIDがあればマスタから最新の名前を引く
+if (res.reserverId || res.reserver_id) {
+    const rId = res.reserverId || res.reserver_id;
+    const rUser = masterData.users.find(u => String(u.userId) === String(rId));
+    if (rUser) displayName = rUser.userName;
+}
+if (!displayName) displayName = '(名前なし)';
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+// ▼▼▼ 修正: 3行目に名前を表示するdivを追加 ▼▼▼
+bar.innerHTML = `
+      <div style="width:100%; font-weight:bold; font-size:0.85em; line-height:1.1; margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${timeRangeStr}</div>
+      <div style="width:100%; font-weight:bold; font-size:0.9em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayTitle}</div>
+      <div style="width:100%; font-size:0.85em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; opacity:0.9;">${displayName}</div>
+  `;
                 bar.onclick = (e) => {
                     if (hasDragged) return;
                     e.stopPropagation();
