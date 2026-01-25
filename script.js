@@ -506,7 +506,13 @@ function renderVerticalTimeline(mode) {
         container = document.getElementById('rooms-container-map');
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
-        targetRooms = masterData.rooms.filter(r => String(r.roomId) === String(currentMapRoomId));
+        tconst floorConfig = mapConfig[currentFloor]; 
+        if (floorConfig) {
+            const floorRoomIds = floorConfig.areas.map(area => area.id);
+            targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(r.roomId));
+        } else { 
+            targetRooms = [];
+        }
     } else { return; }
 
     if (!targetRooms || targetRooms.length === 0) {
@@ -714,6 +720,14 @@ function renderVerticalTimeline(mode) {
         col.style.position = "relative";
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
+        if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
+            col.classList.add('target-highlight'); // CSSで黄色くするクラス
+            
+            // （任意）その列が画面中央に来るように自動スクロール
+            setTimeout(() => {
+                col.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }, 100);
+        }
 
         const header = document.createElement('div');
         header.className = 'room-header';
