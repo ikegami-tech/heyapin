@@ -432,7 +432,7 @@ function switchFloor(floor) {
 }
 /* ==============================================
    修正版: selectRoomFromMap
-   (エラー原因となるタイトル操作を削除)
+   (削除されたタイトル要素への書き込みを排除)
    ============================================== */
 function selectRoomFromMap(element) {
   const roomId = element.getAttribute('data-room-id');
@@ -442,7 +442,7 @@ function selectRoomFromMap(element) {
 
   currentMapRoomId = roomId;
 
-  // ピンのハイライト
+  // ピンのハイライト切り替え
   document.querySelectorAll('.map-click-area').forEach(pin => {
       pin.classList.remove('selected-room');
       if (String(pin.getAttribute('data-room-id')) === String(roomId)) {
@@ -450,7 +450,7 @@ function selectRoomFromMap(element) {
       }
   });
 
-  // タイムラインをスクロール（統合された関数を使用）
+  // タイムラインを再描画して、その部屋の位置までスクロール
   renderVerticalTimeline('all', true);
 }
 /* ==============================================
@@ -498,15 +498,15 @@ function drawTimeAxis(containerId) {
 }
 /* ==============================================
    統合版: renderVerticalTimeline
-   (エラー対策済み: 統合された画面のみを操作)
+   (古いIDへのアクセスを完全に削除・統合済み)
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
-    // 統合されたため、常に 'all' 用のIDを使用します
+    // 統合されたため、常に 'all' 用のIDを使用
     const container = document.getElementById('rooms-container-all');
     const dateInputId = 'timeline-date';
     const timeAxisId = 'time-axis-all';
     
-    if (!container) return; // コンテナがなければ何もしない
+    if (!container) return; // エラー回避
 
     // 現在のフロア設定を使用
     let targetFloor = currentFloor;
@@ -557,7 +557,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
     // --- 時間軸と高さ計算 ---
     const dateInput = document.getElementById(dateInputId);
-    // 日付入力がない場合はエラー回避のため今日の日付を使用
     const rawDateVal = dateInput ? dateInput.value : new Date().toISOString().slice(0,10);
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     
@@ -694,6 +693,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                     pin.classList.add('selected-room');
                 }
             });
+            // ★以前ここにあったタイトル更新処理は完全に削除済み
         });
 
         const header = document.createElement('div');
