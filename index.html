@@ -36,27 +36,27 @@
       <div class="settings-container">
         <span class="settings-icon" onclick="toggleSettingsMenu()">&#9881;</span>
         
-        <div id="settings-dropdown" class="settings-dropdown-content">
-          
-          <div class="settings-user-display">
-             👤 <span id="display-user-name"></span> さん
-          </div>
-          
-         <div class="dropdown-item" onclick="openHistoryFromMenu()">履歴</div>
-          
-          <div class="dropdown-item" onclick="openHistoryFromMenu()">
-            <span>&#128274;</span> 履歴
-　
-          <div class="settings-item" onclick="openContactModal()">
-            <span>&#9993;</span> お問い合わせ 
-          </div>
-  
-          <div class="settings-item logout-item" onclick="logout()">
-            <span>&#10162;</span> ログアウト
-          </div>
-        </div>
-      </div>
+        <div id="settings-dropdown" class="dropdown-content">
+    <div class="dropdown-item" style="cursor: default; border-bottom: 1px solid #eee;">
+        <span style="color:#555;">👤</span> <span id="display-user-name">ユーザー名</span>
     </div>
+
+    <div class="dropdown-item" onclick="openPasswordModal()">
+        <span style="color:#f39c12;">🔒</span> パスワード変更
+    </div>
+
+    <div class="dropdown-item" onclick="openHistoryFromMenu()">
+        <span>📅</span> 履歴
+    </div>
+
+    <div class="dropdown-item" onclick="openContactModal()">
+        <span>✉️</span> お問い合わせ
+    </div>
+
+    <div class="dropdown-item" onclick="logout()">
+        <span style="color:#e74c3c;">↪️</span> ログアウト
+    </div>
+</div>
   </header>
 
   <div class="nav-tabs">
