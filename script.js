@@ -435,13 +435,24 @@ function selectRoomFromMap(element) {
     alert("エラー: 指定された部屋ID (" + roomId + ") が見つかりません。");
     return;
   }
+
+  // ★追加: すべての部屋の選択状態を解除
+  document.querySelectorAll('.map-click-area').forEach(el => {
+    el.classList.remove('active-room');
+  });
+
+  // ★追加: クリックされた部屋だけを選択状態にする
+  element.classList.add('active-room');
+
   currentMapRoomId = roomId;
   document.getElementById('map-timeline-section').style.display = 'block';
   document.getElementById('map-selected-room-name').innerText = roomObj.roomName;
+  
   renderVerticalTimeline('map');
-  document.getElementById('map-timeline-section').scrollIntoView({behavior: 'smooth'});
+  
+  // スクロール位置の調整
+  document.getElementById('map-timeline-section').scrollIntoView({behavior: 'smooth', block: 'start'});
 }
-
 /* ==============================================
    5. タイムライン関連処理
    ============================================== */
@@ -486,8 +497,8 @@ function drawTimeAxis(containerId) {
   }
 }
 /* ==============================================
-   修正版v2: renderVerticalTimeline
-   (スマホタップ対応 & マップ時の滑らかスクロール対応)
+   修正版v3: renderVerticalTimeline
+   (マップ時も予約一覧と同じスクロールUIにする)
    ============================================== */
 function renderVerticalTimeline(mode) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -517,11 +528,8 @@ function renderVerticalTimeline(mode) {
     let savedScrollTop = 0;
     let savedScrollLeft = 0;
     
-    // マップモードの場合、スクロール位置の保存対象は親ラッパーにする
-    const mapWrapper = document.querySelector('.map-wrapper');
-    if (mode === 'map' && mapWrapper) {
-        savedScrollTop = mapWrapper.scrollTop;
-    } else if (container) {
+    // ★変更: マップモードでもコンテナ自身のスクロール位置を保持するように統一
+    if (container) {
         savedScrollTop = container.scrollTop;
         savedScrollLeft = container.scrollLeft;
     }
@@ -530,22 +538,16 @@ function renderVerticalTimeline(mode) {
     document.body.style.overflow = "hidden";
     if (container) {
         container.innerHTML = "";
-        // マップモードと一覧モードでスタイルを分岐
-        if (mode === 'map') {
-            container.style.height = "auto";
-            container.style.overflowY = "visible"; // マップ時は中身に合わせて伸びる
-        } else {
-            container.style.height = "100%";
-            container.style.overflowY = "auto";    // 一覧時は枠内でスクロール
-        }
+        
+        // ★変更: マップモードも「一覧」と同じスタイル設定にする
+        container.style.height = "100%";       // 親要素の高さに合わせる
+        container.style.overflowY = "auto";    // コンテナ自体がスクロールする
+        
         container.style.width = "100%";
         container.style.maxWidth = "100vw";
         container.style.overflowX = "auto";
         container.style.minWidth = "0";
-        
-        // ★修正: マップモード時は親へのスクロール連動(bubbling)を許可する
-        // これにより、強制スクロールJSを使わずに滑らかなネイティブスクロールが可能になります
-        container.style.overscrollBehavior = (mode === 'map') ? "auto" : "contain";
+        container.style.overscrollBehavior = "contain"; 
 
         container.style.display = "flex";
         container.style.flexWrap = "nowrap";
@@ -556,7 +558,6 @@ function renderVerticalTimeline(mode) {
         container.style.userSelect = "none";
         container.style.webkitUserSelect = "none";
     }
-
     // ==============================================
     // 【修正1】 ドラッグスクロール処理 (PCのみ有効化)
     // ==============================================
