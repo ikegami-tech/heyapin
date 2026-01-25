@@ -1,1 +1,1485 @@
+/* ==============================================
+   1. 変数定義 & 基本設定
+   ============================================== */
+:root {
+  --primary: #2c3e50;
+  --accent: #27ae60;
+  --danger: #c0392b;
+  --meeting-bg: #e3f2fd; --meeting-border: #2196f3;
+  --reception-bg: #e8f5e9; --reception-border: #4caf50;
+  --zoom-bg: #fff3e0; --zoom-border: #ff9800;
+  --base-hour-height: 100px;
+}
 
+body {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  margin: 0;
+  background: #eef1f5;
+  color: #333;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+* { box-sizing: border-box; }
+
+/* ==============================================
+   2. ログイン画面
+   ============================================== */
+#login-screen {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: var(--primary);
+  display: flex; justify-content: center; align-items: center;
+  z-index: 2000;
+}
+.login-box {
+  background: white; padding: 2rem;
+  border-radius: 8px; width: 90%; max-width: 350px;
+  text-align: center;
+}
+
+/* ==============================================
+   3. フォーム要素共通
+   ============================================== */
+input, select, textarea {
+  width: 100%; padding: 10px; margin-bottom: 10px;
+  border: 1px solid #ddd; border-radius: 4px;
+}
+button {
+  width: 100%; padding: 12px;
+  border: none; border-radius: 4px;
+  font-weight: bold; cursor: pointer;
+}
+.btn-primary { background: var(--accent); color: white; }
+.btn-danger { background: var(--danger); color: white; }
+
+/* ==============================================
+   4. レイアウト (ヘッダー・タブ・メイン)
+   ============================================== */
+#app-screen {
+  display: none; flex-direction: column;
+  height: 100%; max-width: 1280px; width: 100%;
+  margin: 0 auto;
+  background: white; box-shadow: 0 0 20px rgba(0,0,0,0.05);
+}
+
+header {
+  background: var(--primary); color: white; padding: 10px;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-shrink: 0;
+}
+.user-info { font-size: 0.8rem; }
+
+.nav-tabs {
+  display: flex; background: white; border-bottom: 1px solid #ddd;
+  flex-shrink: 0;
+}
+.nav-item {
+  flex: 1; text-align: center; padding: 12px;
+  cursor: pointer; border-bottom: 3px solid transparent;
+}
+.nav-item.active {
+  border-bottom-color: var(--accent); color: var(--accent); font-weight: bold;
+}
+
+.view-container {
+  display: none; flex: 1; overflow: hidden; position: relative;
+}
+.view-container.active { display: flex; flex-direction: column; }
+
+/* ローディング & FAB */
+#loading {
+  display: none; position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(255,255,255,0.8);
+  z-index: 4000;
+  justify-content: center; align-items: center; font-weight: bold;
+}
+/* ==============================================
+   5. タイムライン (カレンダー)
+   ============================================== */
+.date-controller {
+  text-align: center; padding: 10px;
+  background: #f9f9f9; border-bottom: 1px solid #ddd;
+  display: flex; gap: 10px; justify-content: center;
+  flex-shrink: 0;
+}
+.calendar-scroll-area {
+  flex: 1; overflow: auto; position: relative;
+  background: white; display: flex;
+}
+.time-axis-col { 
+  width: 50px; flex-shrink: 0; background: #fff;
+  border-right: 1px solid #ddd;
+  position: sticky; left: 0; z-index: 100 !important;
+}
+.time-axis-header { 
+  height: 40px; border-bottom: 1px solid #ddd; background: #f9f9f9;
+  position: sticky; top: 0; z-index: 110 !important;
+}
+.time-label {
+  border-bottom: 1px solid #eee;
+  font-size: 0.7rem; color: #888;
+  text-align: right; padding-right: 5px; padding-top: 5px;
+  width: 100%;
+}
+.rooms-container { display: flex; min-width: fit-content; flex-grow: 1; }
+.room-col { 
+  flex: 1 0 120px; min-width: 120px;
+  border-right: 1px solid #eee; position: relative;
+  display: flex; flex-direction: column;
+  overflow: visible; z-index: 1;
+}
+.room-header { 
+  height: 40px; display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: bold;
+  background: #fafafa; border-bottom: 1px solid #ddd;
+  position: sticky; top: 0; z-index: 50;
+  padding: 0 5px; text-align: center; word-break: break-all;
+}
+.room-grid-body { position: relative; background: transparent; }
+.grid-slot { 
+  border-bottom: 1px solid #eee; width: 100%; position: relative;
+}
+
+/* マップタイムライン用の特例 */
+#map-timeline-section .calendar-scroll-area {
+  height: auto !important; min-height: 0 !important;
+  overflow: visible !important; display: flex !important;
+}
+
+/* ==============================================
+   6. 予約バー (.v-booking-bar)
+   ============================================== */
+.v-booking-bar {
+  position: absolute; left: 2px; right: 2px;
+  border-radius: 4px;
+  display: flex; flex-direction: column; /* デフォルト: 縦並び */
+  justify-content: flex-start; /* 上寄せ */
+  align-items: flex-start;     /* 左寄せ */
+  text-align: left;            /* テキスト左揃え */
+  padding: 4px;                /* 端に寄りすぎないよう余白を少し広げる */
+  overflow: hidden; white-space: normal;
+  overflow-wrap: anywhere; word-break: break-all;
+  z-index: 5; cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: all 0.1s ease-in-out;
+}
+.v-booking-bar:hover {
+  z-index: 20;
+  box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+  filter: brightness(0.95);
+}
+
+/* タイプ別カラー */
+.type-meeting { background: var(--meeting-bg); border-top: 4px solid var(--meeting-border); }
+.type-reception { background: var(--reception-bg); border-top: 4px solid var(--reception-border); }
+.type-zoom { background: var(--zoom-bg); border-top: 4px solid var(--zoom-border); }
+
+/* ==============================================
+   7. ログ (リスト) 画面
+   ============================================== */
+.log-wrapper { overflow: auto; padding: 10px; }
+.log-header-area {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px;
+}
+.log-header-area h3 { margin: 0; }
+.log-search-box input {
+  padding: 8px; width: 200px;
+  border: 1px solid #ccc; border-radius: 4px;
+}
+
+.log-table { 
+  width: 100%; border-collapse: collapse;
+  font-size: 0.8rem; background: white; table-layout: fixed;
+}
+.log-table th, .log-table td { 
+  padding: 8px; border: 1px solid #eee;
+  text-align: left; word-wrap: break-word;
+}
+.log-table th:nth-child(1), .log-table td:nth-child(1) { width: 110px; white-space: nowrap; }
+.log-table th:nth-child(2), .log-table td:nth-child(2) { width: 100px; }
+.log-table th:nth-child(3), .log-table td:nth-child(3) { width: 60px; white-space: nowrap; }
+.log-table th:nth-child(4), .log-table td:nth-child(4) { width: auto; }
+
+.pagination-container {
+  display: flex; justify-content: center; align-items: center;
+  gap: 10px; margin-top: 15px; padding-bottom: 20px;
+}
+.page-btn {
+  padding: 6px 12px; background-color: #fff;
+  border: 1px solid #ddd; border-radius: 4px;
+  cursor: pointer; user-select: none;
+}
+.page-btn:hover { background-color: #f0f0f0; }
+.page-btn.disabled { color: #ccc; cursor: not-allowed; background-color: #f9f9f9; }
+.page-info { font-size: 0.9rem; font-weight: bold; color: #555; }
+
+/* ==============================================
+   8. マップ (座席) 画面
+   ============================================== */
+.map-wrapper {
+  padding: 10px; background: #f9f9f9;
+  flex: 1; 
+  overflow-y: auto; 
+  display: flex; flex-direction: column;
+  align-items: center; 
+  
+  /* ★修正: 強制中央寄せをやめ、上詰めでスクロール可能にする */
+  justify-content: flex-start !important;
+  
+  height: 100%;
+  width: 100%;
+}
+.floor-selector {
+  display: flex; gap: 5px; margin-bottom: 5px;
+  width: 100%; max-width: 800px;
+  justify-content: center; margin-left: auto; margin-right: auto;
+  border-bottom: 2px solid #2c3e50;
+  flex-shrink: 0;
+}
+.floor-tab {
+  padding: 8px 30px; background-color: #e0e0e0;
+  border: none; border-radius: 6px 6px 0 0;
+  cursor: pointer; font-weight: bold; color: #7f8c8d;
+  transition: all 0.2s; flex-grow: 0; margin-bottom: 0;
+}
+.floor-tab.active {
+  background-color: #2c3e50; color: #ffffff;
+  transform: translateY(2px);
+}
+.floor-tab:hover:not(.active) { background-color: #d5d5d5; color: #333; }
+
+/* マップコンテナ & ユニット */
+#dual-map-container { 
+  width: 100%; 
+  /* 中身（画像）に合わせて高さを確保 */
+  height: auto; 
+  box-sizing: border-box; 
+  display: flex;
+  justify-content: center;
+  align-items: center !important;
+  flex-shrink: 0;
+}
+
+.floor-map-unit {
+  width: 100%; min-width: 0; 
+  box-sizing: border-box; display: none; 
+  margin: 0 auto;
+}
+.floor-map-unit.active { 
+  display: flex !important;           /* ★修正: Flexboxで中央寄せ */
+  flex-direction: column;             /* 縦並び */
+  align-items: center;                /* 左右中央揃え */
+  width: 100%;
+}
+
+/* マップ画像ラッパー */
+.map-inner-wrapper {
+  position: relative; 
+  line-height: 0;
+  overflow: hidden; 
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-radius: 4px;
+  
+  /* ★修正: 幅は中身に合わせるが、画面の95%を超えないように制限をかける */
+  width: fit-content !important;  
+  max-width: 95% !important;      /* ← ここに95%制限を移動 */
+  height: auto !important;
+  
+  margin: 0 auto;
+}
+
+/* 画像本体の設定 (スマホ・デフォルト) */
+.map-image {
+  display: block;
+  
+  /* ★修正: 親(ラッパー)のサイズいっぱいまで表示する */
+  width: auto !important;
+  max-width: 100% !important;  /* ← 95%から100%に変更 (親枠が既に95%になっているため) */
+  
+  height: auto !important;
+  max-height: 50vh !important; /* 高さは維持 */
+  
+  object-fit: contain;
+  margin: 0 auto;
+}
+/* オーバーレイ & ピン */
+.overlay-layer {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 10; pointer-events: none;
+}
+.map-click-area {
+  position: absolute; cursor: pointer;
+  z-index: 20; pointer-events: auto;
+  display: flex !important;
+  align-items: center !important; justify-content: center !important;
+  text-align: center !important;
+  font-size: 10px !important; font-weight: bold;
+  text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, -1px 1px 0 #fff, 1px -1px 0 #fff;
+  color: #333; box-sizing: border-box;
+  white-space: normal !important; word-break: break-all !important;
+  line-height: 1.1 !important;
+  background: transparent; border: none; transition: all 0.2s;
+}
+.map-click-area:hover {
+  background: rgba(39, 174, 96, 0.5) !important;
+  border: 2px solid #27ae60 !important;
+  color: #333;
+}
+/* --- 既存のホバー設定（緑）はデフォルトとして残しつつ、以下で上書きします --- */
+
+/* 会議室：緑 */
+.map-click-area.type-meeting:hover {
+  background: rgba(39, 174, 96, 0.6) !important;
+  border: 2px solid #27ae60 !important;
+}
+
+/* 応接室：オレンジ */
+.map-click-area.type-reception:hover {
+  background: rgba(255, 165, 0, 0.6) !important;
+  border: 2px solid orange !important;
+}
+
+/* Zスペース：青 */
+.map-click-area.type-z:hover {
+  background: rgba(0, 100, 255, 0.6) !important;
+  border: 2px solid #0064ff !important;
+}
+.map-hint {
+  margin-top: 5px; color: #666;
+  font-size: 0.8rem; text-align: center;
+  flex-shrink: 0;
+}
+
+/* 部屋詳細テーブル */
+.detail-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.detail-table th {
+  text-align: left; background: #f9f9f9; padding: 10px;
+  width: 80px; border-bottom: 1px solid #eee;
+  color: #555; font-weight: normal;
+}
+.detail-table td { padding: 10px; border-bottom: 1px solid #eee; }
+
+/* PC・横長画面表示時のマップ調整 (1024px以上) */
+@media (min-width: 1024px) {
+  .floor-selector { display: none !important; }
+  .pc-floor-title { display: none !important; }
+  
+  #dual-map-container { 
+    width: 100%; 
+    height: auto; /* ここは auto のままでOK */
+    box-sizing: border-box; 
+    display: flex;
+    justify-content: center;
+    align-items: center !important;
+    
+    flex-shrink: 0;
+
+    /* ★追加: PCでも同様に、スペースがあれば中央、なければスクロール */
+    margin-top: auto !important;
+    margin-bottom: auto !important;
+  }
+  
+  .floor-map-unit {
+    display: block !important; 
+    /* 縮小禁止 */
+    flex: 0 0 auto;
+    width: auto; 
+    max-width: 50%; 
+    margin-bottom: 0;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* PC: ラッパーの幅を中身に合わせる */
+  .map-inner-wrapper {
+    width: fit-content;
+  }
+  
+  /* PC: 画像の高さを制限して全体を表示 */
+  .map-image {
+    width: auto !important; 
+    max-height: 65vh !important; 
+    max-width: 100% !important;
+  }
+}
+
+/* ==============================================
+   9. モーダル & 編集フォーム
+   ============================================== */
+.modal {
+  display: none; position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  justify-content: center; align-items: center; z-index: 3000;
+}
+.modal-content {
+  background: white; padding: 20px;
+  border-radius: 8px; width: 95%; max-width: 700px;
+  max-height: 90vh; overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+.form-group label {
+  font-weight: bold; font-size: 0.9rem; display: block; margin-top: 10px;
+}
+
+/* メンバー選択 (Group / Shuttle) */
+.group-header {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-top: 10px; margin-bottom: 5px;
+}
+.group-chip {
+  display: inline-flex; align-items: center; justify-content: center; text-align: center;
+  height: 30px; min-height: 30px; padding: 0 12px; margin: 2px 4px;
+  background: #e0e0e0; border: 1px solid #ccc; border-radius: 15px;
+  font-size: 0.75rem; line-height: 1;
+  cursor: pointer; user-select: none; transition: background 0.2s; box-sizing: border-box;
+}
+.group-chip:hover { 
+  background: #d5d5d5; transform: translateY(-1px);
+}
+
+#group-action-area { display: flex; gap: 5px; }
+#group-action-area .group-chip {
+  font-size: 0.7rem; padding: 2px 8px; margin: 0; height: auto;
+}
+
+/* シャトルボックス */
+.shuttle-container { display: flex; gap: 10px; margin-top: 5px; height: 200px; }
+.shuttle-box {
+  flex: 1; border: 1px solid #ddd; border-radius: 4px;
+  display: flex; flex-direction: column; background: #fafafa;
+}
+.shuttle-header {
+  background: #eee; padding: 5px 10px; font-size: 0.8rem;
+  font-weight: bold; text-align: center; border-bottom: 1px solid #ddd;
+}
+.shuttle-list { flex: 1; overflow-y: auto; padding: 5px; background: white; }
+.shuttle-item {
+  padding: 6px 8px; border-bottom: 1px solid #f5f5f5;
+  cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; user-select: none;
+}
+.shuttle-item:hover { background: #f0f8ff; }
+.icon-add::before { content: "＋"; color: var(--accent); margin-right: 5px; font-weight:bold; }
+.icon-remove::before { content: "×"; color: var(--danger); margin-right: 5px; font-weight:bold; }
+.shuttle-search { padding: 5px; border-bottom: 1px solid #ddd; }
+.shuttle-search input { width: 100%; margin: 0; padding: 4px; font-size: 0.8rem; }
+
+/* 詳細表示用リスト */
+#detail-members {
+  display: block !important; width: 100% !important; max-height: 210px !important;
+  overflow-y: auto !important; background-color: transparent;
+  border: none; border-bottom: 1px solid #eee;
+  border-radius: 0; padding: 0 !important; margin-top: 5px;
+}
+.detail-member-item {
+  padding: 8px 12px; border-bottom: 1px solid #eee;
+  font-size: 14px; color: #333; line-height: 1.4; text-align: left;
+}
+.detail-member-item:last-child { border-bottom: none; }
+
+/* メモ入力エリア */
+textarea#input-note {
+  display: block !important; width: 100% !important;
+  height: auto !important; min-height: 100px !important;
+  padding: 10px !important; margin-bottom: 15px !important;
+  box-sizing: border-box !important; font-size: 16px !important;
+  line-height: 1.5 !important; color: #333 !important;
+  background-color: #fff !important;
+}
+textarea#input-note::placeholder {
+  color: #999 !important; opacity: 1 !important; visibility: visible !important;
+}
+
+/* ==============================================
+   10. モバイル用レスポンシブ (max-width: 600px)
+   ============================================== */
+@media (max-width: 600px) {
+  /* ▼ アプリ画面固定（タブ見切れ防止） */
+  body {
+    height: 100dvh; 
+    overflow: hidden; 
+  }
+  #app-screen {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100dvh;
+    margin: 0; border-radius: 0; z-index: 100;
+  }
+   
+  /* 日付コントローラー */
+  .date-controller {
+    display: flex !important; flex-wrap: nowrap !important;
+    justify-content: space-between !important; align-items: center !important;
+    gap: 5px !important; padding: 5px 10px !important; width: 100% !important;
+  }
+  .date-controller button {
+    flex: 0 0 44px !important; width: 44px !important; height: 36px !important;
+    padding: 0 !important; display: flex; justify-content: center; align-items: center;
+  }
+  .date-controller input[type="date"] {
+    flex: 1 !important; min-width: 0 !important; width: 100% !important;
+    text-align: center !important; font-size: 16px !important;
+    margin: 0 !important; padding: 5px 0 !important;
+  }
+
+  /* メンバー選択周り */
+  .shuttle-container { flex-direction: column; height: auto; gap: 15px; }
+  .shuttle-box { height: 200px; flex: none; }
+  .group-container { max-height: 250px; padding: 8px; }
+  .group-chip {
+    display: inline-block; padding: 6px 10px; font-size: 12px;
+    margin: 2px; touch-action: manipulation;
+  }
+
+  /* モーダルフォーム: コンテナ設定（折り返し有効） */
+  #bookingModal .form-row { 
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: flex-end !important;
+    gap: 0 !important;
+  }
+  
+  /* 日付エリア: 1行目を独占 */
+  #bookingModal .form-row > div:nth-child(1) {
+    flex: 1 1 100% !important; width: 100% !important;
+    max-width: 100% !important; margin-right: 0 !important; margin-bottom: 15px !important;
+  }
+  /* 開始・終了エリア: 2行目で横並び */
+  #bookingModal .form-row > div:nth-child(2),
+  #bookingModal .form-row > div:nth-child(4) {
+    flex: 1 1 42% !important; width: auto !important;
+    min-width: 0 !important; margin-bottom: 0 !important;
+  }
+  /* 「～」記号: 中央配置 */
+  #bookingModal .form-row > div:nth-child(3) {
+    flex: 0 0 auto !important; width: auto !important; min-width: 20px !important;
+    text-align: center !important; padding-bottom: 10px !important; margin: 0 !important;
+  }
+
+  /* 入力欄のズーム防止 */
+  #bookingModal .form-row input,
+  #bookingModal .form-row select {
+    font-size: 16px !important; 
+  }
+  
+  /* 部屋選択: 横並び・左寄せ */
+  #bookingModal .form-group {
+    display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
+    align-items: center !important; justify-content: flex-start !important;
+    gap: 15px !important; margin-bottom: 15px !important;
+  }
+  #bookingModal .form-group label {
+    flex: 0 0 auto !important; width: auto !important; margin: 0 !important;
+    font-weight: normal !important; font-size: 16px !important; line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+  #bookingModal .form-group select#input-room {
+    flex: 0 1 auto !important; width: auto !important; min-width: 120px !important;
+    max-width: 100% !important; margin-bottom: 0 !important; height: 38px !important;
+    font-size: 16px !important;
+  }
+  #bookingModal label {
+    font-weight: normal !important; color: #333 !important;
+  }
+
+  /* テキストエリア */
+  textarea, #bookingModal textarea#input-note {
+    min-height: 120px !important; font-size: 16px !important;
+    line-height: 1.5 !important; margin-bottom: 20px !important;
+  }
+  
+  /* マップの予約バー（スマホ特化） */
+  #rooms-container-map .v-booking-bar {
+    justify-content: flex-start !important; padding-left: 5px !important; padding-right: 8px !important;
+  }
+  #rooms-container-map .v-booking-bar > div,
+  #rooms-container-map .v-booking-bar > span {
+    text-align: left !important; white-space: nowrap !important;
+    overflow: hidden !important; text-overflow: ellipsis !important;
+  }
+  #rooms-container-map .v-booking-bar > div:first-child {
+    flex-shrink: 0 !important; margin-right: 10px !important; width: auto !important;
+  }
+  #rooms-container-map .v-booking-bar > div:last-child {
+    flex: 1 !important; min-width: 0 !important;
+  }
+}
+
+/* ==============================================
+   11. HTMLリファクタリング用 追加ユーティリティ
+   ============================================== */
+/* ボタン関連 */
+.btn-logout { width: auto; padding: 5px 10px; font-size: 0.7rem; margin-left: 10px; cursor: pointer; border:none; border-radius:4px; }
+.btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+.btn-wide { width: 120px; font-weight: bold; }
+.btn-secondary { background: #999; color: white; }
+
+/* モーダルレイアウト */
+.modal-sm { max-width: 500px !important; }
+.modal-md { max-width: 600px !important; }
+.modal-header-line { margin-top: 0; border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
+.modal-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.modal-top-bar h3 { margin: 0; }
+.close-icon { font-size: 28px; font-weight: bold; color: #aaa; cursor: pointer; line-height: 1; }
+.modal-footer { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
+.modal-footer.justify-end { justify-content: flex-end; }
+
+/* フォームレイアウト (.form-row) */
+.form-row { display: flex; gap: 10px; }
+.form-row.align-end { align-items: flex-end; }
+.form-row.mb-15 { margin-bottom: 15px; }
+.flex-1 { flex: 1; }
+.flex-1-2 { flex: 1.2; }
+
+/* マップビュー調整 */
+.map-timeline-hidden { display: none; width: 100%; margin-top: 10px; border-top: 2px solid #ddd; padding-top: 10px; }
+.map-room-title { text-align: center; margin: 5px 0; }
+.mt-10 { margin-top: 10px; }
+
+/* 予約詳細テキスト */
+.text-bold { font-weight: bold; }
+.text-lg { font-size: 1.1em; }
+.text-pre-wrap { white-space: pre-wrap; }
+.text-muted { color: #666; }
+
+/* シャトルボックス背景 */
+.bg-selected { background: #e3f2fd; }
+.bg-header-selected { background: #bbdefb; }
+
+/* ==============================================
+   12. 時刻入力ピッカー (Custom Time Picker)
+   ============================================== */
+.time-picker-wrapper { position: relative; width: 100%; }
+.time-picker-wrapper input {
+  width: 100%; box-sizing: border-box; padding: 8px 35px 8px 8px;
+  border: 1px solid #ccc; border-radius: 4px; height: 38px; text-align: center;
+  margin-bottom: 0; /* ラッパーで管理するため */
+}
+.time-picker-arrow {
+  position: absolute; right: 0; top: 0; width: 35px; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  color: #666; pointer-events: none; font-size: 10px;
+}
+.time-overlay-select {
+  position: absolute; right: 0; top: 0; width: 35px; height: 100%;
+  opacity: 0; cursor: pointer;
+}
+.time-range-sep {
+  height: 38px; display: flex; align-items: center; justify-content: center;
+  font-weight: bold; padding: 0 5px;
+}
+/* ==============================================
+   13. レイアウト微調整 (日付・時間のズレ修正)
+   ============================================== */
+
+/* モーダル内の「日付」「開始」「終了」の入力欄を強制的に統一 */
+#bookingModal .form-row input[type="date"],
+#bookingModal .form-row .time-picker-wrapper input {
+  height: 38px !important;        /* すべて高さを38pxに固定 */
+  margin-bottom: 0 !important;    /* 下の余白を削除して底辺を揃える */
+  padding: 4px 10px !important;   /* 内側の余白を統一 */
+  line-height: normal !important; /* 文字位置のズレを防止 */
+}
+
+/* 「～」の記号の位置調整 */
+.time-range-sep {
+  height: 38px !important;        /* 入力欄と同じ高さにする */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0 !important;    /* 余白なし */
+  padding-bottom: 3px;            /* 記号を視覚的な中心に微調整 */
+}
+
+/* ==============================================
+   17. 予約詳細ボタンの均等化
+   ============================================== */
+.modal-footer .btn-equal {
+  flex: 1 !important;        /* 幅を均等に分け合う */
+  width: auto !important;    /* 固定幅を解除 */
+  min-width: 0 !important;
+  justify-content: center;
+  padding: 12px 0 !important; /* 上下の余白を確保 */
+}
+
+/* ==============================================
+   18. マップ下部の予約バーを「縦並び」に修正
+   ============================================== */
+#rooms-container-map .v-booking-bar {
+  flex-direction: column !important;       /* 縦並びにする */
+  justify-content: flex-start !important; /* 上寄せ */
+  align-items: flex-start !important;     /* 左寄せ */
+  flex-wrap: nowrap !important;           /* 折り返し禁止 */
+  padding: 4px !important;
+}
+
+/* 中身の要素のスタイルリセット */
+#rooms-container-map .v-booking-bar > div,
+#rooms-container-map .v-booking-bar > span {
+  width: 100% !important;                 /* 横幅いっぱい */
+  text-align: left !important;            /* 左寄せ */
+  margin: 0 !important;
+  white-space: nowrap !important;         /* 文字がはみ出たら...にする */
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* ==============================================
+   19. 予約一覧(タイムライン)のフロア切替を表示
+   ============================================== */
+/* 画面サイズに関わらず、タイムライン画面では必ず表示させる */
+#view-timeline .floor-selector {
+  display: flex !important;
+}
+
+/* ==============================================
+   20. 現在時刻ライン (赤線)
+   ============================================== */
+.current-time-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #ea4335; /* Googleカレンダー風の赤 */
+  z-index: 30; /* 予約バーより手前に表示 */
+  pointer-events: none; /* 線をクリックしても下の要素に反応するように */
+}
+
+/* 線の左端に「●」を付ける（オプション） */
+.current-time-line::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  background-color: #ea4335;
+  border-radius: 50%;
+}
+/* ==============================================
+   21. 空き状況検索モーダル用スタイル
+   ============================================== */
+.avail-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  transition: background 0.2s;
+}
+.avail-list-item:hover {
+  background-color: #f9f9f9;
+}
+
+.avail-room-name {
+  font-weight: bold;
+  font-size: 1rem;
+  color: #333;
+}
+.avail-room-cap {
+  font-size: 0.8rem;
+  color: #777;
+  margin-top: 4px;
+}
+
+/* ○ボタン（予約可） */
+.status-ok {
+  display: inline-block;
+  width: 40px; height: 40px;
+  line-height: 40px;
+  border-radius: 50%;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: #27ae60;      /* 緑色 */
+  border: 2px solid #27ae60;
+  cursor: pointer;
+  background: #fff;
+  transition: all 0.2s;
+}
+.status-ok:hover {
+  background-color: #27ae60;
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* ×アイコン（予約不可） */
+.status-ng {
+  display: inline-block;
+  width: 40px; height: 40px;
+  line-height: 40px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.5rem;
+  color: #ccc;
+  cursor: default;
+}
+/* ==============================================
+   22. 空き状況検索フォーム (位置ズレ修正)
+   ============================================== */
+
+/* 検索エリアの親枠（もしクラス名がない場合は <div class="avail-search-row"> のように指定してください） */
+.avail-search-row {
+  display: flex;
+  align-items: flex-end !important; /* すべての要素の下端を揃える */
+  gap: 10px;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  flex-wrap: wrap; /* スマホで画面が狭いときは折り返す */
+}
+
+/* 入力欄（日付・時間）のグループ設定 */
+.avail-input-group {
+  flex: 1; /* 横幅を均等に伸ばす */
+  min-width: 140px; /* 縮みすぎ防止 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ラベルの調整 */
+.avail-input-group label {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 5px;
+  display: block;
+}
+
+/* 入力フォームの高さを強制的に統一 */
+.avail-search-row input[type="date"],
+.avail-search-row input[type="time"],
+.avail-search-row .time-picker-wrapper input,
+.avail-search-row select {
+  height: 38px !important;       /* 高さを38pxに固定 */
+  padding: 4px 10px !important;  /* 内側の余白調整 */
+  margin-bottom: 0 !important;   /* 下の余白を削除 */
+  font-size: 16px !important;    /* ズーム防止 */
+  line-height: normal !important;
+  width: 100%;
+}
+
+/* 検索ボタンの調整 */
+.btn-search-avail {
+  height: 38px !important;       /* 入力欄と同じ高さに */
+  padding: 0 20px !important;
+  margin-bottom: 0 !important;   /* ラベルがない分のズレを補正 */
+  flex-shrink: 0;                /* ボタンが潰れないようにする */
+  font-weight: bold;
+  
+  /* ボタンも下端に合わせるためマージン調整が必要な場合への保険 */
+  margin-top: auto; 
+}
+
+/* スマホ表示時の微調整 */
+@media (max-width: 600px) {
+  .avail-search-row {
+    gap: 8px; /* 隙間を少し詰める */
+  }
+  /* ボタンをスマホでは横幅いっぱいにしたい場合（お好みで） */
+  .btn-search-avail {
+    width: 100%;
+    margin-top: 5px;
+  }
+}
+/* ==============================================
+   23. 空き状況表示 (「空き」文字 + 予約ボタン版)
+   ============================================== */
+
+/* ▼ 行全体の制御 */
+.avail-list-item:has(.status-ng) {
+  background-color: #e0e0e0 !important;
+  color: #999 !important;
+  pointer-events: none;
+}
+
+/* 共通リセット */
+.status-ok, .status-ng {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+  padding: 0;
+  border: none !important;
+  overflow: visible !important;
+}
+
+/* ----------------------------------------------------
+   ★修正: ◯ (予約可) のスタイル
+   ---------------------------------------------------- */
+/* コンテナとしての設定（文字とボタンを横並びにする） */
+.status-ok {
+  font-size: 0 !important;        /* 元の「◯」を消す */
+  width: auto !important;         /* 幅は内容に合わせる */
+  height: 45px !important;        /* 高さ確保 */
+  background: transparent !important;
+  
+  /* ★重要: 「空き」と「ボタン」の間に隙間を作る */
+  gap: 12px;                      
+  
+  cursor: pointer;
+  text-decoration: none !important;
+}
+
+/* ① 左側に「空き」という文字を表示 (::before) */
+.status-ok::before {
+  content: "空き";                /* 表示する文字 */
+  color: #e74c3c !important;      /* 赤色 */
+  font-size: 14px !important;     /* 文字サイズを復活 */
+  font-weight: bold;
+  white-space: nowrap;            /* 折り返し防止 */
+}
+
+/* ② 右側に「予約」ボタンを表示 (::after) */
+/* ※以前のボタンスタイルをここに移動 */
+.status-ok::after {
+  content: "予約";
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+  width: 70px;                    /* ボタン幅 */
+  height: 34px;                   /* ボタン高さ */
+  background-color: #27ae60;      /* 緑色 */
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 4px;
+  
+  /* 影をつけてボタンっぽく */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  transition: all 0.2s ease;
+}
+
+/* ホバー時の動き（ボタン部分のみ変化させる） */
+.status-ok:hover::after {
+  background-color: #219150;      /* 少し濃い緑に */
+  transform: translateY(1px);     /* 押した感じ */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+
+/* ----------------------------------------------------
+   ☓ (予約不可) の設定
+   ---------------------------------------------------- */
+.status-ng {
+  width: 100% !important;
+  height: 45px !important;
+  background-color: transparent !important; /* 背景は行全体で制御するため透明 */
+  color: #999 !important;
+  font-size: 2.0rem !important;
+  cursor: default;
+}
+/* ==============================================
+   24. 時間入力のクリック判定修正 (手入力対応)
+   ============================================== */
+
+/* 時間入力ラッパーの基準位置設定 */
+.time-picker-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* 入力欄本体の設定 */
+.time-picker-wrapper input {
+  position: relative;
+  z-index: 1; /* 下層だがクリック可能にする */
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 40px !important; /* 右側に矢印分の余白を確保 */
+}
+
+/* ▼矢印の見た目 */
+.time-picker-arrow {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 40px; /* 矢印エリアの幅 */
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  pointer-events: none; /* クリックを下の要素に通す */
+  z-index: 5;
+}
+
+/* ★重要: 透明なプルダウン (ここを修正) */
+.time-overlay-select {
+  position: absolute;
+  right: 0;       /* 右寄せ */
+  top: 0;
+  
+  /* ★修正: 幅を100%ではなく、矢印部分(40px)だけに制限する */
+  width: 40px !important; 
+  height: 100%;
+  
+  opacity: 0;     /* 透明にする */
+  cursor: pointer;
+  z-index: 10;    /* 一番上に配置してクリックを受け取る */
+}
+
+/* ==============================================
+   25. 右下固定の空室確認ボタン (FAB)
+   ============================================== */
+.fab-avail-btn {
+  position: fixed;          /* 画面上の位置を固定 */
+  bottom: 30px;             /* 下から30px */
+  right: 30px;              /* 右から30px */
+  
+  width: 70px;              /* 幅 */
+  height: 70px;             /* 高さ */
+  border-radius: 50%;       /* 完全な円にする */
+  
+  background-color: #27ae60; /* アクセントカラー(緑) */
+  color: white;
+  border: none;
+  
+  /* 影をつけて浮かせる */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  
+  /* 中の文字の配置 */
+  display: flex;
+  flex-direction: column;   /* 縦並び */
+  justify-content: center;  /* 上下中央 */
+  align-items: center;      /* 左右中央 */
+  
+  z-index: 2000;            /* 最前面に表示 */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  /* 文字スタイル */
+  font-weight: bold;
+  font-size: 13px;
+  line-height: 1.1;
+}
+
+/* ホバー時の動き */
+.fab-avail-btn:hover {
+  background-color: #219150; /* 少し濃く */
+  transform: scale(1.1);     /* 少し大きく */
+  box-shadow: 0 6px 14px rgba(0,0,0,0.4);
+}
+
+/* スマホでの位置調整（少し小さく、端に寄せすぎない） */
+@media (max-width: 600px) {
+  .fab-avail-btn {
+    width: 60px;
+    height: 60px;
+    bottom: 20px;
+    right: 20px;
+    font-size: 11px;
+  }
+}
+/* ==============================================
+   25. スマホでの時間入力横並び対応 (左寄せ修正版)
+   ============================================== */
+
+/* 時間入力の行 (PC/スマホ共通) */
+.avail-time-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  flex: 1; 
+}
+
+/* スマホ (画面幅600px以下) の時のレイアウト調整 */
+@media (max-width: 600px) {
+  
+  /* 検索エリア全体の設定 */
+  .avail-search-row {
+    display: flex !important;       /* Flexボックスを強制 */
+    flex-direction: column !important; /* 縦並び */
+    align-items: stretch !important;   /* ★修正: 中身を横幅いっぱいに広げる */
+    gap: 15px;
+  }
+
+  /* ★日付エリアの修正: 左寄せを徹底する */
+  .avail-search-row > .avail-input-group {
+    display: flex;
+    flex-direction: row !important; /* 横並び */
+    align-items: center;            /* 上下中央揃え */
+    justify-content: flex-start !important; /* ★修正: 左寄せを強制 */
+    width: 100% !important;         /* ★修正: 横幅を親要素に合わせる */
+    margin-left: 0 !important;      /* 余計な余白を消す */
+    padding-left: 0 !important;     /* 余計な余白を消す */
+  }
+
+  /* 日付ラベルのスタイル */
+  .avail-search-row > .avail-input-group label {
+    margin-bottom: 0 !important;
+    margin-right: 15px;             /* ラベルと入力欄の間隔 */
+    white-space: nowrap;
+    min-width: 40px;                /* ラベル幅を確保して揃える */
+  }
+
+  /* 日付入力欄のスタイル */
+  .avail-search-row > .avail-input-group input {
+    flex: 1;                        /* ★修正: 残りの幅いっぱいに広げる */
+    width: auto !important;
+    max-width: 100%;                /* はみ出し防止 */
+  }
+
+  /* ---------------------------------- */
+
+  /* 時間の行は横並びを維持 */
+  .avail-time-row {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  /* 時間の入力欄 */
+  .avail-time-row .avail-input-group {
+    flex: 1;
+    min-width: 0; 
+  }
+}
+/* ==============================================
+   26. スマホ版：空き状況検索画面の表示領域拡大 (可変対応版)
+   ============================================== */
+@media (max-width: 600px) {
+  
+  /* 1. モーダル全体：初期状態は「中身の高さ」に合わせる */
+  #availabilityModal .modal-content {
+    height: auto !important;       /* ★ここが重要：まずは自動 */
+    max-height: 85vh;              /* 画面からはみ出さない */
+    display: flex;
+    flex-direction: column;
+    transition: height 0.3s ease;  /* 伸びる時にアニメーション */
+  }
+
+  /* ★検索実行後：クラスがついたら高さを画面いっぱいに広げる */
+  #availabilityModal .modal-content.modal-expanded {
+    height: 85vh !important;
+  }
+
+  /* 2. 検索条件エリア（コンパクト化） */
+  #availabilityModal .modal-content > div:nth-of-type(2) {
+    padding: 10px !important;
+    margin-bottom: 0 !important;    /* 下の隙間をゼロに */
+    flex-shrink: 0;
+  }
+
+  /* 3. 入力欄調整 */
+  .avail-search-row { gap: 8px !important; }
+  
+  .avail-input-group input, 
+  .time-picker-wrapper input {
+    padding: 6px !important;
+    font-size: 14px;
+  }
+
+  .btn-search-avail {
+    margin-top: 5px !important;
+    padding: 8px !important;
+  }
+
+  /* 4. 結果一覧エリア：初期状態は「非表示」にする */
+  #avail-result-container {
+    display: none;                  /* ★初期は隠す */
+    border-top: 1px solid #ddd;
+  }
+  
+  /* ★検索実行後：結果エリアを表示して、残りの高さを埋める */
+  .modal-expanded #avail-result-container {
+    display: block;                 /* 表示する */
+    flex: 1;                        /* 広げる */
+    overflow-y: auto;
+    min-height: 0;
+    margin-top: 10px;               /* 境界線との隙間 */
+  }
+  
+  .avail-list-item { padding: 8px 10px; }
+}
+/* ==============================================
+   27. ヘッダー設定メニュー (歯車アイコン)
+   ============================================== */
+
+/* メニューの親枠 */
+.settings-container {
+  display: inline-block;
+  position: relative;
+  margin-left: 10px;
+}
+
+/* 歯車アイコン */
+.settings-icon {
+  font-size: 1.5rem; /* 少し大きめに */
+  cursor: pointer;
+  color: white;
+  line-height: 1;
+  transition: transform 0.3s;
+  user-select: none;
+}
+.settings-icon:hover {
+  transform: rotate(90deg); /* ホバーで回転 */
+  opacity: 0.8;
+}
+
+/* ドロップダウンメニュー本体 (初期は非表示) */
+.settings-dropdown-content {
+  display: none; /* JSで block に切り替え */
+  position: absolute;
+  right: 0;
+  top: 130%; /* アイコンの少し下 */
+  background-color: #fff;
+  min-width: 160px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  border-radius: 4px;
+  z-index: 5000;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+/* メニューを表示するためのクラス */
+.settings-dropdown-content.show {
+  display: block;
+  animation: fadeInMenu 0.2s ease-out;
+}
+
+/* メニューの項目 */
+.settings-item {
+  color: #333;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+  white-space: nowrap;
+}
+.settings-item:last-child {
+  border-bottom: none;
+}
+.settings-item:hover {
+  background-color: #f1f1f1;
+}
+
+/* ログアウトの文字色を少し変える（任意） */
+.logout-item {
+  color: #c0392b; /* 赤っぽく */
+}
+
+/* ★修正箇所: ここから下を確認してください */
+.settings-user-display {
+  padding: 12px 16px;       /* 余白 */
+  background-color: #f8f9fa; /* 薄いグレーの背景 */
+  border-bottom: 2px solid #ddd; /* 下線で区切る */
+  font-weight: bold;        /* 太字 */
+  color: #2c3e50;           /* 濃い文字色 */
+  font-size: 0.9rem;        /* 文字サイズ */
+  
+  /* アイコンと名前の位置合わせ */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  /* カーソルは矢印のまま（クリックできないことを示す） */
+  cursor: default;
+  white-space: nowrap;      /* 改行禁止 */
+} /* ← ★重要: この「}」が抜けていました！これを必ず追加してください */
+   
+/* メニュー出現アニメーション */
+@keyframes fadeInMenu {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* スマホでの微調整 */
+@media (max-width: 600px) {
+  .settings-icon { font-size: 1.4rem; }
+  .settings-dropdown-content { min-width: 130px; }
+  .settings-item { padding: 12px; font-size: 13px; }
+}
+
+/* ==============================================
+   28. ヘッダー更新ボタンとレイアウト調整
+   ============================================== */
+
+/* ヘッダー左側（タイトルとボタン）を横並びにする */
+.header-left-group {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* タイトルとボタンの間隔 */
+}
+
+/* 青い更新ボタンのスタイル */
+.btn-header-refresh {
+  background-color: #3498db; /* 青色 */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.2s;
+  width: auto; /* 幅を自動調整 */
+  line-height: 1;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn-header-refresh:hover {
+  background-color: #2980b9; /* 濃い青 */
+  transform: translateY(-1px);
+}
+
+.btn-header-refresh:active {
+  transform: translateY(1px);
+}
+
+.btn-header-refresh span {
+  font-size: 1.2em; /* 更新マークを少し大きく */
+}
+
+/* スマホ対応：タイトルが長い場合に崩れないよう調整 */
+@media (max-width: 600px) {
+  .header-left-group {
+    gap: 10px;
+  }
+  .btn-header-refresh {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+  }
+}
+/* ==============================================
+   29. カスタム時間プルダウン (PC/スマホ共通化 & 高さ制限)
+   ============================================== */
+
+/* ドロップダウン本体 (初期は非表示) */
+.custom-time-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%; left: 0; width: 100%;
+  
+  /* ★修正: 高さを「4.5個分」くらいに制限 */
+  /* 1行あたり約40-45px計算で、200pxに設定すると4～5個表示になります */
+  max-height: 200px; 
+  
+  overflow-y: auto;  /* 中身が多いときはスクロール */
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15); /* 影をつけて浮き上がらせる */
+  z-index: 5000; /* モーダルより手前に */
+  
+  /* スマホでの慣性スクロールを有効に */
+  -webkit-overflow-scrolling: touch; 
+}
+
+/* 表示時のクラス */
+.custom-time-dropdown.show {
+  display: block;
+}
+
+/* 選択肢のスタイル */
+.time-option {
+  padding: 12px 10px; /* スマホで押しやすいよう少し広めに */
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 16px; /* スマホで文字が小さくならないサイズ */
+  text-align: center;
+  color: #333;
+}
+.time-option:hover {
+  background-color: #e3f2fd;
+}
+
+.time-overlay-select {
+  display: none !important;
+}
+.time-picker-arrow {
+  pointer-events: auto !important; 
+  cursor: pointer;
+}
+
+/* ==============================================
+   30. 予約詳細のメタ情報 (登録・編集者表示)
+   ============================================== */
+
+/* タイトルとメタ情報を横並び（あるいは上下）に配置するラッパー */
+.detail-header-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end; /* 下揃え */
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 5px;
+  margin-bottom: 15px;
+}
+
+/* 既存のタイトルの線はラッパーに移したので消す */
+.detail-header-wrapper .modal-header-line {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+/* 右上の情報エリア */
+.detail-meta-info {
+  text-align: right;
+  font-size: 0.75rem; /* 小さく */
+  color: #666;
+  line-height: 1.4;
+  white-space: nowrap; /* 折り返し禁止 */
+}
+
+/* スマホでは縦並びにする */
+@media (max-width: 600px) {
+  .detail-header-wrapper {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .detail-meta-info {
+    text-align: left;
+    margin-top: 5px;
+    font-size: 0.7rem;
+  }
+}
+/* ==============================================
+   31. 備考欄のレイアウト崩れ防止 & スクロール化
+   ============================================== */
+
+.note-scroll-area {
+  /* 1. 高さ制限とスクロール */
+  max-height: 150px;       /* これ以上長くなったらスクロール */
+  overflow-y: auto;        /* 縦スクロールバーを自動表示 */
+  
+  /* 2. URLなどの長い文字を強制的に折り返す (重要) */
+  word-break: break-all;   /* 単語の途中でも改行させる */
+  overflow-wrap: break-word; 
+  
+  /* 3. 見た目の調整 */
+  white-space: pre-wrap;   /* 改行はそのまま表示 */
+  font-size: 0.9em;        /* 少し文字を小さくして見やすく */
+  line-height: 1.5;
+  padding-right: 5px;      /* スクロールバーとの隙間 */
+}
+/* ==============================================
+   32. 更新時刻の表示スタイル
+   ============================================== */
+
+.last-update-text {
+  color: rgba(255, 255, 255, 0.9); /* 真っ白より少し落ち着いた白 */
+  font-size: 0.85rem;              /* ボタンの文字と同じくらい */
+  font-weight: 500;
+  margin-left: 8px;                /* ボタンとの間隔 */
+  white-space: nowrap;             /* 改行させない */
+}
+
+/* スマホでは狭くなるので、文字を少し小さくする等の調整 */
+@media (max-width: 600px) {
+  .last-update-text {
+    font-size: 0.75rem;
+    margin-left: 5px;
+  }
+}
