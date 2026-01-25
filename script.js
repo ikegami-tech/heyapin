@@ -495,7 +495,7 @@ function drawTimeAxis(containerId) {
 }
 /* ==============================================
    決定版: renderVerticalTimeline
-   (表示消失バグ修正・全方向スクロール・ハイライト機能)
+   (マウスホイール強制対応・ドラッグ・選択機能完備)
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -517,7 +517,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
         
-        // 階数の自動判別
         let targetFloor = currentFloor; 
         if (currentMapRoomId) {
             for (const [fKey, config] of Object.entries(mapConfig)) {
@@ -546,7 +545,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     let savedScrollTop = 0;
     let savedScrollLeft = 0;
     
-    // スクロール位置の保持
     if (container) {
         savedScrollTop = container.scrollTop;
         savedScrollLeft = container.scrollLeft;
@@ -556,22 +554,22 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     if (container) {
         container.innerHTML = "";
         
-        // ★重要修正: マップモードの親枠の高さを強制確保する (これが消失の原因)
+        // マップモードの親枠高さ確保
         if (mode === 'map') {
-            const parent = container.parentElement; // .calendar-scroll-area
+            const parent = container.parentElement; 
             if (parent) {
-                parent.style.height = '50vh';       // 画面半分の高さを確保
-                parent.style.minHeight = '300px';   // 最低でも300px
+                parent.style.height = '50vh';       
+                parent.style.minHeight = '300px';   
                 parent.style.display = 'flex';
-                parent.style.overflow = 'hidden';   // 親はスクロールしない
+                parent.style.overflow = 'hidden';   
             }
         }
 
-        // コンテナ自体の設定 (ここがスクロールする)
-        container.style.cssText = ''; // 一旦スタイルをリセット
+        // コンテナ設定
+        container.style.cssText = ''; 
         container.style.height = "100%";
         container.style.width = "100%";
-        container.style.overflow = "auto"; // 縦横スクロール有効
+        container.style.overflow = "auto"; 
         container.style.display = "flex";
         container.style.flexWrap = "nowrap";
         container.style.alignItems = "flex-start";
@@ -582,7 +580,24 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.webkitUserSelect = "none";
     }
 
-    // --- 3. ドラッグスクロール機能 (斜め移動対応) ---
+    // --- 3. マウスホイール強制スクロール機能 (★追加修正) ---
+    // ブラウザのスクロール判定が効かない場合のために、イベントで強制的に動かす
+    if (container) {
+        // 既存のリスナーがあれば重複しないように注意が必要だが、再生成しているのでOK
+        container.addEventListener('wheel', (e) => {
+            // ドラッグ中はホイールを無視（挙動安定のため）
+            if (isDown) return;
+
+            // ページ全体のスクロールを防止して、この枠だけ動かす
+            e.preventDefault();
+
+            // 縦・横スクロールを適用 (deltaY:縦, deltaX:横)
+            container.scrollTop += e.deltaY;
+            container.scrollLeft += e.deltaX;
+        }, { passive: false }); // preventDefaultを使うために passive: false が必須
+    }
+
+    // --- 4. ドラッグスクロール機能 ---
     let isDown = false;
     let startX, startY;
     let startScrollLeft, startScrollTop;
@@ -624,7 +639,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         };
     }
 
-    // --- 4. 時間軸と高さ計算 ---
+    // --- 5. 時間軸と高さ計算 ---
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     
@@ -691,7 +706,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             axisContainer.scrollTop = container.scrollTop; 
         };
         
-        // ホイール同期
+        // 時間軸上でのホイール操作も同期
         axisContainer.onwheel = (e) => {
             e.preventDefault();
             container.scrollTop += e.deltaY;
@@ -711,7 +726,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         axisHeader.style.boxSizing = "border-box";
     }
 
-    // --- 5. 列の描画 ---
+    // --- 6. 列の描画 ---
     targetRooms.forEach(room => {
         const col = document.createElement('div');
         col.className = 'room-col';
@@ -863,7 +878,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.appendChild(col);
     });
 
-    // --- 6. スクロール復元処理 ---
+    // --- 7. スクロール復元処理 ---
     if (container) {
         container.scrollLeft = savedScrollLeft;
         container.scrollTop = savedScrollTop;
