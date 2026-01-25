@@ -739,7 +739,33 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 }, 100);
             }
         }
+　　　
+        col.addEventListener('click', (e) => {
+            // ドラッグ中の場合は選択しない
+            if (hasDragged) return;
+            // モードがマップでない場合は何もしない（予約一覧モードの挙動を守る）
+            if (mode !== 'map') return;
 
+            // 1. グローバル変数を更新
+            currentMapRoomId = room.roomId;
+
+            // 2. 他の列のハイライトを消して、自分につける
+            container.querySelectorAll('.room-col').forEach(c => c.classList.remove('target-highlight'));
+            col.classList.add('target-highlight');
+
+            // 3. マップ上のピンの選択状態を更新
+            document.querySelectorAll('.map-click-area').forEach(pin => {
+                pin.classList.remove('selected-room');
+                if (String(pin.getAttribute('data-room-id')) === String(room.roomId)) {
+                    pin.classList.add('selected-room');
+                }
+            });
+
+            // 4. タイトルテキストを更新
+            const titleEl = document.getElementById('map-selected-room-name');
+            if (titleEl) titleEl.innerText = room.roomName;
+        });
+        
         const header = document.createElement('div');
         header.className = 'room-header';
         header.innerText = room.roomName;
