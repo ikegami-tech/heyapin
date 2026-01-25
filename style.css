@@ -704,6 +704,29 @@ textarea#input-note::placeholder {
   justify-content: center;
   padding: 12px 0 !important; /* 上下の余白を確保 */
 }
+
+/* ==============================================
+   18. マップ下部の予約バーを「縦並び」に修正
+   ============================================== */
+#rooms-container-map .v-booking-bar {
+  flex-direction: column !important;       /* 縦並びにする */
+  justify-content: flex-start !important; /* 上寄せ */
+  align-items: flex-start !important;     /* 左寄せ */
+  flex-wrap: nowrap !important;           /* 折り返し禁止 */
+  padding: 4px !important;
+}
+
+/* 中身の要素のスタイルリセット */
+#rooms-container-map .v-booking-bar > div,
+#rooms-container-map .v-booking-bar > span {
+  width: 100% !important;                 /* 横幅いっぱい */
+  text-align: left !important;            /* 左寄せ */
+  margin: 0 !important;
+  white-space: nowrap !important;         /* 文字がはみ出たら...にする */
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
 /* ==============================================
    19. 予約一覧(タイムライン)のフロア切替を表示
    ============================================== */
@@ -1459,46 +1482,4 @@ textarea#input-note::placeholder {
     font-size: 0.75rem;
     margin-left: 5px;
   }
-}
-/* ==============================================
-   33. マップ検索の修正 (再修正版)
-   ============================================== */
-
-/* 選択された部屋の見た目 (光らせず、色を濃くして枠線をつけるだけ) */
-.map-click-area.selected-room {
-  background-color: rgba(44, 62, 80, 0.6) !important; /* 濃いグレー/紺色で選択感を出す */
-  border: 2px solid #2c3e50 !important; /* 実線の枠 */
-  color: white !important;
-  z-index: 50;
-}
-
-/* マップ下の表示エリアを「予約一覧」と同じようなボックスにする */
-#map-timeline-section .calendar-scroll-area {
-  /* ★重要: ここで高さを指定しないと中身が消えます */
-  height: 300px !important;       
-  overflow-y: auto !important;    /* 縦スクロール許可 */
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  
-  /* Flexbox設定（時間軸と中身を横並びにするため必須） */
-  display: flex !important;       
-  flex-direction: row !important;
-  align-items: flex-start !important;
-}
-
-/* マップ下のタイムラインコンテナ */
-#rooms-container-map {
-  flex: 1;                        /* 横幅いっぱい使う */
-  height: auto !important;        /* 高さは中身なり親なりに合わせる */
-  min-height: 100%;               /* 親の高さ(300px)を埋める */
-  position: relative;
-  overflow-y: visible !important; /* 親側でスクロールさせるのでここはvisible */
-}
-
-/* 時間軸の調整 */
-#time-axis-map {
-  height: auto !important;
-  min-height: 100%;
-  background: #f9f9f9;
 }
