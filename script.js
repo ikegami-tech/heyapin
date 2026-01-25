@@ -1114,12 +1114,16 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
   if (modalContent) modalContent.scrollTop = 0;
 }
 function closeModal() { document.getElementById('bookingModal').style.display = 'none'; }
+/* ==============================================
+   追加・修正箇所: 予約保存処理 (saveBooking)
+   ============================================== */
+
 // 【追加】予約オブジェクトから参加者IDの配列を抽出するヘルパー関数
+// (saveBooking関数の外側、例えばその直前などに置いてください)
 function getParticipantIdsFromRes(res) {
     const pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
     if (!pIds) return [];
     
-    // 文字列ならカンマ区切りで分解、配列ならそのまま、数値なら文字列化して配列へ
     let list = [];
     if (Array.isArray(pIds)) {
         list = pIds;
@@ -1129,10 +1133,10 @@ function getParticipantIdsFromRes(res) {
         list = [pIds];
     }
     
-    // 空白除去と文字列化
     return list.map(id => String(id).trim()).filter(id => id !== "");
 }
-// 予約保存
+
+// 【完全版】予約保存関数
 async function saveBooking() {
     const id = document.getElementById('edit-res-id').value;
     const room = document.getElementById('input-room').value;
@@ -1143,12 +1147,23 @@ async function saveBooking() {
     const note = document.getElementById('input-note').value;
     const timePattern = /^([0-9]{1,2}):([0-9]{2})$/;
   
+    // 1. 入力フォーマットチェック
     if (!timePattern.test(start) || !timePattern.test(end)) {
         alert("時間は「09:00」のように半角数字とコロン(:)で入力してください。");
         return;
     }
     if (start >= end) { alert("開始時間は終了時間より前に設定してください。"); return; }
-    // ... (既存のバリデーションはそのまま) ...
+    if (start < "07:00" || start > "21:00" || end < "07:00" || end > "21:00") {
+        alert("利用時間は 7:00 〜 21:00 の範囲で設定してください。");
+        return;
+    }
+
+    // 2. 時間計算 (★ここがエラーの原因でした。復活させました)
+    const startParts = start.split(':');
+    const endParts = end.split(':');
+    const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+    const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+
     if (endMinutes - startMinutes < 15) {
         alert("最低でも15分以上の日時を設定してください。");
         return;
@@ -1158,54 +1173,45 @@ async function saveBooking() {
     const endTime = `${date.replace(/-/g, '/')} ${end}`;
     const pIds = Array.from(selectedParticipantIds).join(', ');
 
-    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    // 【追加】ダブルブッキング（重複）チェック処理
-    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+    // ▼▼▼ ダブルブッキング（重複）チェック処理 ▼▼▼
     
-    // 1. 今回予約しようとしている時間帯をDateオブジェクト化
+    // (1) 今回予約しようとしている時間帯
     const newStartObj = new Date(startTime);
     const newEndObj = new Date(endTime);
 
-    // 2. 選択されている参加者IDリスト
+    // (2) チェック対象の参加者IDリスト
     const checkTargets = Array.from(selectedParticipantIds);
 
-    // 3. 全予約をループして重複チェック
+    // (3) 全予約をループして重複チェック
     for (const targetUserId of checkTargets) {
         // 重複している予約を探す
         const conflictRes = masterData.reservations.find(existingRes => {
-            // (A) 自分自身の編集は除外
-            // existingRes.id が数値か文字列かで比較がズレないよう String() で統一
+            // 自分自身の編集は除外
             if (id && String(existingRes.id) === String(id)) return false;
 
-            // (B) 時間の重複チェック
-            // (既存開始 < 新規終了) AND (既存終了 > 新規開始) であれば被っている
+            // 時間の重複チェック
             const exStart = new Date(existingRes._startTime || existingRes.startTime);
             const exEnd = new Date(existingRes._endTime || existingRes.endTime);
             
-            // 日付またぎや無効な日付はスキップ
             if (isNaN(exStart.getTime()) || isNaN(exEnd.getTime())) return false;
 
+            // 時間が被っているか (既存開始 < 新規終了 AND 既存終了 > 新規開始)
             const isTimeOverlap = (exStart < newEndObj && exEnd > newStartObj);
             if (!isTimeOverlap) return false;
 
-            // (C) 参加者の重複チェック
+            // 参加者の重複チェック
             const exMemberIds = getParticipantIdsFromRes(existingRes);
-            // 予約者本人(reserverId)も参加者とみなす場合、ここに追加チェックを入れても良いですが、
-            // 今回は「参加者リスト」に含まれているかで判定します。
             return exMemberIds.includes(targetUserId);
         });
 
-        // もし重複が見つかったらエラーを出して中断
+        // 重複が見つかった場合
         if (conflictRes) {
-            // ユーザー名を取得
             const conflictingUser = masterData.users.find(u => String(u.userId) === String(targetUserId));
             const userName = conflictingUser ? conflictingUser.userName : targetUserId;
 
-            // 部屋名を取得
             const roomObj = masterData.rooms.find(r => String(r.roomId) === String(conflictRes._resourceId || conflictRes.resourceId));
             const roomName = roomObj ? roomObj.roomName : "不明な部屋";
 
-            // 時間を見やすくフォーマット
             const cStart = new Date(conflictRes._startTime || conflictRes.startTime);
             const cEnd = new Date(conflictRes._endTime || conflictRes.endTime);
             const timeStr = `${pad(cStart.getHours())}:${pad(cStart.getMinutes())} - ${pad(cEnd.getHours())}:${pad(cEnd.getMinutes())}`;
@@ -1217,30 +1223,32 @@ async function saveBooking() {
                 `時間: ${timeStr}\n` +
                 `用件: ${getVal(conflictRes, ['title', 'subject']) || '(なし)'}`
             );
-            return; // ここで処理を止める（保存させない）
+            return; // 処理中断
         }
     }
-       
-  const params = {
-    action: id ? 'updateReservation' : 'createReservation',
-    reservationId: id,
-    resourceId: room,
-    startTime: startTime,
-    endTime: endTime,
-    reserverId: currentUser.userId,
-    operatorName: currentUser.userName,
-    participantIds: pIds, 
-    title: title,
-    note: note 
-  };
+    // ▲▲▲ 重複チェック終了 ▲▲▲
 
-  const result = await callAPI(params);
-  if(result.status === 'success') {
-    closeModal();
-    loadAllData(true);
-  } else {
-    alert("エラー: " + result.message);
-  }
+    // 3. サーバーへ送信
+    const params = {
+        action: id ? 'updateReservation' : 'createReservation',
+        reservationId: id,
+        resourceId: room,
+        startTime: startTime,
+        endTime: endTime,
+        reserverId: currentUser.userId,
+        operatorName: currentUser.userName,
+        participantIds: pIds,
+        title: title,
+        note: note
+    };
+
+    const result = await callAPI(params);
+    if(result.status === 'success') {
+        closeModal();
+        loadAllData(true);
+    } else {
+        alert("エラー: " + result.message);
+    }
 }
 
 async function deleteBooking() {
