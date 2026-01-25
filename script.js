@@ -583,57 +583,65 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.webkitUserSelect = "none";
     }
 
-    // --- 3. ドラッグスクロール機能 (斜め移動対応) ---
+    // --- 3. ドラッグスクロール機能 (斜め移動完全対応版) ---
     let isDown = false;
     let startX, startY;
     let startScrollLeft, startScrollTop;
     let hasDragged = false;
 
     if (container) {
+        // マウスを押した時
         container.onmousedown = (e) => {
             isDown = true;
             hasDragged = false;
             container.style.cursor = 'grabbing';
             
-            // クリック開始位置
+            // クリック開始位置を記録
             startX = e.pageX;
             startY = e.pageY;
             
-            // スクロール開始位置
+            // 横スクロールの開始位置
             startScrollLeft = container.scrollLeft;
-            startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
+            
+            // 縦スクロールの開始位置 (マップモードなら親要素、一覧なら自分自身)
+            const targetV = (mode === 'map') ? container.parentElement : container;
+            startScrollTop = targetV ? targetV.scrollTop : 0;
         };
 
+        // マウスを離した時・枠外に出た時
         const stopDrag = () => {
             isDown = false;
             container.style.cursor = 'default';
-            // ドラッグ終了直後はクリック判定を残すためにフラグは即座に消さない
+            // クリック判定を残すため、フラグオフを少し遅らせる
             setTimeout(() => { hasDragged = false; }, 50);
         };
         container.onmouseleave = stopDrag;
         container.onmouseup = stopDrag;
 
+        // マウスを動かした時
         container.onmousemove = (e) => {
             if (!isDown) return;
-            e.preventDefault();
+            e.preventDefault(); // 文字選択などを防止
             
-            // 移動量を計算 (1.5倍速)
             const x = e.pageX;
             const y = e.pageY;
+            
+            // 移動量を計算 (1.5倍速で追従)
             const walkX = (x - startX) * 1.5; 
             const walkY = (y - startY) * 1.5;
 
-            // 5px以上動いたらドラッグとみなす
+            // 5px以上動いたら「ドラッグした」とみなす
             if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
                 hasDragged = true;
             }
 
-            // 横スクロール反映
+            // 横スクロールを適用
             container.scrollLeft = startScrollLeft - walkX;
             
-            // 縦スクロール反映 (斜め移動)
-            if (vScrollTarget) {
-                vScrollTarget.scrollTop = startScrollTop - walkY;
+            // 縦スクロールを適用 (マップモードなら親要素を動かす)
+            const targetV = (mode === 'map') ? container.parentElement : container;
+            if (targetV) {
+                targetV.scrollTop = startScrollTop - walkY;
             }
         };
     }
