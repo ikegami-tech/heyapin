@@ -874,11 +874,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 let rawPIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
                 if (rawPIds) {
                     let pList = [];
-                    // 文字列か配列か数値かを判定して配列化
                     if (Array.isArray(rawPIds)) {
                         pList = rawPIds;
                     } else if (typeof rawPIds === 'string') {
-                        pList = rawPIds.split(/[,、\s]+/); // カンマやスペースで分割
+                        pList = rawPIds.split(/[,、\s]+/);
                     } else if (typeof rawPIds === 'number') {
                         pList = [rawPIds];
                     }
@@ -893,17 +892,22 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                     });
                 }
 
-                // 2. 表示文字列の作成
+                // 2. 表示文字列の作成 (★ここを変更しました)
                 if (pNames.length > 0) {
-                    // 参加者がいる場合：筆頭者 + 人数
-                    displayNameText = pNames[0];
-                    if (pNames.length > 1) {
-                        displayNameText += ` (+${pNames.length - 1})`;
+                    const displayLimit = 4; // 表示する最大人数
+
+                    if (pNames.length <= displayLimit) {
+                        // 4人以下なら全員の名前をカンマ区切りで表示
+                        displayNameText = pNames.join(', ');
+                    } else {
+                        // 5人以上なら、4人分表示して残りを (+〇) にする
+                        const visibleNames = pNames.slice(0, displayLimit).join(', ');
+                        const remainingCount = pNames.length - displayLimit;
+                        displayNameText = `${visibleNames} (+${remainingCount})`;
                     }
                 } else {
                     // 参加者がいない場合：登録者(予約者)名を表示
                     displayNameText = res.operatorName || '';
-                    // operatorNameがない、かつreserverIdがある場合はIDから引く
                     if ((!displayNameText) && (res.reserverId || res.reserver_id)) {
                          const rId = res.reserverId || res.reserver_id;
                          const rUser = masterData.users.find(u => String(u.userId) === String(rId));
