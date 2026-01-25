@@ -32,31 +32,37 @@
       <span id="last-update-time" class="last-update-text"></span>
     </div>
 
-    <div class="user-info">
-      <div class="settings-container">
-        <span class="settings-icon" onclick="toggleSettingsMenu()">&#9881;</span>
-        
-        <div id="settings-dropdown" class="dropdown-content">
-    <div class="dropdown-item" style="cursor: default; border-bottom: 1px solid #eee;">
-        <span style="color:#555;">👤</span> <span id="display-user-name">ユーザー名</span>
+    <div class="user-info" style="display: flex; align-items: center; gap: 15px; margin-left: auto;">
+      
+      <div style="color: white; font-weight: bold; font-size: 0.9rem;">
+          👤 <span id="display-user-name">ユーザー名</span>
+      </div>
+
+      <div class="settings-wrapper">
+          <div class="settings-icon" onclick="toggleSettingsMenu()" style="cursor: pointer; font-size: 1.5rem; color: white;">
+              ⚙
+          </div>
+
+          <div id="settings-dropdown">
+              <div class="dropdown-item" onclick="openPasswordModal()">
+                  <span style="color:#f39c12;">🔒</span> パスワード変更
+              </div>
+
+              <div class="dropdown-item" onclick="openHistoryFromMenu()">
+                  <span>📅</span> 履歴
+              </div>
+
+              <div class="dropdown-item" onclick="openContactModal()">
+                  <span>✉️</span> お問い合わせ
+              </div>
+
+              <div class="dropdown-item" onclick="logout()">
+                  <span style="color:#e74c3c;">↪️</span> ログアウト
+              </div>
+          </div>
+      </div>
     </div>
 
-    <div class="dropdown-item" onclick="openPasswordModal()">
-        <span style="color:#f39c12;">🔒</span> パスワード変更
-    </div>
-
-    <div class="dropdown-item" onclick="openHistoryFromMenu()">
-        <span>📅</span> 履歴
-    </div>
-
-    <div class="dropdown-item" onclick="openContactModal()">
-        <span>✉️</span> お問い合わせ
-    </div>
-
-    <div class="dropdown-item" onclick="logout()">
-        <span style="color:#e74c3c;">↪️</span> ログアウト
-    </div>
-</div>
   </header>
 
   <div class="nav-tabs">
