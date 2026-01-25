@@ -143,6 +143,12 @@ header {
   border-bottom: 1px solid #eee; width: 100%; position: relative;
 }
 
+/* マップタイムライン用の特例 */
+#map-timeline-section .calendar-scroll-area {
+  height: auto !important; min-height: 0 !important;
+  overflow: visible !important; display: flex !important;
+}
+
 /* ==============================================
    6. 予約バー (.v-booking-bar)
    ============================================== */
@@ -342,6 +348,12 @@ header {
   background: rgba(0, 100, 255, 0.6) !important;
   border: 2px solid #0064ff !important;
 }
+.map-hint {
+  margin-top: 5px; color: #666;
+  font-size: 0.8rem; text-align: center;
+  flex-shrink: 0;
+}
+
 /* 部屋詳細テーブル */
 .detail-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 .detail-table th {
@@ -622,6 +634,11 @@ textarea#input-note::placeholder {
 .flex-1 { flex: 1; }
 .flex-1-2 { flex: 1.2; }
 
+/* マップビュー調整 */
+.map-timeline-hidden { display: none; width: 100%; margin-top: 10px; border-top: 2px solid #ddd; padding-top: 10px; }
+.map-room-title { text-align: center; margin: 5px 0; }
+.mt-10 { margin-top: 10px; }
+
 /* 予約詳細テキスト */
 .text-bold { font-weight: bold; }
 .text-lg { font-size: 1.1em; }
@@ -686,6 +703,28 @@ textarea#input-note::placeholder {
   min-width: 0 !important;
   justify-content: center;
   padding: 12px 0 !important; /* 上下の余白を確保 */
+}
+
+/* ==============================================
+   18. マップ下部の予約バーを「縦並び」に修正
+   ============================================== */
+#rooms-container-map .v-booking-bar {
+  flex-direction: column !important;       /* 縦並びにする */
+  justify-content: flex-start !important; /* 上寄せ */
+  align-items: flex-start !important;     /* 左寄せ */
+  flex-wrap: nowrap !important;           /* 折り返し禁止 */
+  padding: 4px !important;
+}
+
+/* 中身の要素のスタイルリセット */
+#rooms-container-map .v-booking-bar > div,
+#rooms-container-map .v-booking-bar > span {
+  width: 100% !important;                 /* 横幅いっぱい */
+  text-align: left !important;            /* 左寄せ */
+  margin: 0 !important;
+  white-space: nowrap !important;         /* 文字がはみ出たら...にする */
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 /* ==============================================
@@ -1179,6 +1218,24 @@ textarea#input-note::placeholder {
 .settings-icon:hover {
     transform: rotate(90deg); /* ホバーで回転 */
     opacity: 0.8;
+}
+
+/* ドロップダウンメニュー本体 */
+#settings-dropdown {
+    display: none; /* 初期状態は非表示 */
+    position: absolute; /* 親枠を基準に配置 */
+    right: 0; /* 右揃え */
+    top: 100%; /* 歯車の真下 */
+    margin-top: 10px; /* 歯車との隙間 */
+    background-color: #fff;
+    min-width: 220px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    z-index: 9999;
+    border-radius: 5px;
+    padding: 5px 0;
+    text-align: left;
+    color: #333;
+    border: 1px solid #ddd;
 }
 
 /* クラスがついた時だけ表示 */
