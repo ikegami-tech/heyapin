@@ -405,10 +405,18 @@ function switchFloor(floor) {
     if(area6) area6.classList.remove('active');
     
     const activeArea = document.getElementById(`area-${floor}f`);
-    if(activeArea) activeArea.classList.add('active');
+    if(activeArea) {
+        activeArea.classList.add('active');
+        
+        // ▼▼▼【追加修正】マップ表示時に、前回固定されたサイズ(0pxなど)をリセットして再計算させる ▼▼▼
+        const wrapper = activeArea.querySelector('.map-inner-wrapper');
+        if (wrapper) {
+            wrapper.style.width = '';
+            wrapper.style.height = '';
+        }
+        // ▲▲▲【追加修正ここまで】▲▲▲
+    }
 
-    // ▼▼▼ 追加: 下部の予約タイムラインを即座に更新・表示 ▼▼▼
-    
     // タイトルを「〇階 予約状況」に変更
     const titleEl = document.getElementById('map-selected-room-name');
     if(titleEl) titleEl.innerText = `${floor}階 予約状況`;
@@ -420,7 +428,6 @@ function switchFloor(floor) {
     // タイムラインを描画
     renderVerticalTimeline('map');
 }
-
 function selectRoomFromMap(element) {
   const roomId = element.getAttribute('data-room-id');
   const roomObj = masterData.rooms.find(r => String(r.roomId) === String(roomId));
@@ -1758,13 +1765,27 @@ function initMapResizer() {
           const wrapper = img.closest('.map-inner-wrapper');
           
           if (wrapper) {
-              // 画像の現在の表示サイズ(幅・高さ)を取得し、ラッパーに強制適用
-              // これにより、座標(%)が画像の大きさと完全に一致します
-              wrapper.style.width = entry.contentRect.width + 'px';
-              wrapper.style.height = entry.contentRect.height + 'px';
+              // ▼▼▼【修正箇所】サイズが0より大きい場合のみ適用する（非表示中の0px固定を防止） ▼▼▼
+              if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+                  wrapper.style.width = entry.contentRect.width + 'px';
+                  wrapper.style.height = entry.contentRect.height + 'px';
+              }
+              // ▲▲▲【修正ここまで】▲▲▲
           }
       }
   });
+
+  // 全てのマップ画像を監視対象に登録
+  const mapImages = document.querySelectorAll('.map-image');
+  if (mapImages.length > 0) {
+      mapImages.forEach(img => {
+          resizeObserver.observe(img);
+      });
+  } else {
+      // まだ画像が生成されていない場合は少し待ってから再実行
+      setTimeout(initMapResizer, 500);
+  }
+}
 
   // 全てのマップ画像を監視対象に登録
   const mapImages = document.querySelectorAll('.map-image');
