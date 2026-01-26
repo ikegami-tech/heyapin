@@ -147,8 +147,6 @@ header {
   
   /* 背景を白にして透け防止 */
   background: white;
-  user-select: none;
-  -webkit-user-select: none; /*
 }
 /* ▼▼▼ 追加・修正: マップ画面下のタイムライン専用設定 ▼▼▼ */
 #map-timeline-section {
