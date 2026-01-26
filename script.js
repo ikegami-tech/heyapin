@@ -521,7 +521,39 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             if (vScrollTarget) { vScrollTarget.scrollTop = startScrollTop - walkY; }
         };
     }
+/* ▼▼▼ 追加: マップ検索時のマウスホイール(上下左右・斜め)対応 ▼▼▼ */
+    if (container) {
+        // マップモードなら親(mapWrapper)を縦スクロール、一覧モードなら自分(container)を縦スクロール
+        const vScrollTarget = (mode === 'map') ? mapWrapper : container;
 
+        container.addEventListener('wheel', (e) => {
+            // ピンチズーム等の操作は阻害しない
+            if (e.ctrlKey) return;
+
+            // デフォルトのスクロールをキャンセルして、自前で計算する
+            e.preventDefault();
+
+            // 横スクロール (container自体を動かす)
+            // ※Shiftキーを押しながらの場合は、縦回転(deltaY)を横移動に変換
+            if (e.shiftKey && e.deltaX === 0) {
+                container.scrollLeft += e.deltaY;
+            } else {
+                container.scrollLeft += e.deltaX;
+            }
+
+            // 縦スクロール (対象要素を動かす)
+            if (vScrollTarget) {
+                vScrollTarget.scrollTop += e.deltaY;
+            }
+            
+            // 予約一覧モード(all)の時は、左側の時間軸も連動させる
+            if (mode === 'all' && axisContainer) {
+                axisContainer.scrollTop = vScrollTarget.scrollTop;
+            }
+
+        }, { passive: false }); // preventDefaultを使うために passive: false が必須
+    }
+    /* ▲▲▲ 追加ここまで ▲▲▲ */
     // 時間軸と予約データ準備
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
