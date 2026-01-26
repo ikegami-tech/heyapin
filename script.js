@@ -472,8 +472,8 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
     if (container) {
         container.innerHTML = "";
-        container.style.height = (mode === 'map') ? "auto" : "100%";
-        container.style.overflowY = (mode === 'map') ? "visible" : "auto";
+        container.style.height = "auto"; 
+        container.style.overflowY = "visible"; 
         container.style.width = "100%";
         container.style.maxWidth = "100vw";
         container.style.overflowX = "auto";
@@ -483,7 +483,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.position = "relative";
     }
 
-    /* ▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 修正版スクロール機能（ここからコピー） ▼▼▼▼▼▼▼▼▼▼▼▼▼▼ */
     
     // ドラッグスクロール & ホイールスクロール機能
     let isDown = false;
@@ -560,23 +559,17 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.onmouseup = null;
         container.onmouseleave = null;
 
-        // マウスホイール操作（縦横斜め対応）
+        // ▼▼▼【修正】マウスホイール操作（縦スクロールをブロックしない）▼▼▼
         container.addEventListener('wheel', (e) => {
-            if (e.ctrlKey) return; // ズーム操作は除外
-            e.preventDefault();
-
-            const target = vScrollTarget || container;
-            
-            // 横スクロール (Shiftキー または 横ホイール)
-            if (e.shiftKey && e.deltaX === 0) {
-                target.scrollLeft += e.deltaY;
-            } else {
-                target.scrollLeft += e.deltaX;
+            if (e.ctrlKey) return; // ズーム操作は除外   
+            if (e.shiftKey && vScrollTarget) {
+                e.preventDefault();
+                // 縦回転(deltaY)を横移動に変換
+                vScrollTarget.scrollLeft += (e.deltaY || e.deltaX);
             }
-            // 縦スクロール
-            target.scrollTop += e.deltaY;
             
         }, { passive: false });
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     }
 
     // 時間軸と予約データ準備
