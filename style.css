@@ -635,7 +635,13 @@ textarea#input-note::placeholder {
 .flex-1-2 { flex: 1.2; }
 
 /* マップビュー調整 */
-.map-timeline-hidden { display: none; width: 100%; margin-top: 10px; border-top: 2px solid #ddd; padding-top: 10px; }
+.map-timeline-hidden { 
+  display: block; /* ←ここを変更（最初から表示） */
+  width: 100%; 
+  margin-top: 10px; 
+  border-top: 2px solid #ddd; 
+  padding-top: 10px; 
+}
 .map-room-title { text-align: center; margin: 5px 0; }
 .mt-10 { margin-top: 10px; }
 
