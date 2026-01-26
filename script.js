@@ -1787,22 +1787,6 @@ function initMapResizer() {
   }
 }
 
-  // 全てのマップ画像を監視対象に登録
-  const mapImages = document.querySelectorAll('.map-image');
-  if (mapImages.length > 0) {
-      mapImages.forEach(img => {
-          resizeObserver.observe(img);
-      });
-  } else {
-      // まだ画像が生成されていない場合は少し待ってから再実行
-      setTimeout(initMapResizer, 500);
-  }
-}
-
-// ページ読み込み完了時と、画像読み込み完了時に実行
-window.addEventListener('DOMContentLoaded', initMapResizer);
-window.addEventListener('load', initMapResizer);
-
 // ==============================================
 //  空き状況検索機能
 // ==============================================
