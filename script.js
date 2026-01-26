@@ -525,8 +525,15 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             }
         });
 
-        // 集めたIDに一致する部屋データをmasterDataから取得（表示順はmasterDataの並び順またはID順）
-        targetRooms = masterData.rooms.filter(r => allMapRoomIds.includes(r.roomId));
+        // 集めたIDに一致する部屋データをmasterDataから取得（文字列として比較し、マップ設定順に並べる）
+        targetRooms = [];
+        allMapRoomIds.forEach(mapId => {
+            // 文字列に変換して比較(String)することで、数値と文字列の違いを吸収する
+            const room = masterData.rooms.find(r => String(r.roomId) === String(mapId));
+            if (room) {
+                targetRooms.push(room);
+            }
+        });
 
     } else { return; }
 
