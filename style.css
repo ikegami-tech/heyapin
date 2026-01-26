@@ -144,11 +144,25 @@ header {
 }
 
 /* マップタイムライン用の特例 */
+#map-timeline-section {
+  display: block !important;
+  width: 100%;
+  /* ↓ これが重要：マップの下にちゃんとスペースを確保して押し広げる */
+  flex-shrink: 0; 
+  padding-bottom: 50px; /* 一番下に余白を作る */
+}
+
 #map-timeline-section .calendar-scroll-area {
-  height: auto !important; 
-  min-height: 500px !important; /* ←念のため最小高さを確保しておくと安心です */
+  height: auto !important;
+  min-height: 300px !important; /* ↓ 最低でもこれくらいの高さは確保する */
   overflow: visible !important; 
   display: flex !important;
+}
+
+/* 部屋がない場合でも「空の箱」として潰れないようにする */
+.rooms-container {
+  min-height: 100px;
+  flex-grow: 1;
 }
 /* ==============================================
    6. 予約バー (.v-booking-bar)
