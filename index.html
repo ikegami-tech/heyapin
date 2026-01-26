@@ -1,3 +1,4 @@
+本家
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -32,43 +33,36 @@
       <span id="last-update-time" class="last-update-text"></span>
     </div>
 
-    <div class="user-info" style="margin-left: auto;">
-      
-      <div class="settings-wrapper">
-          <div class="settings-icon" onclick="toggleSettingsMenu()" style="cursor: pointer; font-size: 1.5rem; color: white;">
-              ⚙
+    <div class="user-info">
+      <div class="settings-container">
+        <span class="settings-icon" onclick="toggleSettingsMenu()">&#9881;</span>
+        
+        <div id="settings-dropdown" class="settings-dropdown-content">
+          
+          <div class="settings-user-display">
+             👤 <span id="display-user-name"></span> さん
+          </div>
+          
+          <div class="settings-item" onclick="openPasswordModal()">
+            <span>&#128274;</span> PW変更 
           </div>
 
-          <div id="settings-dropdown">
-              
-              <div class="dropdown-item" style="cursor: default; background-color: #f9f9f9; border-bottom: 2px solid #eee; font-weight: bold; color: #555;">
-                  👤 <span id="display-user-name">ユーザー名</span>
-              </div>
-
-              <div class="dropdown-item" onclick="openPasswordModal()">
-                  <span style="color:#f39c12;">🔒</span> パスワード変更
-              </div>
-
-              <div class="dropdown-item" onclick="openHistoryFromMenu()">
-                  <span>📅</span> 履歴
-              </div>
-
-              <div class="dropdown-item" onclick="openContactModal()">
-                  <span>✉️</span> お問い合わせ
-              </div>
-
-              <div class="dropdown-item" onclick="logout()">
-                  <span style="color:#e74c3c;">↪️</span> ログアウト
-              </div>
+          <div class="settings-item" onclick="openContactModal()">
+            <span>&#9993;</span> お問い合わせ 
           </div>
+  
+          <div class="settings-item logout-item" onclick="logout()">
+            <span>&#10162;</span> ログアウト
+          </div>
+        </div>
       </div>
     </div>
-
   </header>
 
   <div class="nav-tabs">
     <div class="nav-item active" onclick="switchTab('map-view')">マップ検索</div>
     <div class="nav-item" onclick="switchTab('timeline')">予約一覧</div>
+    <div class="nav-item" onclick="switchTab('logs')">履歴</div>
   </div>
 
   <div id="view-map-view" class="view-container active">
