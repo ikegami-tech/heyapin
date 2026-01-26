@@ -525,15 +525,27 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             }
         });
 
-        // 集めたIDに一致する部屋データをmasterDataから取得（文字列として比較し、マップ設定順に並べる）
+      // ★修正: 7階→6階の順序で、かつ文字列型で比較して確実に部屋を取得する
         targetRooms = [];
-        allMapRoomIds.forEach(mapId => {
-            // 文字列に変換して比較(String)することで、数値と文字列の違いを吸収する
-            const room = masterData.rooms.find(r => String(r.roomId) === String(mapId));
-            if (room) {
-                targetRooms.push(room);
+        const floorOrder = [7, 6]; // 表示したい階層の順序
+
+        floorOrder.forEach(floor => {
+            const config = mapConfig[floor];
+            if (config && config.areas) {
+                config.areas.forEach(area => {
+                    // masterDataからIDが一致する部屋を探す (String変換で型不一致を防ぐ)
+                    const room = masterData.rooms.find(r => String(r.roomId) === String(area.id));
+                    if (room) {
+                        targetRooms.push(room);
+                    }
+                });
             }
         });
+        
+        // もし部屋が1つも見つからなかった場合のデバッグ用ログ
+        if (targetRooms.length === 0) {
+            console.warn("部屋データが見つかりません。IDが合っているか確認してください。", mapConfig);
+        }
 
     } else { return; }
 
