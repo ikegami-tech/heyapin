@@ -486,14 +486,15 @@ function drawTimeAxis(containerId) {
   }
 }
 /* ==============================================
-   修正版v2: renderVerticalTimeline
-   (スマホタップ対応 & マップ時の滑らかスクロール対応 & ハイライト機能統合)
+   修正版: renderVerticalTimeline
+   (マップ検索時に全部屋を表示し、選択した部屋を黄色くする機能付き)
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
 
-    // モード判定
+    // --- 1. モード判定と対象部屋の決定 ---
     if (mode === 'all') {
+        // 予約一覧タブの場合
         container = document.getElementById('rooms-container-all');
         dateInputId = 'timeline-date';
         timeAxisId = 'time-axis-all';
@@ -502,15 +503,17 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             const floorRoomIds = floorConfig.areas.map(area => area.id);
             targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(r.roomId));
         } else { targetRooms = []; }
+
     } else if (mode === 'map') {
+        // マップ検索タブの場合
         container = document.getElementById('rooms-container-map');
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
         
-        // ★修正: マップ検索の下でも「その階の全部屋」を表示するように変更
-        let targetFloor = currentFloor; // デフォルトは現在の表示階
-        
-        // もし部屋IDが指定されていれば、その部屋がある階を優先特定
+        // ★変更点: 選択された部屋だけでなく、その階の「全部屋」を取得するロジックに変更
+        let targetFloor = currentFloor; // 現在表示中の階をデフォルトに
+
+        // 選択された部屋IDから、その部屋が何階にあるか逆引きして特定
         if (currentMapRoomId) {
              for (const [fKey, config] of Object.entries(mapConfig)) {
                  const hasRoom = config.areas.some(area => String(area.id) === String(currentMapRoomId));
@@ -521,26 +524,26 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
              }
         }
         
-        // その階の全ての部屋データを取得
+        // 特定した階のすべての部屋データを取得
         const floorConfig = mapConfig[targetFloor];
         if (floorConfig) {
             const floorRoomIds = floorConfig.areas.map(area => area.id);
             targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(r.roomId));
         } else {
-             // 万が一階が特定できなければ、選択された部屋だけを表示（フォールバック）
+             // 万が一階が特定できない場合は、選択された部屋だけを表示（安全策）
              targetRooms = masterData.rooms.filter(r => String(r.roomId) === String(currentMapRoomId));
         }
     } else { return; }
 
+    // データがない場合の処理
     if (!targetRooms || targetRooms.length === 0) {
         if (container) container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
         return;
     }
 
+    // --- 2. スクロール位置の保存 ---
     let savedScrollTop = 0;
     let savedScrollLeft = 0;
-    
-    // マップモードの場合、スクロール位置の保存対象は親ラッパーにする
     const mapWrapper = document.querySelector('.map-wrapper');
     if (mode === 'map' && mapWrapper) {
         savedScrollTop = mapWrapper.scrollTop;
@@ -550,7 +553,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         savedScrollLeft = container.scrollLeft;
     }
 
-    // コンテナ初期化
+    // --- 3. コンテナ初期化 ---
     document.body.style.overflow = "hidden";
     if (container) {
         container.innerHTML = "";
@@ -576,7 +579,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.webkitUserSelect = "none";
     }
 
-    // ドラッグスクロール処理 (PCのみ有効化)
+    // --- 4. ドラッグスクロール機能 (PC用) ---
     let isDown = false;
     let startX, startY;
     let startScrollLeft, startScrollTop;
@@ -597,14 +600,12 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             startScrollLeft = container.scrollLeft;
             startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
         };
-
         container.onmouseleave = () => { isDown = false; container.style.cursor = "default"; };
         container.onmouseup = () => {
             isDown = false;
             container.style.cursor = "default";
             setTimeout(() => { hasDragged = false; }, 50);
         };
-
         container.onmousemove = (e) => {
             if (!isDown || isTouch) return; 
             e.preventDefault();
@@ -618,7 +619,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         };
     }
 
-    // --- データ描画処理 ---
+    // --- 5. 時間軸と予約データの準備 ---
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     hourRowHeights = {}; 
@@ -637,6 +638,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         return isTargetRoom && (resDateNum === targetDateNum);
     });
 
+    // 高さ計算
     allRelevantReservations.forEach(res => {
         const start = new Date(res._startTime);
         const sHour = start.getHours();
@@ -671,6 +673,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
+    // 時間軸(左側)の描画
     drawTimeAxis(timeAxisId);
     const axisContainer = document.getElementById(timeAxisId);
     if (axisContainer && container) {
@@ -689,7 +692,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         } else {
             axisContainer.style.height = currentTop + "px";
         }
-
+        // 時間軸ヘッダーの固定
         const axisHeader = axisContainer.querySelector('.time-axis-header');
         if (axisHeader) {
             axisHeader.style.position = "sticky";
@@ -701,7 +704,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
-    // --- 列の描画ループ ---
+    // --- 6. 各部屋(列)の描画 ---
     targetRooms.forEach(room => {
         const col = document.createElement('div');
         col.className = 'room-col';
@@ -712,10 +715,11 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
 
-        // ★追加: マップモードで選択中の部屋ならハイライト（黄色）にする
+        // ★追加: マップモードで、かつ現在選択されている部屋なら「黄色」クラスを付与
         if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
             col.classList.add('target-highlight');
-            // クリック時のみ、その列までスクロールする
+            
+            // マップクリック時(shouldScroll=true)のみ、その列までスクロールする
             if (shouldScroll) {
                 setTimeout(() => {
                     col.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -723,12 +727,13 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             }
         }
         
-        // ★追加: マップモードで列をクリックした時も選択状態を切り替える機能
+        // ★追加: タイムラインの列をクリックしても選択状態を切り替える
         col.addEventListener('click', (e) => {
             if (hasDragged) return;
-            if (mode !== 'map') return; 
+            if (mode !== 'map') return; // 一覧モードでは反応させない
 
             currentMapRoomId = room.roomId;
+            // 他の列のハイライトを消して、自分につける
             container.querySelectorAll('.room-col').forEach(c => c.classList.remove('target-highlight'));
             col.classList.add('target-highlight');
             
@@ -736,6 +741,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             if (titleEl) titleEl.innerText = room.roomName;
         });
 
+        // 部屋ヘッダー
         const header = document.createElement('div');
         header.className = 'room-header';
         header.innerText = room.roomName;
@@ -752,6 +758,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         header.style.boxSizing = "border-box";
         col.appendChild(header);
 
+        // タイムスロットエリア
         const body = document.createElement('div');
         body.className = 'room-grid-body';
         if (nowTopPx !== -1) {
@@ -772,6 +779,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             body.appendChild(slot);
         }
 
+        // 空き時間クリックで予約モーダルを開く
         body.onclick = (e) => {
             if (!isTouch && hasDragged) return;
             if (e.target.closest('.v-booking-bar')) return;
@@ -795,6 +803,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             if (clickedHour !== -1) openModal(null, room.roomId, clickedHour, clickedMin);
         };
 
+        // 予約バーの描画
         const reservations = allRelevantReservations.filter(res => String(res._resourceId) === String(room.roomId));
         reservations.forEach(res => {
             const start = new Date(res._startTime);
@@ -872,7 +881,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.appendChild(col);
     });
 
+    // --- 7. スクロール位置の復元 (自動更新対策) ---
     if (container) {
+        // マップクリック時(shouldScroll=true)以外は位置を復元する
         if (!shouldScroll) {
             if (mode === 'map' && mapWrapper) {
                  mapWrapper.scrollTop = savedScrollTop;
@@ -883,6 +894,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             }
         }
         
+        // 予約一覧モード用の横スクロールバー対応
         const axisContainerEnd = document.getElementById(timeAxisId);
         if (mode === 'all' && axisContainerEnd) {
             axisContainerEnd.scrollTop = savedScrollTop;
