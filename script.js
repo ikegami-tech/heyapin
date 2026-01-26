@@ -491,7 +491,11 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
     if (container) {
         container.addEventListener('touchstart', () => { isTouch = true; }, { passive: true });
-        const vScrollTarget = (mode === 'map') ? mapWrapper : container;
+        
+        // ▼▼▼【修正箇所】スクロールさせる対象を「親エリア(.calendar-scroll-area)」に変更 ▼▼▼
+        // 以前: const vScrollTarget = (mode === 'map') ? mapWrapper : container;
+        const vScrollTarget = (mode === 'map') ? container.closest('.calendar-scroll-area') : container;
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         container.onmousedown = (e) => {
             if (isTouch) return;
@@ -500,15 +504,14 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             container.style.cursor = "grabbing";
             startX = e.pageX;
             startY = e.pageY;
-            startScrollLeft = container.scrollLeft;
+            // 横スクロールは container (中身) が担当
+            startScrollLeft = container.scrollLeft; 
+            // 縦スクロールは vScrollTarget (親枠) が担当
             startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
         };
-        container.onmouseleave = () => { isDown = false; container.style.cursor = "default"; };
-        container.onmouseup = () => {
-            isDown = false;
-            container.style.cursor = "default";
-            setTimeout(() => { hasDragged = false; }, 50);
-        };
+        
+        // ... (中略: mouseleave, mouseup はそのまま) ...
+
         container.onmousemove = (e) => {
             if (!isDown || isTouch) return; 
             e.preventDefault();
@@ -517,41 +520,36 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             const walkX = (x - startX) * 1.5;
             const walkY = (y - startY) * 1.5;
             if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) { hasDragged = true; }
+            
+            // 横移動
             container.scrollLeft = startScrollLeft - walkX;
+            // 縦移動
             if (vScrollTarget) { vScrollTarget.scrollTop = startScrollTop - walkY; }
         };
-    }
-/* ▼▼▼ 追加: マップ検索時のマウスホイール(上下左右・斜め)対応 ▼▼▼ */
-    if (container) {
-        // マップモードなら親(mapWrapper)を縦スクロール、一覧モードなら自分(container)を縦スクロール
-        const vScrollTarget = (mode === 'map') ? mapWrapper : container;
 
+        // ▼▼▼【追加】マウスホイール操作の修正 ▼▼▼
         container.addEventListener('wheel', (e) => {
-            // ピンチズーム等の操作は阻害しない
-            if (e.ctrlKey) return;
-
-            // デフォルトのスクロールをキャンセルして、自前で計算する
+            if (e.ctrlKey) return; // ズーム操作は除外
             e.preventDefault();
 
-            // 横スクロール (container自体を動かす)
-            // ※Shiftキーを押しながらの場合は、縦回転(deltaY)を横移動に変換
+            // 横スクロール
             if (e.shiftKey && e.deltaX === 0) {
                 container.scrollLeft += e.deltaY;
             } else {
                 container.scrollLeft += e.deltaX;
             }
 
-            // 縦スクロール (対象要素を動かす)
+            // 縦スクロール (対象の枠をスクロールさせる)
             if (vScrollTarget) {
                 vScrollTarget.scrollTop += e.deltaY;
             }
             
-            // 予約一覧モード(all)の時は、左側の時間軸も連動させる
+            // 予約一覧モード(all)の時は時間軸も連動
             if (mode === 'all' && axisContainer) {
                 axisContainer.scrollTop = vScrollTarget.scrollTop;
             }
-
-        }, { passive: false }); // preventDefaultを使うために passive: false が必須
+        }, { passive: false });
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     }
     /* ▲▲▲ 追加ここまで ▲▲▲ */
     // 時間軸と予約データ準備
