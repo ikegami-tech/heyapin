@@ -369,14 +369,14 @@ header {
   .floor-selector { display: none !important; }
   .pc-floor-title { display: none !important; }
   
-  /* コンテナの設定 */
+  /* コンテナの設定：横並び・中央寄せ */
   #dual-map-container { 
     width: 100%; 
     height: auto; 
     box-sizing: border-box; 
     display: flex;
-    justify-content: center;
-    align-items: center !important;
+    justify-content: center; /* 左右中央寄せ */
+    align-items: flex-start !important; /* ★修正: 上揃えにする（高さ違いのズレ防止） */
     flex-shrink: 0;
     margin-top: 10px !important;
     margin-bottom: 10px !important;
@@ -386,33 +386,32 @@ header {
     justify-content: flex-start !important;
   }
 
-  /* ▼▼▼【修正箇所】▼▼▼ */
-  /* 元の記述: display: block !important; が原因で全階表示されていました */
+  /* ▼▼▼【修正箇所：ここを書き換えてください】▼▼▼ */
+  /* 強制的に Flexbox で表示し、2つのマップを並べる */
   .floor-map-unit {
-    display: none; /* 基本は非表示 */
-    flex: 0 0 auto;
-    width: auto; 
-    max-width: 50%; 
-    margin-bottom: 0;
+    display: flex !important; /* .activeに関わらず常に表示 */
     flex-direction: column;
     align-items: center;
-  }
-  
-  /* activeクラスがついている時だけ表示する */
-  .floor-map-unit.active {
-    display: flex !important;
+    
+    /* 幅を50%ずつ分け合う */
+    flex: 0 0 50%;
+    width: 50%;
+    max-width: 50%;
+    
+    margin-bottom: 0;
   }
   /* ▲▲▲【修正ここまで】▲▲▲ */
 
   /* 画像ラッパーの設定 */
   .map-inner-wrapper {
     width: fit-content;
+    max-width: 95% !important; /* 枠からはみ出ないように制限 */
   }
   
   /* 画像の設定 */
   .map-image {
     width: auto !important; 
-    max-height: 65vh !important; 
+    max-height: 65vh !important; /* 高さは維持 */
     max-width: 100% !important;
   }
 }
