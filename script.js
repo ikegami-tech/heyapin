@@ -565,7 +565,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     }
 
     // --- 3. コンテナ初期化 ---
-    document.body.style.overflow = "hidden";
     if (container) {
         container.innerHTML = "";
         if (mode === 'map') {
