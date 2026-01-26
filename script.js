@@ -414,7 +414,9 @@ function renderDualMaps() {
 
 function switchFloor(floor) {
     currentFloor = floor;
-    // タブ切り替え
+    currentMapRoomId = null; // 階を切り替えたら部屋の選択状態をリセット
+
+    // 1. タブの見た目切り替え
     const mapContainer = document.getElementById('view-map-view');
     if(mapContainer) {
         mapContainer.querySelectorAll('.floor-tab').forEach(tab => tab.classList.remove('active'));
@@ -422,7 +424,7 @@ function switchFloor(floor) {
     const activeTab = document.getElementById(`tab-${floor}f`);
     if(activeTab) activeTab.classList.add('active');
 
-    // 表示エリア切り替え
+    // 2. マップ画像の切り替え
     const area7 = document.getElementById('area-7f');
     const area6 = document.getElementById('area-6f');
     if(area7) area7.classList.remove('active');
@@ -430,6 +432,19 @@ function switchFloor(floor) {
     
     const activeArea = document.getElementById(`area-${floor}f`);
     if(activeArea) activeArea.classList.add('active');
+
+    // ▼▼▼ 追加: 下部の予約タイムラインを即座に更新・表示 ▼▼▼
+    
+    // タイトルを「〇階 予約状況」に変更
+    const titleEl = document.getElementById('map-selected-room-name');
+    if(titleEl) titleEl.innerText = `${floor}階 予約状況`;
+    
+    // タイムラインエリアの表示を確実にする
+    const timelineSec = document.getElementById('map-timeline-section');
+    if(timelineSec) timelineSec.style.display = 'block';
+
+    // タイムラインを描画
+    renderVerticalTimeline('map');
 }
 
 function selectRoomFromMap(element) {
