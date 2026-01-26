@@ -483,19 +483,55 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.position = "relative";
     }
 
-    // ドラッグスクロール機能
+    /* ▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 修正版スクロール機能（ここからコピー） ▼▼▼▼▼▼▼▼▼▼▼▼▼▼ */
+    
+    // ドラッグスクロール & ホイールスクロール機能
     let isDown = false;
     let startX, startY, startScrollLeft, startScrollTop;
     let hasDragged = false;
     let isTouch = false;
 
     if (container) {
+        // タッチ操作の開始検知
         container.addEventListener('touchstart', () => { isTouch = true; }, { passive: true });
         
-        // ▼▼▼【修正箇所】スクロールさせる対象を「親エリア(.calendar-scroll-area)」に変更 ▼▼▼
-        // 以前: const vScrollTarget = (mode === 'map') ? mapWrapper : container;
-      const vScrollTarget = container.closest('.calendar-scroll-area');
+        // スクロールさせる対象（スクロールバーを持つ親要素）を取得
+        const vScrollTarget = container.closest('.calendar-scroll-area');
 
+        // ★重要: マウスを動かした時の処理（画面全体で監視）
+        const onMouseMove = (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX;
+            const y = e.pageY;
+            const walkX = (x - startX) * 1.5; // 横スクロール感度
+            const walkY = (y - startY) * 1.5; // 縦スクロール感度
+            
+            if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) { hasDragged = true; }
+            
+            // 親枠（vScrollTarget）がある場合はそれを動かす
+            if (vScrollTarget) {
+                vScrollTarget.scrollLeft = startScrollLeft - walkX;
+                vScrollTarget.scrollTop = startScrollTop - walkY;
+            } else {
+                container.scrollLeft = startScrollLeft - walkX;
+                container.scrollTop = startScrollTop - walkY;
+            }
+        };
+
+        // ★重要: マウスを離した時の処理（画面全体で監視）
+        const onMouseUp = () => {
+            isDown = false;
+            container.style.cursor = "default";
+            
+            // 画面全体への監視を解除（メモリ節約）
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            
+            setTimeout(() => { hasDragged = false; }, 50);
+        };
+
+        // クリックした瞬間（ドラッグ開始）
         container.onmousedown = (e) => {
             if (isTouch) return;
             isDown = true;
@@ -503,54 +539,45 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             container.style.cursor = "grabbing";
             startX = e.pageX;
             startY = e.pageY;
-            // 横スクロールは container (中身) が担当
-            startScrollLeft = container.scrollLeft; 
-            // 縦スクロールは vScrollTarget (親枠) が担当
-            startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
+            
+            // 開始位置を記録
+            if (vScrollTarget) {
+                startScrollLeft = vScrollTarget.scrollLeft;
+                startScrollTop = vScrollTarget.scrollTop;
+            } else {
+                startScrollLeft = container.scrollLeft;
+                startScrollTop = container.scrollTop;
+            }
+
+            // ★重要: 枠の外に出てもドラッグが続くように、documentに対してイベントを張る
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
         };
         
-        // ... (中略: mouseleave, mouseup はそのまま) ...
+        // 古いイベント設定が残らないようにクリア
+        container.onmousemove = null;
+        container.onmouseup = null;
+        container.onmouseleave = null;
 
-        container.onmousemove = (e) => {
-            if (!isDown || isTouch) return; 
-            e.preventDefault();
-            const x = e.pageX;
-            const y = e.pageY;
-            const walkX = (x - startX) * 1.5;
-            const walkY = (y - startY) * 1.5;
-            if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) { hasDragged = true; }
-            
-            // 横移動
-            container.scrollLeft = startScrollLeft - walkX;
-            // 縦移動
-            if (vScrollTarget) { vScrollTarget.scrollTop = startScrollTop - walkY; }
-        };
-
-        // ▼▼▼【追加】マウスホイール操作の修正 ▼▼▼
+        // マウスホイール操作（縦横斜め対応）
         container.addEventListener('wheel', (e) => {
             if (e.ctrlKey) return; // ズーム操作は除外
             e.preventDefault();
 
-            // 横スクロール
-            if (e.shiftKey && e.deltaX === 0) {
-                container.scrollLeft += e.deltaY;
-            } else {
-                container.scrollLeft += e.deltaX;
-            }
-
-            // 縦スクロール (対象の枠をスクロールさせる)
-            if (vScrollTarget) {
-                vScrollTarget.scrollTop += e.deltaY;
-            }
+            const target = vScrollTarget || container;
             
-            // 予約一覧モード(all)の時は時間軸も連動
-            if (mode === 'all' && axisContainer) {
-                axisContainer.scrollTop = vScrollTarget.scrollTop;
+            // 横スクロール (Shiftキー または 横ホイール)
+            if (e.shiftKey && e.deltaX === 0) {
+                target.scrollLeft += e.deltaY;
+            } else {
+                target.scrollLeft += e.deltaX;
             }
+            // 縦スクロール
+            target.scrollTop += e.deltaY;
+            
         }, { passive: false });
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     }
-    /* ▲▲▲ 追加ここまで ▲▲▲ */
+
     // 時間軸と予約データ準備
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
