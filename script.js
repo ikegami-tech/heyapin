@@ -1116,6 +1116,7 @@ function getParticipantIdsFromRes(res) {
     // 空白を除去して文字列型に統一
     return list.map(id => String(id).trim()).filter(id => id !== "");
 }
+
 async function saveBooking() {
     // 1. フォーム値の取得
     const id = document.getElementById('edit-res-id').value;
