@@ -1095,8 +1095,27 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
 }
 function closeModal() { document.getElementById('bookingModal').style.display = 'none'; }
 
-// 予約保存
-// 予約保存
+/* ==============================================
+   追加ヘルパー関数: 予約データから参加者IDリストを取り出す
+   ============================================== */
+function getParticipantIdsFromRes(res) {
+    // getVal関数は既存のコードにあるものを使用します
+    const pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
+    if (!pIds) return [];
+    
+    let list = [];
+    if (Array.isArray(pIds)) {
+        list = pIds;
+    } else if (typeof pIds === 'string') {
+        // カンマや空白で区切られた文字列を配列化
+        list = pIds.split(/[,、\s]+/);
+    } else if (typeof pIds === 'number') {
+        list = [pIds];
+    }
+    
+    // 空白を除去して文字列型に統一
+    return list.map(id => String(id).trim()).filter(id => id !== "");
+}
 async function saveBooking() {
     // 1. フォーム値の取得
     const id = document.getElementById('edit-res-id').value;
