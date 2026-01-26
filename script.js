@@ -482,11 +482,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.alignItems = "flex-start";
         container.style.position = "relative";
     }
-
-    /* ▼▼▼ 追加: ヘッダー固定化 (JS版 Sticky) ▼▼▼ */
-    // これを追加することで、スクロールしても部屋名が上に張り付きます
-    
-    const mapWrapper = document.querySelector('.map-wrapper');
     
     const updateStickyHeaders = () => {
         if (!container || !mapWrapper) return;
