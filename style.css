@@ -1483,3 +1483,18 @@ textarea#input-note::placeholder {
     margin-left: 5px;
   }
 }
+/* ==============================================
+   追加: マップ検索で選択中の部屋の強調表示
+   ============================================== */
+.room-col.target-highlight {
+  background-color: #fffde7 !important; /* 薄い黄色 */
+  border: 2px solid #f1c40f !important; /* 濃い黄色の枠線 */
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  z-index: 10; /* 他の列より手前に表示 */
+}
+
+/* ヘッダー部分も色を変える */
+.room-col.target-highlight .room-header {
+  background-color: #f1c40f !important;
+  color: #333;
+}
