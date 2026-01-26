@@ -534,6 +534,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         // クリックした瞬間（ドラッグ開始）
         container.onmousedown = (e) => {
             if (isTouch) return;
+            e.preventDefault();
             isDown = true;
             hasDragged = false;
             container.style.cursor = "grabbing";
