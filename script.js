@@ -484,54 +484,85 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     }
     
     const updateStickyHeaders = () => {
-        if (!container || !mapWrapper) return;
+        // コンテナの親枠（スクロールエリア）を取得
+        const scrollArea = container.closest('.calendar-scroll-area');
+        // アプリ全体のスクロール枠（map-wrapper）を取得
+        const wrapperEl = document.querySelector('.map-wrapper');
 
-        // タイムラインの表示領域（枠）の上端位置
-        const containerOffset = container.offsetTop;
-        // 現在のスクロール量
-        const scrollTop = mapWrapper.scrollTop;
+        if (!scrollArea || !wrapperEl) return;
 
-        // 「部屋をクリック...」が見切れる（スクロール量が枠の位置を超える）までは0
-        // それ以降は、スクロールした分だけヘッダーを下にずらす
+        // 1. 各要素の画面上の位置を取得
+        const areaRect = scrollArea.getBoundingClientRect();
+        const wrapperRect = wrapperEl.getBoundingClientRect();
+
+        // 2. 「どこで固定するか」の基準（天井）を計算
+        // map-wrapper の上端（ヘッダーの下）を基準線とする
+        const stickyCeiling = wrapperRect.top;
+
+        // 3. ズレ（translateY）を計算
+        // scrollAreaの上端(areaRect.top)が、基準線(stickyCeiling)より上に行ったら、その差分だけ下げる
         let translateY = 0;
-        if (scrollTop > containerOffset) {
-            translateY = scrollTop - containerOffset;
+        const diff = areaRect.top - stickyCeiling;
+
+        if (diff < 0) {
+            translateY = Math.abs(diff);
+        } else {
+            translateY = 0;
         }
 
-        // 行き過ぎ防止（枠の底を突き抜けないようにする）
-        // 40px はヘッダーの高さ
-        const maxTranslate = container.clientHeight - 40; 
+        // 4. 行き過ぎ防止（枠の底を突き抜けないようにする）
+        // (エリアの高さ - ヘッダーの高さ) 以上には下げない
+        const maxTranslate = scrollArea.clientHeight - 40; 
         if (translateY > maxTranslate) translateY = maxTranslate;
 
-        // 1. 部屋名のヘッダーを動かす
+        // 5. 部屋名のヘッダーを動かす
         const headers = container.querySelectorAll('.room-header');
         headers.forEach(h => {
             h.style.transform = `translateY(${translateY}px)`;
-            // 固定中は影をつけて見やすくする
-            h.style.boxShadow = translateY > 0 ? '0 2px 5px rgba(0,0,0,0.1)' : 'none';
-            // 手前に表示
-            h.style.zIndex = translateY > 0 ? '1000' : '60';
+            // 固定中は影をつける & 背景色を確実に白にする
+            if (translateY > 0) {
+                h.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
+                h.style.zIndex = '1000';
+                h.style.backgroundColor = '#fafafa'; // 背景色が透明だと透けるので指定
+            } else {
+                h.style.boxShadow = 'none';
+                h.style.zIndex = '60';
+                h.style.backgroundColor = '#fafafa';
+            }
         });
 
-        // 2. 左端の時間軸ヘッダーも一緒に動かす
+        // 6. 左端の時間軸ヘッダーも一緒に動かす
         const timeHeader = document.querySelector('.time-axis-header');
         if(timeHeader) {
              timeHeader.style.transform = `translateY(${translateY}px)`;
-             timeHeader.style.zIndex = translateY > 0 ? '1001' : '110';
-             timeHeader.style.boxShadow = translateY > 0 ? '0 2px 5px rgba(0,0,0,0.1)' : 'none';
+             if (translateY > 0) {
+                timeHeader.style.zIndex = '1001'; // 部屋名よりさらに手前
+                timeHeader.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
+             } else {
+                timeHeader.style.zIndex = '110';
+                timeHeader.style.boxShadow = 'none';
+             }
         }
     };
 
-    // スクロールするたびに位置を再計算
-    if (mapWrapper) {
+    // スクロールイベントの登録
+    // mapWrapper は renderVerticalTimeline 関数内で定義済みのものを使用
+    if (typeof mapWrapper !== 'undefined' && mapWrapper) {
         // 重複登録を防ぐため、一度削除してから登録
-        mapWrapper.removeEventListener('scroll', updateStickyHeaders);
+        // (関数オブジェクトの参照が変わると削除できないため、プロパティに保存しておく)
+        if (container._stickyHandler) {
+            mapWrapper.removeEventListener('scroll', container._stickyHandler);
+        }
+        container._stickyHandler = updateStickyHeaders;
+        
+        // スクロール時と、ウィンドウリサイズ時に再計算
         mapWrapper.addEventListener('scroll', updateStickyHeaders);
+        window.addEventListener('resize', updateStickyHeaders);
         
         // 初期位置合わせ
         updateStickyHeaders();
     }
-    /* ▲▲▲ 追加ここまで ▲▲▲ */
+
     // ドラッグスクロール & ホイールスクロール機能
     let isDown = false;
     let startX, startY, startScrollLeft, startScrollTop;
