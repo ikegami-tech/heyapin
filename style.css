@@ -130,26 +130,18 @@ header {
   flex-shrink: 0;
 }
 
-/* ★修正: スクロールエリアの厳密な制限 */
+/* 1. 全体のコンテナ設定 */
 .calendar-scroll-area {
   flex: 1; 
-  /* 画面からはみ出さないようにする設定 */
   width: 100%; 
   max-width: 100vw; 
-  
-  /* コンテナ内でスクロールさせる設定 */
-  overflow: auto; 
   position: relative;
   display: flex;
-  
-  /* スマホでの慣性スクロール有効化 */
-  -webkit-overflow-scrolling: touch;
-  
-  /* 背景を白にして透け防止 */
   background: white;
-  overflow-x: auto !important; 
-  overflow-y: visible !important;
-  height: auto !important;
+  
+  /* 文字選択防止 */
+  user-select: none;
+  -webkit-user-select: none;
 }
 /* ▼▼▼ 追加・修正: マップ画面下のタイムライン専用設定 ▼▼▼ */
 #map-timeline-section {
@@ -161,22 +153,23 @@ header {
   padding-bottom: 50px; 
 }
 
-/* マップ画面のタイムラインを「窓」のように固定高さにする */
+/* 2. マップ画面専用の高さ固定設定（ここが重要） */
 #map-timeline-section .calendar-scroll-area {
-  /* 画面の高さの50%に固定（ここはお好みで調整可: 60vhや500pxなど） */
-  height: 50vh !important; 
-  min-height: 300px !important;
+  /* 画面の高さの70%くらいを確保し、この枠内でスクロールさせる */
+  height: 70vh !important; 
+  min-height: 400px !important;
   
-  /* 枠内でスクロールさせるための設定 */
-  overflow: auto !important; 
+  /* 縦横スクロールを許可 */
+  overflow: auto !important;
   
-  /* 枠線をつけて独立させる */
+  /* 枠線 */
   border-top: 1px solid #ddd;
   border-bottom: 1px solid #ddd;
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+  
+  /* スクロールを滑らかに */
+  scroll-behavior: smooth;
 }
-/* ▲▲▲ 追加ここまで ▲▲▲ */
-/* ★修正: 時間軸の固定設定 */
+
 .time-axis-col { 
   width: 50px; 
   flex-shrink: 0; 
@@ -235,18 +228,21 @@ header {
   z-index: 10;
 }
 
-/* ★修正: 部屋ヘッダーの固定設定 */
+/* 3. 部屋名ヘッダーの固定設定 */
 .room-header { 
-  height: 40px; display: flex; align-items: center; justify-content: center;
+  height: 40px; 
+  display: flex; align-items: center; justify-content: center;
   font-size: 0.8rem; font-weight: bold;
   
-  /* 縦スクロール時に上に張り付く設定 */
-  position: sticky; 
+  /* ★これを入れるだけで固定されます */
+  position: sticky !important; 
   top: 0; 
-  z-index: 50;
+  z-index: 90 !important; 
   
-  background: #fafafa; border-bottom: 1px solid #ddd;
+  background: #fafafa; 
+  border-bottom: 1px solid #ddd;
   padding: 0 5px; text-align: center; word-break: break-all;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 .room-col.target-highlight .room-header {
