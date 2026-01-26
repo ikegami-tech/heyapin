@@ -1504,3 +1504,16 @@ textarea#input-note::placeholder {
   background-color: #f1c40f !important;
   color: #333;
 }
+/* ▼▼▼ 画面下の謎の余白を消すための強制上書き設定 ▼▼▼ */
+@media (min-width: 1024px) {
+  #dual-map-container {
+    /* autoになっていると余白が最大化してしまうため、固定値で上書きします */
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+  }
+  
+  /* 親枠の設定も念のため上書きで強制します */
+  .map-wrapper {
+    justify-content: flex-start !important;
+  }
+}
