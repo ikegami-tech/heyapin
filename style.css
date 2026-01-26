@@ -378,10 +378,10 @@ header {
     
     flex-shrink: 0;
 
-    /* ★追加: PCでも同様に、スペースがあれば中央、なければスクロール */
-    margin-top: auto !important;
-    margin-bottom: auto !important;
-  }
+    /* ▼▼▼ 修正: 上下の余白を固定値にする ▼▼▼ */
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+  }
   
   .floor-map-unit {
     display: block !important; 
