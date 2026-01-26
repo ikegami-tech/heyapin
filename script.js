@@ -877,6 +877,7 @@ function formatTimeInput(elm) {
     }
 }
 
+/* ----- 修正後の openModal 関数（ここだけ書き換えてください） ----- */
 function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin = 0) {
   const modal = document.getElementById('bookingModal');
   modal.style.display = 'flex';
@@ -888,6 +889,7 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
   document.getElementById('shuttle-search-input').value = "";
    
   if (res) {
+    // === 編集モード ===
     document.getElementById('modal-title').innerText = "予約編集";
     document.getElementById('edit-res-id').value = res.id;
     const rId = res._resourceId || res.resourceId || res.roomId; 
@@ -929,18 +931,21 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
     document.getElementById('btn-delete').style.display = 'inline-block';
 
   } else {
+    // === 新規予約モード ===
     document.getElementById('modal-title').innerText = "新規予約";
     document.getElementById('edit-res-id').value = "";
     if(defaultRoomId) document.getElementById('input-room').value = defaultRoomId;
     
-    let currentTabDate = document.getElementById('view-timeline').classList.contains('active') 
-        ? document.getElementById('timeline-date').value 
-        : document.getElementById('map-date').value;
+    // ▼▼▼【ここが修正箇所】エラーの原因だった日付取得ロジックを修正 ▼▼▼
+    const dateInput = document.getElementById('map-date');
+    let currentTabDate = dateInput ? dateInput.value : '';
     
     if(!currentTabDate) {
         const now = new Date();
         currentTabDate = `${now.getFullYear()}-${('0' + (now.getMonth() + 1)).slice(-2)}-${('0' + now.getDate()).slice(-2)}`;
     }
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+    
     document.getElementById('input-date').value = currentTabDate;
 
     const sHour = clickHour !== null ? clickHour : 9;
@@ -1607,7 +1612,109 @@ function initMapResizer() {
       setTimeout(initMapResizer, 500);
   }
 }
+/* ==============================================
+   追加: 空き状況検索 (Availability Search) 機能
+   ============================================== */
 
+// モーダルを開く
+function openAvailabilityModal() {
+    const modal = document.getElementById('availabilityModal');
+    if (!modal) return;
+    
+    const content = modal.querySelector('.modal-content');
+    if(content) content.classList.remove('modal-expanded');
+    
+    // 現在の日時を初期値セット
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = ('0' + (now.getMonth() + 1)).slice(-2);
+    const d = ('0' + now.getDate()).slice(-2);
+    
+    // 現在時刻から「次の00分か30分」を計算
+    let h = now.getHours();
+    let min = now.getMinutes();
+    if(min < 30) min = 0;
+    else { min = 30; } 
+    
+    document.getElementById('avail-date').value = `${y}-${m}-${d}`;
+    document.getElementById('avail-start').value = `${('0'+h).slice(-2)}:${('0'+min).slice(-2)}`;
+    // 終了時間は自動計算させる
+    autoSetAvailEndTime();
+
+    // 結果エリアリセット
+    document.getElementById('avail-result-container').innerHTML = '';
+
+    modal.style.display = 'flex';
+}
+
+// モーダルを閉じる
+function closeAvailabilityModal() {
+    const modal = document.getElementById('availabilityModal');
+    if(modal) modal.style.display = 'none';
+}
+
+// 検索実行
+function execAvailabilitySearch() {
+    const dateVal = document.getElementById('avail-date').value;
+    const startVal = document.getElementById('avail-start').value;
+    const endVal = document.getElementById('avail-end').value;
+
+    if (!dateVal || !startVal || !endVal) {
+        alert("日付と時間を正しく入力してください");
+        return;
+    }
+
+    const searchStart = new Date(`${dateVal}T${startVal}:00`);
+    const searchEnd = new Date(`${dateVal}T${endVal}:00`);
+
+    if (searchStart >= searchEnd) {
+        alert("開始時間は終了時間より前に設定してください");
+        return;
+    }
+
+    const resultContainer = document.getElementById('avail-result-container');
+    resultContainer.innerHTML = ""; 
+
+    let hasRoom = false;
+    const rooms = masterData.rooms;
+
+    rooms.forEach(room => {
+        // その部屋の「指定日」の予約を取得
+        const roomRes = masterData.reservations.filter(res => {
+            const rId = getVal(res, ['resourceId', 'roomId', 'room_id', 'resource_id', '部屋ID', '部屋']);
+            return String(rId) === String(room.roomId);
+        });
+
+        // 重複チェック
+        const isBusy = roomRes.some(res => {
+            const rStart = new Date(res._startTime || res.startTime);
+            const rEnd = new Date(res._endTime || res.endTime);
+            return (rStart < searchEnd && rEnd > searchStart);
+        });
+
+        const item = document.createElement('div');
+        item.className = 'avail-list-item';
+
+        const statusHtml = isBusy 
+            ? `<span class="status-ng">×</span>`
+            : `<span class="status-ok" onclick="transitionToBooking('${room.roomName}', '${dateVal}', '${startVal}', '${endVal}')">○</span>`;
+
+        item.innerHTML = `
+            <div><div class="avail-room-name">${room.roomName}</div></div>
+            <div>${statusHtml}</div>
+        `;
+        resultContainer.appendChild(item);
+        hasRoom = true;
+    });
+
+    if(!hasRoom) {
+        resultContainer.innerHTML = '<p style="padding:20px; text-align:center;">部屋データがありません</p>';
+    }
+    const modalContent = document.querySelector('#availabilityModal .modal-content');
+    if (modalContent) {
+        modalContent.classList.add('modal-expanded');
+    }
+}
 /* ==============================================
    11. 空き状況検索 ⇔ 予約画面連携
    ============================================== */
