@@ -1,3 +1,4 @@
+//改定java//
 const API_URL = "https://script.google.com/macros/s/AKfycbxMdWVjU8TfjmLXMMai2O9lADK5-0dnwGShYSzZD-lQ53nzHP2h9GmmYrMiPst--odS/exec";
 const SESSION_KEY_USER = 'bookingApp_User';       // 保存するキー名(ユーザー)
 const SESSION_KEY_TIME = 'bookingApp_LoginTime';  // 保存するキー名(時間)
@@ -328,40 +329,35 @@ function updateRoomSelect() {
   }
 }
 
-/* ==============================================
-   修正版: switchTab
-   (履歴タブ削除に伴い、タブハイライト処理を調整)
-   ============================================== */
 function switchTab(tabName) {
-    // すべてのビューとタブの非アクティブ化
-    document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    
-    // 対象ビューの表示
-    const targetView = document.getElementById('view-' + tabName);
-    if(targetView) targetView.classList.add('active');
-    
-    // タブのハイライト制御
-    const tabs = document.querySelectorAll('.nav-item');
-    // tabs[0]=マップ, tabs[1]=予約一覧。履歴はメニューに入ったのでタブ制御から除外
-    if(tabName === 'map-view' && tabs[0]) tabs[0].classList.add('active');
-    if(tabName === 'timeline' && tabs[1]) tabs[1].classList.add('active');
-    
-    // 各モードごとの初期化処理
-    if (tabName === 'map-view') {
-        setTimeout(() => { switchFloor(currentFloor); }, 50);
-    } else if (tabName === 'timeline') {
-        setTimeout(() => {
-            document.querySelectorAll('#view-timeline .floor-tab').forEach(tab => tab.classList.remove('active'));
-            const activeTab = document.getElementById(`timeline-tab-${currentTimelineFloor}f`);
-            if(activeTab) activeTab.classList.add('active');
-            
-            renderVerticalTimeline('all');
-            setTimeout(scrollToNow, 50); 
-        }, 0);
-    } else if (tabName === 'logs') {
-        renderLogs();
-    }
+  document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  
+  const targetView = document.getElementById('view-' + tabName);
+  if(targetView) targetView.classList.add('active');
+  
+  const tabs = document.querySelectorAll('.nav-item');
+  if(tabName === 'map-view' && tabs[0]) tabs[0].classList.add('active');
+  if(tabName === 'timeline' && tabs[1]) tabs[1].classList.add('active');
+  if(tabName === 'logs' && tabs[2]) tabs[2].classList.add('active');
+  
+  if (tabName === 'map-view') {
+      setTimeout(() => { switchFloor(currentFloor); }, 50);
+  } else if (tabName === 'timeline') {
+      setTimeout(() => {
+          document.querySelectorAll('#view-timeline .floor-tab').forEach(tab => tab.classList.remove('active'));
+          const activeTab = document.getElementById(`timeline-tab-${currentTimelineFloor}f`);
+          if(activeTab) activeTab.classList.add('active');
+          
+          renderVerticalTimeline('all');
+
+          // ★追加: 描画が終わった直後に、赤線を中央にする処理を呼ぶ
+          setTimeout(scrollToNow, 50); 
+
+      }, 0);
+  } else if (tabName === 'logs') {
+      renderLogs();
+  }
 }
 
 /* ==============================================
@@ -431,10 +427,6 @@ function switchFloor(floor) {
     if(activeArea) activeArea.classList.add('active');
 }
 
-/* ==============================================
-   修正版: selectRoomFromMap
-   (第2引数でスクロール指示を出すように変更)
-   ============================================== */
 function selectRoomFromMap(element) {
   const roomId = element.getAttribute('data-room-id');
   const roomObj = masterData.rooms.find(r => String(r.roomId) === String(roomId));
@@ -443,14 +435,10 @@ function selectRoomFromMap(element) {
     alert("エラー: 指定された部屋ID (" + roomId + ") が見つかりません。");
     return;
   }
-
   currentMapRoomId = roomId;
   document.getElementById('map-timeline-section').style.display = 'block';
   document.getElementById('map-selected-room-name').innerText = roomObj.roomName;
-  
-  // ★変更点: 第2引数に true を渡す（これで「クリックした時だけスクロールしてね」と伝えます）
-  renderVerticalTimeline('map', true);
-  
+  renderVerticalTimeline('map');
   document.getElementById('map-timeline-section').scrollIntoView({behavior: 'smooth'});
 }
 
@@ -498,50 +486,29 @@ function drawTimeAxis(containerId) {
   }
 }
 /* ==============================================
-   完全修正版: renderVerticalTimeline
-   (エラー解消・斜め移動・自動更新対策済み)
+   修正版v2: renderVerticalTimeline
+   (スマホタップ対応 & マップ時の滑らかスクロール対応)
    ============================================== */
-function renderVerticalTimeline(mode, shouldScroll = false) {
+function renderVerticalTimeline(mode) {
     let container, dateInputId, targetRooms, timeAxisId;
 
-    // --- 1. モード判定と対象部屋の取得 ---
+    // モード判定
     if (mode === 'all') {
         container = document.getElementById('rooms-container-all');
         dateInputId = 'timeline-date';
         timeAxisId = 'time-axis-all';
-        
         const floorConfig = mapConfig[currentTimelineFloor];
         if (floorConfig) {
             const floorRoomIds = floorConfig.areas.map(area => area.id);
             targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(r.roomId));
         } else { targetRooms = []; }
-
     } else if (mode === 'map') {
         container = document.getElementById('rooms-container-map');
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
-        
-        // 階数の自動判別
-        let targetFloor = currentFloor; 
-        if (currentMapRoomId) {
-            for (const [fKey, config] of Object.entries(mapConfig)) {
-                const hasRoom = config.areas.some(area => String(area.id) === String(currentMapRoomId));
-                if (hasRoom) {
-                    targetFloor = fKey;
-                    break;
-                }
-            }
-        }
-        const floorConfig = mapConfig[targetFloor]; 
-        if (floorConfig) {
-            const floorRoomIds = floorConfig.areas.map(area => area.id);
-            targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(r.roomId));
-        } else { 
-            targetRooms = masterData.rooms.filter(r => String(r.roomId) === String(currentMapRoomId));
-        }
+        targetRooms = masterData.rooms.filter(r => String(r.roomId) === String(currentMapRoomId));
     } else { return; }
 
-    // --- 2. コンテナの初期化 ---
     if (!targetRooms || targetRooms.length === 0) {
         if (container) container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
         return;
@@ -550,32 +517,34 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     let savedScrollTop = 0;
     let savedScrollLeft = 0;
     
-    // ▼ここを修正: mapWrapperを使わず、コンテナまたは親要素をターゲットにする
-    let vScrollTarget = null;
-    if (container) {
-        // マップモードなら親要素(.calendar-scroll-area)、一覧モードなら自分自身が縦スクロール対象
-        vScrollTarget = (mode === 'map') ? container.parentElement : container;
-        
+    // マップモードの場合、スクロール位置の保存対象は親ラッパーにする
+    const mapWrapper = document.querySelector('.map-wrapper');
+    if (mode === 'map' && mapWrapper) {
+        savedScrollTop = mapWrapper.scrollTop;
+    } else if (container) {
+        savedScrollTop = container.scrollTop;
         savedScrollLeft = container.scrollLeft;
-        if(vScrollTarget) savedScrollTop = vScrollTarget.scrollTop;
     }
 
+    // コンテナ初期化
     document.body.style.overflow = "hidden";
     if (container) {
         container.innerHTML = "";
-        
+        // マップモードと一覧モードでスタイルを分岐
         if (mode === 'map') {
             container.style.height = "auto";
-            container.style.overflowY = "visible"; 
+            container.style.overflowY = "visible"; // マップ時は中身に合わせて伸びる
         } else {
             container.style.height = "100%";
-            container.style.overflowY = "auto";
+            container.style.overflowY = "auto";    // 一覧時は枠内でスクロール
         }
-
         container.style.width = "100%";
         container.style.maxWidth = "100vw";
         container.style.overflowX = "auto";
         container.style.minWidth = "0";
+        
+        // ★修正: マップモード時は親へのスクロール連動(bubbling)を許可する
+        // これにより、強制スクロールJSを使わずに滑らかなネイティブスクロールが可能になります
         container.style.overscrollBehavior = (mode === 'map') ? "auto" : "contain";
 
         container.style.display = "flex";
@@ -588,46 +557,54 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.webkitUserSelect = "none";
     }
 
-    // --- 3. ドラッグスクロール機能 (斜め移動対応) ---
+    // ==============================================
+    // 【修正1】 ドラッグスクロール処理 (PCのみ有効化)
+    // ==============================================
     let isDown = false;
     let startX, startY;
     let startScrollLeft, startScrollTop;
     let hasDragged = false;
+    let isTouch = false; // スマホ判定フラグ
 
     if (container) {
+        // タッチ開始を検知したらフラグを立てる
+        container.addEventListener('touchstart', () => { isTouch = true; }, { passive: true });
+
+        // マップモード時のスクロール対象（親ラッパー または 自分自身）
+        const vScrollTarget = (mode === 'map') ? mapWrapper : container;
+
         container.onmousedown = (e) => {
+            // ★スマホならPC用ドラッグ処理を即座に中断（ネイティブスクロールに任せる）
+            if (isTouch) return;
+
             isDown = true;
             hasDragged = false;
-            container.style.cursor = 'grabbing';
-            
-            // クリック開始位置
+            container.style.cursor = "grabbing";
             startX = e.pageX;
             startY = e.pageY;
-            
-            // スクロール開始位置
             startScrollLeft = container.scrollLeft;
-            // vScrollTargetが取れていない場合は再取得
-            if (!vScrollTarget) vScrollTarget = (mode === 'map') ? container.parentElement : container;
+            // 縦スクロール位置の取得元を分岐
             startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
         };
 
-        const stopDrag = () => {
+        container.onmouseleave = () => { isDown = false; container.style.cursor = "default"; };
+        container.onmouseup = () => {
             isDown = false;
-            container.style.cursor = 'default';
+            container.style.cursor = "default";
+            // クリック判定のために少し遅らせてフラグを下ろす
             setTimeout(() => { hasDragged = false; }, 50);
         };
-        container.onmouseleave = stopDrag;
-        container.onmouseup = stopDrag;
 
         container.onmousemove = (e) => {
-            if (!isDown) return;
+            if (!isDown || isTouch) return; // スマホなら無視
             e.preventDefault();
-            
+
             const x = e.pageX;
             const y = e.pageY;
-            const walkX = (x - startX) * 1.5; 
+            const walkX = (x - startX) * 1.5;
             const walkY = (y - startY) * 1.5;
 
+            // 5px以上動いたらドラッグとみなす（クリック誤爆防止）
             if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
                 hasDragged = true;
             }
@@ -637,13 +614,16 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 vScrollTarget.scrollTop = startScrollTop - walkY;
             }
         };
+
+        // ★削除: 以前ここにあった「強制スクロール(wheelイベント)」は削除しました。
+        // container.style.overscrollBehavior = "auto" にしたことで不要になり、
+        // これを消すことでスクロールが滑らかになります。
     }
 
-    // --- 4. 時間軸と高さ計算 ---
+    // --- 以下、データ描画処理 (変更なし) ---
+    
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
-    
-    hourRowHeights = {}; 
     for (let h = START_HOUR; h < END_HOUR; h++) hourRowHeights[h] = BASE_HOUR_HEIGHT;
 
     const DYNAMIC_CHARS_PER_LINE = 12;
@@ -700,15 +680,17 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         axisContainer.style.overflow = "hidden";
         axisContainer.style.display = "block";
         
+        // 軸のスクロール同期
         if (mode === 'all') {
             container.onscroll = () => { axisContainer.scrollTop = container.scrollTop; };
+            axisContainer.scrollTop = savedScrollTop;
             axisContainer.onwheel = (e) => {
                 e.preventDefault();
                 container.scrollTop += e.deltaY;
                 container.scrollLeft += e.deltaX;
             };
-            axisContainer.scrollTop = savedScrollTop;
         } else {
+            // マップモードの場合は軸自体の高さもコンテンツに合わせる
             axisContainer.style.height = currentTop + "px";
         }
 
@@ -723,7 +705,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
-    // --- 5. 列の描画 ---
     targetRooms.forEach(room => {
         const col = document.createElement('div');
         col.className = 'room-col';
@@ -734,42 +715,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
 
-        if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
-            col.classList.add('target-highlight');
-            // クリック時のみスクロール
-            if (shouldScroll) {
-                setTimeout(() => {
-                    col.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                }, 100);
-            }
-        }
-　　　
-        col.addEventListener('click', (e) => {
-            // ドラッグ中の場合は選択しない
-            if (hasDragged) return;
-            // モードがマップでない場合は何もしない（予約一覧モードの挙動を守る）
-            if (mode !== 'map') return;
-
-            // 1. グローバル変数を更新
-            currentMapRoomId = room.roomId;
-
-            // 2. 他の列のハイライトを消して、自分につける
-            container.querySelectorAll('.room-col').forEach(c => c.classList.remove('target-highlight'));
-            col.classList.add('target-highlight');
-
-            // 3. マップ上のピンの選択状態を更新
-            document.querySelectorAll('.map-click-area').forEach(pin => {
-                pin.classList.remove('selected-room');
-                if (String(pin.getAttribute('data-room-id')) === String(room.roomId)) {
-                    pin.classList.add('selected-room');
-                }
-            });
-
-            // 4. タイトルテキストを更新
-            const titleEl = document.getElementById('map-selected-room-name');
-            if (titleEl) titleEl.innerText = room.roomName;
-        });
-        
         const header = document.createElement('div');
         header.className = 'room-header';
         header.innerText = room.roomName;
@@ -806,9 +751,15 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             body.appendChild(slot);
         }
 
+        // ==============================================
+        // 【修正3】 クリック判定 (スマホ対応)
+        // ==============================================
         body.onclick = (e) => {
-            if (hasDragged) return; 
+            // PCでの明らかなドラッグ操作後はキャンセル
+            if (!isTouch && hasDragged) return;
             if (e.target.closest('.v-booking-bar')) return;
+
+            // スマホ、またはPCのクリックの場合
             const rect = body.getBoundingClientRect();
             const clickY = e.clientY - rect.top;
             
@@ -856,78 +807,45 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 bar.style.height = (heightPx - 2) + "px";
                 bar.style.zIndex = "5";
                 bar.style.position = "absolute";
-               // 位置調整
                 bar.style.left = "2px";
                 bar.style.width = "calc(100% - 4px)";
 
-                // ▼▼▼ ここから修正後のコード ▼▼▼
                 let displayTitle = getVal(res, ['title', 'subject', '件名', 'タイトル']) || '予約';
                 const startTimeStr = `${start.getHours()}:${pad(start.getMinutes())}`;
                 const endTimeStr = `${end.getHours()}:${pad(end.getMinutes())}`;
                 const timeRangeStr = `${startTimeStr}-${endTimeStr}`;
 
-                // --- 表示名（参加者優先）の決定処理 ---
-                let displayNameText = "";
-                let pNames = [];
-
-                // 1. 参加者データの取得
-                let rawPIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
-                if (rawPIds) {
-                    let pList = [];
-                    if (Array.isArray(rawPIds)) {
-                        pList = rawPIds;
-                    } else if (typeof rawPIds === 'string') {
-                        pList = rawPIds.split(/[,、\s]+/);
-                    } else if (typeof rawPIds === 'number') {
-                        pList = [rawPIds];
-                    }
-
-                    // IDから名前を引く
-                    pList.forEach(pid => {
-                        const cleanId = String(pid).trim();
-                        if (cleanId) {
-                            const u = masterData.users.find(user => String(user.userId) === cleanId);
-                            pNames.push(u ? u.userName : cleanId);
-                        }
-                    });
+                let participantsStr = "";
+                let pIdsRaw = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
+                if (pIdsRaw) {
+                     const cleanIds = String(pIdsRaw).replace(/['"]/g, "").split(/[,、\s]+/);
+                     let names = [];
+                     cleanIds.forEach(id => {
+                         const trimId = id.trim();
+                         if(!trimId) return;
+                         const u = masterData.users.find(user => String(user.userId) === trimId);
+                         names.push(u ? u.userName : trimId);
+                     });
+                     if (names.length > 0) {
+                         if (names.length <= 4) {
+                             participantsStr = names.join(', ');
+                         } else {
+                             const showNames = names.slice(0, 4).join(', ');
+                             const restCount = names.length - 4;
+                             participantsStr = `${showNames} (+${restCount}名)`;
+                         }
+                     }
                 }
 
-                // 2. 表示文字列の作成 (★ここを変更しました)
-                if (pNames.length > 0) {
-                    const displayLimit = 4; // 表示する最大人数
-
-                    if (pNames.length <= displayLimit) {
-                        // 4人以下なら全員の名前をカンマ区切りで表示
-                        displayNameText = pNames.join(', ');
-                    } else {
-                        // 5人以上なら、4人分表示して残りを (+〇) にする
-                        const visibleNames = pNames.slice(0, displayLimit).join(', ');
-                        const remainingCount = pNames.length - displayLimit;
-                        displayNameText = `${visibleNames} (+${remainingCount})`;
-                    }
-                } else {
-                    // 参加者がいない場合：登録者(予約者)名を表示
-                    displayNameText = res.operatorName || '';
-                    if ((!displayNameText) && (res.reserverId || res.reserver_id)) {
-                         const rId = res.reserverId || res.reserver_id;
-                         const rUser = masterData.users.find(u => String(u.userId) === String(rId));
-                         if (rUser) displayNameText = rUser.userName;
-                    }
-                }
-                
-                // 名前が特定できなかった場合のデフォルト
-                if (!displayNameText) displayNameText = '(名前なし)';
-
-               // 3. HTMLの生成
                 bar.innerHTML = `
-                      <div style="width:100%; font-weight:bold; font-size:0.85em; line-height:1.1; margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${timeRangeStr}</div>
+                      <div style="width:100%; font-weight:bold; font-size:0.85em; line-height:1.1; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${timeRangeStr}</div>
                       <div style="width:100%; font-weight:bold; font-size:0.9em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayTitle}</div>
-                      <div style="width:100%; font-weight:bold; font-size:0.85em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;">${displayNameText}</div>
+                      <div style="width:100%; font-weight:bold; font-size:0.9em; line-height:1.1; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${participantsStr}</div>
                   `;
-                // ▲▲▲ 修正ここまで ▲▲▲
 
                 bar.onclick = (e) => {
-                    if (hasDragged) return;
+                    // PCでのドラッグ後はキャンセル
+                    if (!isTouch && hasDragged) return;
                     e.stopPropagation();
                     openDetailModal(res);
                 };
@@ -939,26 +857,31 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.appendChild(col);
     });
 
-    // --- 6. スクロール復元処理 (自動更新時) ---
-    // ここで mapWrapper は使わず、vScrollTarget を使う
+    // ==============================================
+    // 【修正箇所】スクロール復元 & ズレ補正
+    // ==============================================
     if (container) {
-        container.scrollLeft = savedScrollLeft;
-        
-        // vScrollTargetが未定義なら再取得を試みる
-        if (!vScrollTarget) vScrollTarget = (mode === 'map') ? container.parentElement : container;
-        
-        if (vScrollTarget) {
-            vScrollTarget.scrollTop = savedScrollTop;
+        // 1. スクロール位置の復元
+        if (mode === 'map' && mapWrapper) {
+             mapWrapper.scrollTop = savedScrollTop;
+        } else {
+             container.scrollTop = savedScrollTop;
+             container.scrollLeft = savedScrollLeft;
         }
         
         const axisContainerEnd = document.getElementById(timeAxisId);
         
+        // 2. ★追加：予約一覧モードの場合、横スクロールバーの分だけ時間軸の下に詰め物をする
         if (mode === 'all' && axisContainerEnd) {
             axisContainerEnd.scrollTop = savedScrollTop;
+            
+            // コンテナ全体の高さ - 中身の表示高さ = 横スクロールバーの高さ
             const scrollBarHeight = container.offsetHeight - container.clientHeight;
+            
+            // スクロールバーが出ている場合のみ実行
             if (scrollBarHeight > 0) {
                 const spacer = document.createElement('div');
-                spacer.style.height = scrollBarHeight + 'px'; 
+                spacer.style.height = scrollBarHeight + 'px'; // ズレている分の高さを確保
                 spacer.style.width = '1px';
                 spacer.style.flexShrink = '0';
                 axisContainerEnd.appendChild(spacer);
@@ -1171,30 +1094,9 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
   if (modalContent) modalContent.scrollTop = 0;
 }
 function closeModal() { document.getElementById('bookingModal').style.display = 'none'; }
-/* ==============================================
-   追加ヘルパー関数: 予約データから参加者IDリストを取り出す
-   ============================================== */
-function getParticipantIdsFromRes(res) {
-    const pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
-    if (!pIds) return [];
-    
-    let list = [];
-    if (Array.isArray(pIds)) {
-        list = pIds;
-    } else if (typeof pIds === 'string') {
-        // カンマや空白で区切られた文字列を配列化
-        list = pIds.split(/[,、\s]+/);
-    } else if (typeof pIds === 'number') {
-        list = [pIds];
-    }
-    
-    // 空白を除去して文字列型に統一
-    return list.map(id => String(id).trim()).filter(id => id !== "");
-}
 
-/* ==============================================
-   修正版: 予約保存処理 (ダブルブッキング防止機能付き)
-   ============================================== */
+// 予約保存
+// 予約保存
 async function saveBooking() {
     // 1. フォーム値の取得
     const id = document.getElementById('edit-res-id').value;
@@ -1236,17 +1138,20 @@ async function saveBooking() {
     const endTime = `${date.replace(/-/g, '/')} ${end}`;
     const pIds = Array.from(selectedParticipantIds).join(', ');
 
-    // ▼▼▼ 重複チェック処理 ▼▼▼
+    // ▼▼▼ 重複チェック処理 (ここを追加しました) ▼▼▼
     const newStartObj = new Date(startTime);
     const newEndObj = new Date(endTime);
     const checkTargets = Array.from(selectedParticipantIds);
 
+    // 選択された参加者一人ひとりについてチェック
     const conflictFound = checkTargets.some(targetUserId => {
+        // 全予約データを走査
         const conflictRes = masterData.reservations.find(existingRes => {
             // 自分自身の編集は除外
             if (id && String(existingRes.id) === String(id)) return false;
 
             // 時間の重複チェック
+            // (既存開始 < 今回終了) かつ (既存終了 > 今回開始) なら被っている
             const exStart = new Date(existingRes._startTime || existingRes.startTime);
             const exEnd = new Date(existingRes._endTime || existingRes.endTime);
             if (isNaN(exStart.getTime()) || isNaN(exEnd.getTime())) return false;
@@ -1259,11 +1164,14 @@ async function saveBooking() {
             return exMemberIds.includes(targetUserId);
         });
 
+        // 重複が見つかった場合のアラート表示
         if (conflictRes) {
             const conflictingUser = masterData.users.find(u => String(u.userId) === String(targetUserId));
             const userName = conflictingUser ? conflictingUser.userName : targetUserId;
+            
             const roomObj = masterData.rooms.find(r => String(r.roomId) === String(conflictRes._resourceId || conflictRes.resourceId));
             const roomName = roomObj ? roomObj.roomName : "不明な部屋";
+            
             const cStart = new Date(conflictRes._startTime || conflictRes.startTime);
             const cEnd = new Date(conflictRes._endTime || conflictRes.endTime);
             const timeStr = `${pad(cStart.getHours())}:${pad(cStart.getMinutes())} - ${pad(cEnd.getHours())}:${pad(cEnd.getMinutes())}`;
@@ -1278,12 +1186,12 @@ async function saveBooking() {
                 `--------------------------------\n` +
                 `同時刻に複数の部屋を予約することはできません。`
             );
-            return true;
+            return true; // ループを抜ける
         }
         return false;
     });
 
-    if (conflictFound) return;
+    if (conflictFound) return; // 重複があったらここで処理終了
     // ▲▲▲ 重複チェック終了 ▲▲▲
 
     // 4. APIへのデータ送信
@@ -1295,14 +1203,12 @@ async function saveBooking() {
         endTime: endTime,
         reserverId: currentUser.userId,
         operatorName: currentUser.userName,
-        participantIds: pIds,
+        participantIds: pIds, 
         title: title,
-        note: note
+        note: note 
     };
 
-    // ▼ awaitを使うため、関数自体に async が必要です
     const result = await callAPI(params);
-    
     if(result.status === 'success') {
         closeModal();
         loadAllData(true);
@@ -1310,6 +1216,7 @@ async function saveBooking() {
         alert("エラー: " + result.message);
     }
 }
+
 async function deleteBooking() {
     const id = document.getElementById('edit-res-id').value;
     if (!id || !confirm("本当にこの予約を削除しますか？")) return;
@@ -2322,15 +2229,4 @@ async function sendContactFeedback() {
     document.getElementById('loading').style.display = 'none';
     alert("通信エラーが発生しました");
   }
-}
-/* ==============================================
-   追加機能: 歯車メニューから履歴を開く
-   ============================================== */
-function openHistoryFromMenu() {
-    // メニューを閉じる
-    const dropdown = document.getElementById("settings-dropdown");
-    if(dropdown) dropdown.classList.remove("show");
-
-    // 履歴画面（logs）に切り替える
-    switchTab('logs');
 }
