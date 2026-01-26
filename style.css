@@ -145,10 +145,11 @@ header {
 
 /* マップタイムライン用の特例 */
 #map-timeline-section .calendar-scroll-area {
-  height: auto !important; min-height: 0 !important;
-  overflow: visible !important; display: flex !important;
+  height: auto !important; 
+  min-height: 500px !important; /* ←念のため最小高さを確保しておくと安心です */
+  overflow: visible !important; 
+  display: flex !important;
 }
-
 /* ==============================================
    6. 予約バー (.v-booking-bar)
    ============================================== */
