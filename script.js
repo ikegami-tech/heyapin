@@ -210,11 +210,11 @@ function initUI() {
   renderGroupButtons();
   
   currentFloor = 7;
-  currentTimelineFloor = 7;
-
   renderDualMaps(); // 7階・6階一括描画
   switchFloor(7);   // 初期表示
-  switchTab('map-view');
+  
+  document.getElementById('view-map-view').classList.add('active');
+
   initCustomTimePickers();
   updateRefreshTime();
   // ▼▼▼ 追加: 自動更新を開始 ▼▼▼
@@ -305,9 +305,8 @@ function refreshUI() {
   renderGroupButtons();
   updateRoomSelect();
 
-  if (document.getElementById('view-timeline').classList.contains('active')) {
-      renderVerticalTimeline('all');
-  } else if (document.getElementById('view-map-view').classList.contains('active')) {
+  // マップ検索画面が表示されている場合のみ更新
+  if (document.getElementById('view-map-view').classList.contains('active')) {
       if(document.getElementById('map-timeline-section').style.display !== 'none') {
           renderVerticalTimeline('map');
       }
@@ -330,47 +329,22 @@ function updateRoomSelect() {
 }
 
 function switchTab(tabName) {
-  // すべてのビューとタブの非アクティブ化
+  // すべてのビューの非アクティブ化
   document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   
   // 対象ビューの表示
   const targetView = document.getElementById('view-' + tabName);
   if(targetView) targetView.classList.add('active');
   
-  // タブのハイライト制御 (タブが2つになったためロジックを変更)
-  const tabs = document.querySelectorAll('.nav-item');
-  
-  // マップ検索タブ (インデックス0)
-  if(tabName === 'map-view' && tabs[0]) tabs[0].classList.add('active');
-  // 予約一覧タブ (インデックス1)
-  if(tabName === 'timeline' && tabs[1]) tabs[1].classList.add('active');
-  
-  // ※履歴(logs)の場合は、どのタブも選択状態にしないため処理なし
-  
   // 各モードごとの初期化処理
   if (tabName === 'map-view') {
+      // マップに戻ってきたら現在の階を表示
       setTimeout(() => { switchFloor(currentFloor); }, 50);
-  } else if (tabName === 'timeline') {
-      setTimeout(() => {
-          document.querySelectorAll('#view-timeline .floor-tab').forEach(tab => tab.classList.remove('active'));
-          const activeTab = document.getElementById(`timeline-tab-${currentTimelineFloor}f`);
-          if(activeTab) activeTab.classList.add('active');
-          
-          renderVerticalTimeline('all');
-          setTimeout(scrollToNow, 50); 
-      }, 0);
   } else if (tabName === 'logs') {
       renderLogs();
   }
 }
 
-/* ==============================================
-   4. マップ関連処理
-   ============================================== */
-/* ==============================================
-   4. マップ関連処理 (renderDualMaps修正版)
-   ============================================== */
 function renderDualMaps() {
     [7, 6].forEach(floor => {
         const config = mapConfig[floor];
@@ -475,13 +449,16 @@ function switchTimelineFloor(floor) {
 
 function changeDate(days, inputId) {
   const input = document.getElementById(inputId);
+  if (!input) return; // エラー防止
   const d = new Date(input.value);
   d.setDate(d.getDate() + days);
   input.valueAsDate = d;
-  if(inputId === 'timeline-date') renderVerticalTimeline('all');
-    else if(inputId === 'map-date') renderVerticalTimeline('map');
+  
+  // マップ検索の日付が変更された場合のみ再描画
+  if(inputId === 'map-date') {
+      renderVerticalTimeline('map');
+  }
 }
-
 // 軸描画（共通）
 function drawTimeAxis(containerId) {
   const container = document.getElementById(containerId);
