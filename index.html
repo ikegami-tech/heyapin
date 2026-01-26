@@ -60,11 +60,6 @@
     </div>
   </header>
 
-  <div class="nav-tabs">
-    <div class="nav-item active" onclick="switchTab('map-view')">マップ検索</div>
-    <div class="nav-item" onclick="switchTab('timeline')">予約一覧</div>
-  </div>
-
   <div id="view-map-view" class="view-container active">
     <div class="map-wrapper">
       
@@ -111,23 +106,7 @@
     </div>
   </div>
   
-  <div id="view-timeline" class="view-container">
-    <div class="floor-selector mt-10">
-        <button class="floor-tab active" onclick="switchTimelineFloor(7)" id="timeline-tab-7f">7階</button>
-        <button class="floor-tab" onclick="switchTimelineFloor(6)" id="timeline-tab-6f">6階</button>
-    </div>
-    
-    <div class="date-controller">
-      <button type="button" onclick="changeDate(-1, 'timeline-date')">&lt;</button>
-      <input type="date" id="timeline-date" onchange="renderVerticalTimeline('all')">
-      <button type="button" onclick="changeDate(1, 'timeline-date')">&gt;</button>
-      </div>
-
-    <div class="calendar-scroll-area">
-      <div class="time-axis-col" id="time-axis-all"><div class="time-axis-header"></div></div>
-      <div class="rooms-container" id="rooms-container-all"></div>
-    </div>
-
+  <div id="view-map-view" class="view-container active">
     <button class="fab-avail-btn" onclick="openAvailabilityModal()">
       <span>空室</span>
       <span>確認</span>
