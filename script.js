@@ -494,8 +494,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         
         // ▼▼▼【修正箇所】スクロールさせる対象を「親エリア(.calendar-scroll-area)」に変更 ▼▼▼
         // 以前: const vScrollTarget = (mode === 'map') ? mapWrapper : container;
-        const vScrollTarget = (mode === 'map') ? container.closest('.calendar-scroll-area') : container;
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+      const vScrollTarget = container.closest('.calendar-scroll-area');
 
         container.onmousedown = (e) => {
             if (isTouch) return;
