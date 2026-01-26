@@ -364,28 +364,35 @@ header {
 .detail-table td { padding: 10px; border-bottom: 1px solid #eee; }
 
 /* PC・横長画面表示時のマップ調整 (1024px以上) */
+/* PC・横長画面表示時のマップ調整 (1024px以上) */
 @media (min-width: 1024px) {
+  /* スマホ用パーツを非表示 */
   .floor-selector { display: none !important; }
   .pc-floor-title { display: none !important; }
   
+  /* コンテナの設定：余白を固定値に変更 */
   #dual-map-container { 
     width: 100%; 
-    height: auto; /* ここは auto のままでOK */
+    height: auto; 
     box-sizing: border-box; 
     display: flex;
     justify-content: center;
     align-items: center !important;
-    
     flex-shrink: 0;
 
-    /* ▼▼▼ 修正: 上下の余白を固定値にする ▼▼▼ */
-    margin-top: 10px !important;
-    margin-bottom: 10px !important;
-  }
+    /* ★ここが修正箇所：auto をやめて 10px にする */
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+  }
   
+  /* ★追加：全体を上詰めに強制する */
+  .map-wrapper {
+    justify-content: flex-start !important;
+  }
+
+  /* マップユニットの設定 */
   .floor-map-unit {
     display: block !important; 
-    /* 縮小禁止 */
     flex: 0 0 auto;
     width: auto; 
     max-width: 50%; 
@@ -395,19 +402,18 @@ header {
     align-items: center;
   }
 
-  /* PC: ラッパーの幅を中身に合わせる */
+  /* 画像ラッパーの設定 */
   .map-inner-wrapper {
     width: fit-content;
   }
   
-  /* PC: 画像の高さを制限して全体を表示 */
+  /* 画像の設定 */
   .map-image {
     width: auto !important; 
     max-height: 65vh !important; 
     max-width: 100% !important;
   }
 }
-
 /* ==============================================
    9. モーダル & 編集フォーム
    ============================================== */
@@ -1503,17 +1509,4 @@ textarea#input-note::placeholder {
 .room-col.target-highlight .room-header {
   background-color: #f1c40f !important;
   color: #333;
-}
-/* ▼▼▼ 画面下の謎の余白を消すための強制上書き設定 ▼▼▼ */
-@media (min-width: 1024px) {
-  #dual-map-container {
-    /* autoになっていると余白が最大化してしまうため、固定値で上書きします */
-    margin-top: 10px !important;
-    margin-bottom: 10px !important;
-  }
-  
-  /* 親枠の設定も念のため上書きで強制します */
-  .map-wrapper {
-    justify-content: flex-start !important;
-  }
 }
