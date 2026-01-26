@@ -1,5 +1,5 @@
 //改定java//
-const API_URL = "https://script.google.com/macros/s/AKfycbz2MPg46C9xBFq9enpWqha0YNcfTzilPd4AWicd10mRSKzIjjpbk0sqxyo-Esk70Zce/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwRT-tfBEJZw1bSdM7waIDITEeNve9boU6detJJUB5fa3cxISVrGyCdAGe8ymPIyluD/exec";
 const SESSION_KEY_USER = 'bookingApp_User';       // 保存するキー名(ユーザー)
 const SESSION_KEY_TIME = 'bookingApp_LoginTime';  // 保存するキー名(時間)
 const SESSION_DURATION = 12 * 60 * 60 * 1000;     // 12時間 (ミリ秒)
