@@ -129,19 +129,55 @@ header {
   display: flex; gap: 10px; justify-content: center;
   flex-shrink: 0;
 }
+
+/* ★修正: スクロールエリアの厳密な制限 */
 .calendar-scroll-area {
-  flex: 1; overflow: auto; position: relative;
-  background: white; display: flex;
+  flex: 1; 
+  /* 画面からはみ出さないようにする設定 */
+  width: 100%; 
+  max-width: 100vw; 
+  
+  /* コンテナ内でスクロールさせる設定 */
+  overflow: auto; 
+  position: relative;
+  display: flex;
+  
+  /* スマホでの慣性スクロール有効化 */
+  -webkit-overflow-scrolling: touch;
+  
+  /* 背景を白にして透け防止 */
+  background: white;
 }
+
+/* ★修正: 時間軸の固定設定 */
 .time-axis-col { 
-  width: 50px; flex-shrink: 0; background: #fff;
+  width: 50px; 
+  flex-shrink: 0; 
+  
+  /* スクロールしても左に張り付く設定 */
+  position: sticky; 
+  left: 0; 
+  z-index: 100 !important;
+  
+  /* 重要な修正: 背景を白にして、裏に潜り込んだ予約枠を見えなくする */
+  background: #fff;
   border-right: 1px solid #ddd;
-  position: sticky; left: 0; z-index: 100 !important;
+  
+  /* 影をつけて境界をわかりやすくする（お好みで削除可） */
+  box-shadow: 2px 0 5px rgba(0,0,0,0.05);
 }
+
 .time-axis-header { 
-  height: 40px; border-bottom: 1px solid #ddd; background: #f9f9f9;
-  position: sticky; top: 0; z-index: 110 !important;
+  height: 40px; 
+  border-bottom: 1px solid #ddd; 
+  background: #f9f9f9;
+  
+  /* 縦スクロール時に上に張り付く設定 */
+  position: sticky; 
+  top: 0; 
+  z-index: 110 !important;
 }
+
 .time-label {
   border-bottom: 1px solid #eee;
   font-size: 0.7rem; color: #888;
@@ -149,32 +185,43 @@ header {
   width: 100%;
 }
 
-/* 部屋コンテナ */
 .rooms-container { 
-  display: flex; min-width: fit-content; 
-  min-height: 100px; /* 潰れ防止 */
+  display: flex; 
+  /* 中身に合わせて横幅を確保（これを親のoverflowで切る） */
+  min-width: fit-content; 
+  min-height: 100px;
   flex-grow: 1; 
 }
+
 .room-col { 
   flex: 1 0 120px; min-width: 120px;
   border-right: 1px solid #eee; position: relative;
   display: flex; flex-direction: column;
   overflow: visible; z-index: 1;
 }
-/* マップ検索で選択中の部屋の強調表示 */
+
+/* 選択中の部屋の強調表示 */
 .room-col.target-highlight {
   background-color: #fffde7 !important;
   border: 2px solid #f1c40f !important;
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
   z-index: 10;
 }
+
+/* ★修正: 部屋ヘッダーの固定設定 */
 .room-header { 
   height: 40px; display: flex; align-items: center; justify-content: center;
   font-size: 0.8rem; font-weight: bold;
+  
+  /* 縦スクロール時に上に張り付く設定 */
+  position: sticky; 
+  top: 0; 
+  z-index: 50;
+  
   background: #fafafa; border-bottom: 1px solid #ddd;
-  position: sticky; top: 0; z-index: 50;
   padding: 0 5px; text-align: center; word-break: break-all;
 }
+
 .room-col.target-highlight .room-header {
   background-color: #f1c40f !important; color: #333;
 }
@@ -184,38 +231,28 @@ header {
   border-bottom: 1px solid #eee; width: 100%; position: relative;
 }
 
-/* ★重要修正: マップタイムラインエリアの表示確保 */
+/* マップタイムラインエリアの表示確保 */
 #map-timeline-section {
   display: block !important;
-  width: 100%;
+  
+  /* ★重要: ここで横幅を制限しないと画面全体が広がる */
+  width: 100%; 
+  max-width: 100%;
+  
   flex-shrink: 0; 
-  padding-bottom: 50px; /* 下部余白 */
+  padding-bottom: 50px; 
   margin-top: 10px;
   border-top: 2px solid #ddd;
   padding-top: 10px;
+  box-sizing: border-box; /* パディングを含めて100%にする */
 }
-/* 以前の display: flex !important; min-height: 0; の競合を解消 */
+
 #map-timeline-section .calendar-scroll-area {
   height: auto !important;
-  min-height: 300px !important; /* 高さを確保 */
-  overflow: visible !important;
+  min-height: 300px !important;
+  overflow: auto !important; /* 両方向スクロール許可 */
   display: flex !important;
 }
-.map-room-title { text-align: center; margin: 5px 0; }
-
-/* 予約一覧(タイムライン)のフロア切替を常に表示 */
-#view-timeline .floor-selector { display: flex !important; }
-
-/* 現在時刻ライン */
-.current-time-line {
-  position: absolute; left: 0; width: 100%; height: 2px;
-  background-color: #ea4335; z-index: 30; pointer-events: none;
-}
-.current-time-line::before {
-  content: ""; position: absolute; left: -5px; top: -4px;
-  width: 10px; height: 10px; background-color: #ea4335; border-radius: 50%;
-}
-
 /* ==============================================
    6. 予約バー (.v-booking-bar)
    ============================================== */
