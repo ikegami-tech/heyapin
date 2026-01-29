@@ -557,8 +557,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 document.addEventListener('mouseup', onMouseUp);
             };
         }
-    }
-        
+  
         // 古いイベント設定が残らないようにクリア
         container.onmousemove = null;
         container.onmouseup = null;
