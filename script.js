@@ -1079,9 +1079,12 @@ async function saveBooking() {
     const endTime = `${date.replace(/-/g, '/')} ${end}`;
     const pIds = Array.from(selectedParticipantIds).join(', ');
 
-    const newStartObj = new Date(startTime);
+   const newStartObj = new Date(startTime);
     const newEndObj = new Date(endTime);
     const checkTargets = Array.from(selectedParticipantIds);
+
+    // ▼▼▼ 変更箇所: エラー変数の準備 ▼▼▼
+    let conflictMessage = null;
 
     const conflictFound = checkTargets.some(targetUserId => {
         const conflictRes = masterData.reservations.find(existingRes => {
@@ -1109,23 +1112,27 @@ async function saveBooking() {
             const cEnd = new Date(conflictRes._endTime || conflictRes.endTime);
             const timeStr = `${pad(cStart.getHours())}:${pad(cStart.getMinutes())} - ${pad(cEnd.getHours())}:${pad(cEnd.getMinutes())}`;
 
-            alert(
-                `【登録エラー：重複予約】\n\n` +
+            // ▼▼▼ 変更箇所: alertではなくメッセージを生成して保持 ▼▼▼
+            conflictMessage = 
+                `【重複警告】\n\n` +
                 `「${userName}」さんは、以下の予約と時間が重なっています。\n` +
                 `--------------------------------\n` +
                 `場所： ${roomName}\n` +
                 `時間： ${timeStr}\n` +
                 `用件： ${getVal(conflictRes, ['title', 'subject']) || '(なし)'}\n` +
                 `--------------------------------\n` +
-                `同時刻に複数の部屋を予約することはできません。`
-            );
+                `このまま重複して登録しますか？`;
+            
             return true; 
         }
         return false;
     });
 
-    if (conflictFound) return; 
-
+    // ▼▼▼ 変更箇所: confirmで確認し、キャンセルの場合のみ return する ▼▼▼
+    // (元のコードにあった if (conflictFound) return; をこれに置き換えます)
+    if (conflictFound) {
+        if (!confirm(conflictMessage)) return; 
+    }
     const params = {
         action: id ? 'updateReservation' : 'createReservation',
         reservationId: id,
