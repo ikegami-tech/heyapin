@@ -492,7 +492,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.position = "relative";
     }
     
-    // ==============================================
+   // ==============================================
     // 【修正】 ドラッグスクロール処理 (PCのみ有効化 & マウスホイール対応)
     // ==============================================
     let isDown = false;
@@ -508,6 +508,8 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         // マップモード時のスクロール対象（親ラッパー または 自分自身）
         // マップ画面では、タイムラインだけでなく画面全体(mapWrapper)を縦スクロールさせるため
         const mapWrapper = document.querySelector('.map-wrapper');
+        
+        // ★修正ポイント: マップモードなら親ラッパー、それ以外ならコンテナ自身を縦スクロール対象にする
         const vScrollTarget = (mode === 'map') ? mapWrapper : container;
 
         // 1. マウスホイール (Shift+ホイール または 横スクロール操作への対応)
@@ -544,8 +546,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             
             startX = e.pageX;
             startY = e.pageY;
+            
+            // 現在のスクロール位置を保存
             startScrollLeft = container.scrollLeft;
-            // 縦スクロール位置の取得元を分岐
+            // 縦スクロール位置の取得元を分岐 (vScrollTargetがあればそこから、なければ0)
             startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
         };
 
@@ -576,6 +580,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 hasDragged = true;
             }
 
+            // ★ここが重要: 横スクロールと縦スクロールを同時に適用
             container.scrollLeft = startScrollLeft - walkX;
             if (vScrollTarget) {
                 vScrollTarget.scrollTop = startScrollTop - walkY;
