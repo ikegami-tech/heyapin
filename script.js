@@ -433,25 +433,24 @@ function drawTimeAxis(containerId) {
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
 
+    // 1. モードによる対象コンテナ等の決定
     if (mode === 'all') {
         container = document.getElementById('rooms-container-all');
         dateInputId = 'timeline-date';
         timeAxisId = 'time-axis-all';
         const floorConfig = mapConfig[currentTimelineFloor];
         if (floorConfig) {
-            const floorRoomIds = floorConfig.areas.map(area => String(area.id)); // 文字列比較用に変換
+            const floorRoomIds = floorConfig.areas.map(area => String(area.id)); 
             targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(String(r.roomId)));
         } else { targetRooms = []; }
-
     } else if (mode === 'map') {
         container = document.getElementById('rooms-container-map');
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
         
-        // ★修正: 7階→6階の順序で、かつ文字列型で比較して確実に部屋を取得
+        // 7階→6階の順序で、かつ文字列型で比較して確実に部屋を取得
         targetRooms = [];
         const floorOrder = [7, 6]; 
-
         floorOrder.forEach(floor => {
             const config = mapConfig[floor];
             if (config && config.areas) {
@@ -461,6 +460,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 });
             }
         });
+        // マップで選択中の部屋があればハイライトするためにIDを保持しておく(描画は全部屋)
     } else { return; }
 
     if (!targetRooms || targetRooms.length === 0) {
@@ -468,126 +468,135 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         return;
     }
 
-    // スクロール位置保存
+    // 2. スクロール位置保存 (再描画対策)
     let savedScrollTop = 0, savedScrollLeft = 0;
     const mapWrapper = document.querySelector('.map-wrapper');
     if (mode === 'map' && mapWrapper) {
         savedScrollTop = mapWrapper.scrollTop;
-        if(container) savedScrollLeft = container.scrollLeft;
     } else if (container) {
         savedScrollTop = container.scrollTop;
-        savedScrollLeft = container.scrollLeft;
+        savedScrollLeft = container.scrollLeft; // containerが横スクロールを持つためここから保存
     }
 
+    // 3. コンテナの初期化とスタイル設定
     if (container) {
         container.innerHTML = "";
-        container.style.height = "auto"; 
-        container.style.overflowY = "visible"; 
+        
+        // ★重要: スクロールバーの持ち主を明確にする設定
+        if (mode === 'map') {
+            // マップモード: 縦スクロールは親(mapWrapper)に任せるため auto/visible
+            container.style.height = "auto";
+            container.style.overflowY = "visible"; 
+        } else {
+            // 一覧モード: 縦スクロールは自分自身(container)が持つか、親が持つか
+            // CSS構造上、container自体がスクロール枠になるように調整
+            container.style.height = "100%";
+            container.style.overflowY = "auto";
+        }
+        
+        // 横スクロールは常にcontainerが持つ
         container.style.width = "100%";
         container.style.maxWidth = "100vw";
-        container.style.overflowX = "auto";
+        container.style.overflowX = "auto"; 
+        
         container.style.display = "flex";
         container.style.flexWrap = "nowrap";
         container.style.alignItems = "flex-start";
         container.style.position = "relative";
+        
+        // スクロールの連鎖(バウンス)制御
+        container.style.overscrollBehavior = (mode === 'map') ? "auto" : "contain";
+        
+        // カーソル設定
+        container.style.cursor = "grab";
+        container.style.userSelect = "none";
     }
     
-  // ▼▼▼【再修正】ドラッグスクロール & ホイールスクロール機能 (左右斜め移動対応版) ▼▼▼
+    // ==============================================
+    // 【修正箇所】 ドラッグスクロール & ホイール処理
+    // ==============================================
     let isDown = false;
     let startX, startY;
     let startScrollLeft, startScrollTop;
     let hasDragged = false;
-    let isTouch = false; // スマホ判定フラグ
+    let isTouch = false;
 
     if (container) {
-        // タッチ開始を検知したらフラグを立てる（スマホでの誤作動防止）
         container.addEventListener('touchstart', () => { isTouch = true; }, { passive: true });
 
-        // ★重要: スクロール対象の判定ロジック
-        // マップ画面(map)の時は、縦スクロールは画面全体(map-wrapper)で行う
-        // 予約一覧(all)の時は、縦スクロールはコンテナ自身で行う
-        const mapWrapper = document.querySelector('.map-wrapper');
+        // 縦スクロールを誰が担当するかを決定
         const vScrollTarget = (mode === 'map') ? mapWrapper : container;
 
-        // 1. マウスホイール (Shift+ホイール または 横スクロール操作への対応)
-        // addEventListenerではなく onwheel プロパティを使うことでイベント重複を防ぐ
+        // 1. マウスホイール (Shift+ホイール or 横スクロール操作)
         container.onwheel = (e) => {
-            if (e.ctrlKey) return; // ズーム操作は除外
+            if (e.ctrlKey) return; 
 
-            // 横方向のスクロール量 (deltaX) がある、または Shiftキーが押されている場合
-            // PCのトラックパッドの横スクロールや、Shift+マウスホイールに対応
+            // 横方向の成分がある、またはShiftキー押下時は「横スクロール」させる
             if (e.deltaX !== 0 || e.shiftKey) {
                 e.preventDefault();
-                // 縦回転(deltaY)を横移動に変換してスクロールさせる
+                // 横スクロールは container に対して行う
                 container.scrollLeft += (e.deltaX || e.deltaY);
             }
-            // 縦スクロールのみの場合は、標準の動作(縦移動)をさせるため preventDefaultしない
+            // 縦のみの場合はブラウザのデフォルト挙動(縦スクロール)に任せる
         };
 
-        // 2. ドラッグ操作開始 (マウスダウン)
+        // 2. ドラッグ開始
         container.onmousedown = (e) => {
-            // スマホならPC用ドラッグ処理を即座に中断（ネイティブスクロールに任せる）
             if (isTouch) return;
-
-            // 予約バーや入力要素の上ではドラッグを開始しない
+            // 入力要素等の上ではドラッグしない
             if (e.target.closest('.v-booking-bar') || 
                 ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) {
                 return;
             }
-
-            e.preventDefault(); // テキスト選択などを防止
-
+            e.preventDefault();
+            
             isDown = true;
             hasDragged = false;
-            container.style.cursor = "grabbing"; // 掴んでいるカーソルに変更
+            container.style.cursor = "grabbing";
             
             startX = e.pageX;
             startY = e.pageY;
             
-            // ★重要: 横スクロールの現在位置は container から取得
+            // ★重要: 横位置は container から、縦位置は vScrollTarget から取得
             startScrollLeft = container.scrollLeft;
-            
-            // ★重要: 縦スクロールの現在位置は vScrollTarget から取得
             startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
         };
 
-        // ドラッグ終了 (マウスアップ、枠外れ)
+        // ドラッグ終了
         const stopDragging = () => {
             isDown = false;
-            container.style.cursor = "default"; // 元のカーソルに戻す
-            // クリック判定のために少し遅らせてフラグを下ろす
+            container.style.cursor = "grab";
             setTimeout(() => { hasDragged = false; }, 50);
         };
-        
         container.onmouseleave = stopDragging;
         container.onmouseup = stopDragging;
 
-        // 3. ドラッグ中 (マウスムーブ)
+        // 3. ドラッグ中 (マウス移動)
         container.onmousemove = (e) => {
-            if (!isDown || isTouch) return; // ドラッグ中でない、またはスマホなら無視
+            if (!isDown || isTouch) return;
             e.preventDefault();
 
             const x = e.pageX;
             const y = e.pageY;
-            // 1.5倍速で移動
+            // 移動量を1.5倍に加速
             const walkX = (x - startX) * 1.5;
             const walkY = (y - startY) * 1.5;
 
-            // 5px以上動いたらドラッグとみなす（クリック誤爆防止）
             if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
                 hasDragged = true;
             }
 
             // ★重要: 横移動は container に適用
             container.scrollLeft = startScrollLeft - walkX;
-            
-            // ★重要: 縦移動は vScrollTarget に適用
+
+            // ★重要: 縦移動は vScrollTarget (mapWrapperなど) に適用
             if (vScrollTarget) {
                 vScrollTarget.scrollTop = startScrollTop - walkY;
             }
         };
     }
-    // 時間軸と予約データ準備
+
+    // --- 以下、データ描画処理 (既存のロジック) ---
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     hourRowHeights = {}; 
@@ -598,17 +607,15 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         const startTimeVal = getVal(res, ['startTime', 'start_time', '開始日時', '開始']);
         if (!startTimeVal) return false;
         const rId = getVal(res, ['resourceId', 'roomId', 'room_id', 'resource_id', '部屋ID']);
-        
-        // 文字列比較で判定
         const isTargetRoom = targetRooms.some(r => String(r.roomId) === String(rId));
         const resDateNum = formatDateToNum(new Date(startTimeVal));
-        
         res._startTime = startTimeVal;
         res._endTime = getVal(res, ['endTime', 'end_time', '終了日時', '終了']);
         res._resourceId = rId;
         return isTargetRoom && (resDateNum === targetDateNum);
     });
 
+    // 高さ計算
     allRelevantReservations.forEach(res => {
         const start = new Date(res._startTime);
         const sHour = start.getHours();
@@ -632,6 +639,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     }
     hourTops[END_HOUR] = currentTop;
 
+    // 現在時刻線
     let nowTopPx = -1;
     const now = new Date();
     const todayStr = formatDateToNum(now);
@@ -643,6 +651,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
+    // 時間軸描画
     drawTimeAxis(timeAxisId);
     const axisContainer = document.getElementById(timeAxisId);
     if (axisContainer && container) {
@@ -684,7 +693,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
 
-        // ハイライト処理
         if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
             col.classList.add('target-highlight');
             if (shouldScroll) {
@@ -839,6 +847,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.appendChild(col);
     });
 
+    // スクロール位置の復元
     if (container) {
         if (!shouldScroll) {
             if (mode === 'map' && mapWrapper) {
@@ -864,7 +873,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 }
-
 /* ==============================================
    6. 予約・詳細モーダル関連
    ============================================== */
