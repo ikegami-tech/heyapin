@@ -492,89 +492,96 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.position = "relative";
     }
     
-    // ▼▼▼【修正】ドラッグスクロール & ホイールスクロール機能 (重複登録防止版) ▼▼▼
+    // ==============================================
+    // 【修正】 ドラッグスクロール処理 (PCのみ有効化 & マウスホイール対応)
+    // ==============================================
     let isDown = false;
-    let startX, startY, startScrollLeft, startScrollTop;
+    let startX, startY;
+    let startScrollLeft, startScrollTop;
     let hasDragged = false;
+    let isTouch = false; // スマホ判定フラグ
+
     if (container) {
-        // スクロールバーを持つ親要素を取得
-        const vScrollTarget = container.closest('.calendar-scroll-area');
+        // タッチ開始を検知したらフラグを立てる（スマホでの誤作動防止）
+        container.addEventListener('touchstart', () => { isTouch = true; }, { passive: true });
 
-        if (vScrollTarget) {
-            // カーソルスタイルを適用（CSSでも補完しますが念のため）
-            vScrollTarget.style.cursor = "grab";
+        // マップモード時のスクロール対象（親ラッパー または 自分自身）
+        // マップ画面では、タイムラインだけでなく画面全体(mapWrapper)を縦スクロールさせるため
+        const mapWrapper = document.querySelector('.map-wrapper');
+        const vScrollTarget = (mode === 'map') ? mapWrapper : container;
 
-            // 1. マウスホイール (Shift+ホイール対応)
-            vScrollTarget.onwheel = (e) => {
-                if (e.ctrlKey) return; // ズームは除外
-                if (e.deltaX !== 0 || e.shiftKey) {
-                    e.preventDefault();
-                    vScrollTarget.scrollLeft += (e.deltaX || e.deltaY);
-                }
-            };
+        // 1. マウスホイール (Shift+ホイール または 横スクロール操作への対応)
+        // addEventListenerではなく onwheel プロパティを使うことでイベント重複を防ぐ
+        container.onwheel = (e) => {
+            if (e.ctrlKey) return; // ズーム操作は除外
 
-            // 2. ドラッグ操作 (マウスダウン)
-            vScrollTarget.onmousedown = (e) => {
-                // 予約バーや入力要素の上ではドラッグを開始しない
-                if (e.target.closest('.v-booking-bar') || 
-                    ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) {
-                    return;
-                }
-
-                e.preventDefault(); // テキスト選択などを防止
-                
-                let isDown = true;
-                let startX = e.pageX;
-                let startY = e.pageY;
-                let scrollLeft = vScrollTarget.scrollLeft;
-                let scrollTop = vScrollTarget.scrollTop;
-                
-                vScrollTarget.style.cursor = "grabbing"; // 掴んでいるカーソルに変更
-
-                // ドラッグ中 (マウスムーブ)
-                const onMouseMove = (moveEvent) => {
-                    if (!isDown) return;
-                    moveEvent.preventDefault();
-                    const x = moveEvent.pageX;
-                    const y = moveEvent.pageY;
-                    // 1.5倍速で移動
-                    const walkX = (x - startX) * 1.5;
-                    const walkY = (y - startY) * 1.5;
-                    vScrollTarget.scrollLeft = scrollLeft - walkX;
-                    vScrollTarget.scrollTop = scrollTop - walkY;
-                };
-
-                // ドラッグ終了 (マウスアップ)
-                const onMouseUp = () => {
-                    isDown = false;
-                    vScrollTarget.style.cursor = "grab"; // 元のカーソルに戻す
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                };
-
-                // documentに対してイベントを登録（枠外にマウスが出ても追従させるため）
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-            };
-        }
-  
-        // 古いイベント設定が残らないようにクリア
-        container.onmousemove = null;
-        container.onmouseup = null;
-        container.onmouseleave = null;
-
-        // ▼▼▼【修正】マウスホイール操作（縦スクロールをブロックしない）▼▼▼
-        container.addEventListener('wheel', (e) => {
-            if (e.ctrlKey) return; // ズーム操作は除外   
-            if (e.shiftKey && vScrollTarget) {
+            // 横方向のスクロール量 (deltaX) がある、または Shiftキーが押されている場合
+            // PCのトラックパッドの横スクロールや、Shift+マウスホイールに対応
+            if (e.deltaX !== 0 || e.shiftKey) {
                 e.preventDefault();
-                // 縦回転(deltaY)を横移動に変換
-                vScrollTarget.scrollLeft += (e.deltaY || e.deltaX);
+                // 縦回転(deltaY)を横移動に変換してスクロールさせる
+                container.scrollLeft += (e.deltaX || e.deltaY);
             }
-            
-        }, { passive: false });
-    }
+            // 縦スクロールのみの場合は、標準の動作(縦移動)をさせるため preventDefaultしない
+        };
 
+        // 2. ドラッグ操作開始 (マウスダウン)
+        container.onmousedown = (e) => {
+            // スマホならPC用ドラッグ処理を即座に中断（ネイティブスクロールに任せる）
+            if (isTouch) return;
+
+            // 予約バーや入力要素の上ではドラッグを開始しない
+            if (e.target.closest('.v-booking-bar') || 
+                ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) {
+                return;
+            }
+
+            e.preventDefault(); // テキスト選択などを防止
+
+            isDown = true;
+            hasDragged = false;
+            container.style.cursor = "grabbing"; // 掴んでいるカーソルに変更
+            
+            startX = e.pageX;
+            startY = e.pageY;
+            startScrollLeft = container.scrollLeft;
+            // 縦スクロール位置の取得元を分岐
+            startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
+        };
+
+        // ドラッグ終了 (マウスアップ、枠外れ)
+        const stopDragging = () => {
+            isDown = false;
+            container.style.cursor = "default"; // 元のカーソルに戻す
+            // クリック判定のために少し遅らせてフラグを下ろす
+            setTimeout(() => { hasDragged = false; }, 50);
+        };
+        
+        container.onmouseleave = stopDragging;
+        container.onmouseup = stopDragging;
+
+        // 3. ドラッグ中 (マウスムーブ)
+        container.onmousemove = (e) => {
+            if (!isDown || isTouch) return; // ドラッグ中でない、またはスマホなら無視
+            e.preventDefault();
+
+            const x = e.pageX;
+            const y = e.pageY;
+            // 1.5倍速で移動
+            const walkX = (x - startX) * 1.5;
+            const walkY = (y - startY) * 1.5;
+
+            // 5px以上動いたらドラッグとみなす（クリック誤爆防止）
+            if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
+                hasDragged = true;
+            }
+
+            container.scrollLeft = startScrollLeft - walkX;
+            if (vScrollTarget) {
+                vScrollTarget.scrollTop = startScrollTop - walkY;
+            }
+        };
+    }
     // 時間軸と予約データ準備
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
