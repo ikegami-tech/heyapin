@@ -1200,13 +1200,20 @@ async function deleteBooking() {
     }
 }
 
+/* ==============================================
+   詳細モーダル表示 (曜日追加版)
+   ============================================== */
 function openDetailModal(res) {
   currentDetailRes = res;
   const modal = document.getElementById('detailModal');
   
   const s = new Date(res._startTime);
   const e = new Date(res._endTime);
-  const dateStr = `${s.getMonth()+1}/${s.getDate()}`;
+
+  // ★修正: 曜日配列を用意して表示に追加
+  const week = ['日', '月', '火', '水', '木', '金', '土'];
+  const dateStr = `${s.getMonth()+1}/${s.getDate()}(${week[s.getDay()]})`;
+  
   const timeStr = `${pad(s.getHours())}:${pad(s.getMinutes())} - ${pad(e.getHours())}:${pad(e.getMinutes())}`;
   document.getElementById('detail-time').innerText = `${dateStr} ${timeStr}`;
   
@@ -1214,6 +1221,7 @@ function openDetailModal(res) {
   document.getElementById('detail-room').innerText = room ? room.roomName : res._resourceId;
   document.getElementById('detail-title').innerText = getVal(res, ['title', 'subject', '件名', 'タイトル']) || '(なし)';
 
+  // 登録者・編集者情報
   const metaContainer = document.getElementById('detail-meta-info');
   if (metaContainer) {
       const fmt = (dStr) => {
@@ -1231,6 +1239,7 @@ function openDetailModal(res) {
       metaContainer.innerHTML = html;
   }
 
+  // 参加者リスト
   const membersContainer = document.getElementById('detail-members');
   membersContainer.innerHTML = "";
   let pIdsStr = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
@@ -1259,6 +1268,7 @@ function openDetailModal(res) {
       } else { membersContainer.innerHTML = "<div class='detail-member-item'>-</div>"; }
   } else { membersContainer.innerHTML = "<div class='detail-member-item'>-</div>"; }
 
+  // 備考欄 (リンク化処理など)
   let rawNote = getVal(res, ['note', 'description', '備考', 'メモ']) || '';
   let cleanNote = rawNote.replace(/【変更履歴】.*/g, '').replace(/^\s*[\r\n]/gm, '').trim();
 
@@ -1524,6 +1534,9 @@ async function deleteSharedGroup(groupId, groupName) {
 function searchLogs() { currentLogPage = 1; renderLogs(); }
 function changeLogPage(direction) { currentLogPage += direction; renderLogs(); }
 
+/* ==============================================
+   ログ一覧描画 (曜日追加版)
+   ============================================== */
 function renderLogs() {
     const tbody = document.getElementById('log-tbody');
     tbody.innerHTML = "";
@@ -1574,13 +1587,19 @@ function renderLogs() {
         const u = masterData.users.find(user => String(user.userId) === String(id));
         return u ? u.userName : id;
     };
+
+    // ★修正: 曜日を追加したフォーマット関数
     const formatRange = (rangeStr) => {
         if (!rangeStr || !rangeStr.includes(' - ')) return rangeStr;
         const parts = rangeStr.split(' - ');
         const sDate = new Date(parts[0]);
         const eDate = new Date(parts[1]);
         if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) return rangeStr;
-        return `${sDate.getMonth() + 1}/${sDate.getDate()} ${pad(sDate.getHours())}:${pad(sDate.getMinutes())} - ${pad(eDate.getHours())}:${pad(eDate.getMinutes())}`;
+
+        const week = ['日', '月', '火', '水', '木', '金', '土'];
+        const w = week[sDate.getDay()];
+        
+        return `${sDate.getMonth() + 1}/${sDate.getDate()}(${w}) ${pad(sDate.getHours())}:${pad(sDate.getMinutes())} - ${pad(eDate.getHours())}:${pad(eDate.getMinutes())}`;
     };
 
     displayLogs.forEach(log => {
@@ -1652,7 +1671,12 @@ function renderPaginationControls(totalPages, totalItems, startCount, endCount) 
    9. ユーティリティ関数
    ============================================== */
 function pad(n) { return n < 10 ? '0'+n : n; }
-function formatDate(d) { return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+
+// ★修正: 曜日を追加
+function formatDate(d) {
+    const week = ['日', '月', '火', '水', '木', '金', '土'];
+    return `${d.getMonth()+1}/${d.getDate()}(${week[d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 function formatDateToNum(d) {
   if (isNaN(d.getTime())) return ""; 
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
