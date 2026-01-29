@@ -2066,3 +2066,26 @@ function openHistoryFromMenu() {
     if(dropdown) dropdown.classList.remove("show");
     switchTab('logs');
 }
+/* ==============================================
+   追加: 曜日表示の更新機能
+   ============================================== */
+function updateDayDisplay(inputId) {
+    const input = document.getElementById(inputId);
+    const displaySpan = document.getElementById(inputId + '-week'); // 例: map-date-week
+    
+    if (input && displaySpan) {
+        const d = new Date(input.value);
+        if (!isNaN(d.getTime())) {
+            const week = ['日', '月', '火', '水', '木', '金', '土'];
+            const w = week[d.getDay()];
+            displaySpan.innerText = `(${w})`;
+            
+            // 土日は色を変える（任意）
+            if (w === '土') displaySpan.style.color = 'blue';
+            else if (w === '日') displaySpan.style.color = 'red';
+            else displaySpan.style.color = '#333';
+        } else {
+            displaySpan.innerText = "";
+        }
+    }
+}
