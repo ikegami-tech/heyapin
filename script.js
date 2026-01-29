@@ -431,7 +431,7 @@ function drawTimeAxis(containerId) {
 
 /* ==============================================
    レンダリング: 垂直タイムライン (予約一覧・マップ下部)
-   【赤線復活・高速化対応版】
+   【カーソル修正・曜日・赤線・高速化 全部入り版】
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -496,7 +496,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.alignItems = "flex-start";
         container.style.position = "relative";
         container.style.overscrollBehavior = (mode === 'map') ? "auto" : "contain";
-        container.style.cursor = "grab";
+        
+        // ★修正: 初期カーソルを「default（矢印）」にする
+        container.style.cursor = "default";
         container.style.userSelect = "none";
     }
     
@@ -517,6 +519,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         const vScrollTarget = (mode === 'map') ? mapWrapper : scrollArea;
 
         if (scrollArea) {
+            // 初期カーソル設定（ここもdefaultにする）
+            scrollArea.style.cursor = "default";
+
             scrollArea.onwheel = (e) => {
                 if (e.ctrlKey) return; 
                 if (e.deltaX !== 0 || e.shiftKey) {
@@ -534,6 +539,8 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 e.preventDefault();
                 isDown = true;
                 hasDragged = false;
+                
+                // ★ホールド時は「grabbing（グー）」にする
                 scrollArea.style.cursor = "grabbing";
                 
                 if (scrollArea) scrollArea.style.scrollBehavior = 'auto';
@@ -573,7 +580,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
             const onMouseUp = () => {
                 isDown = false;
-                if (scrollArea) scrollArea.style.cursor = "grab";
+                // ★離したら「default（矢印）」に戻す
+                if (scrollArea) scrollArea.style.cursor = "default";
+                
                 if (rafId) {
                     cancelAnimationFrame(rafId);
                     rafId = null;
@@ -630,7 +639,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     }
     hourTops[END_HOUR] = currentTop;
 
-    // 現在時刻線の位置計算
     let nowTopPx = -1;
     const now = new Date();
     const todayStr = formatDateToNum(now);
@@ -722,22 +730,19 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         const body = document.createElement('div');
         body.className = 'room-grid-body';
         
-        // ★★★ 修正: 現在時刻線を強制的に表示（スタイル直接指定） ★★★
         if (nowTopPx !== -1) {
             const line = document.createElement('div');
             line.className = 'current-time-line';
             line.style.top = nowTopPx + "px";
-            // CSSが効いていない場合でも強制的に赤線を表示させる設定
             line.style.position = 'absolute';
             line.style.left = '0';
             line.style.width = '100%';
             line.style.height = '2px';
             line.style.borderTop = '2px solid red';
-            line.style.zIndex = '50'; // 予約バーより手前に表示
-            line.style.pointerEvents = 'none'; // クリックの邪魔にならないように
+            line.style.zIndex = '50';
+            line.style.pointerEvents = 'none';
             body.appendChild(line);
         }
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
         body.style.height = currentTop + "px";
         body.style.position = "relative";
