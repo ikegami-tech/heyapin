@@ -197,6 +197,7 @@ function initUI() {
 
   initCustomTimePickers();
   updateRefreshTime();
+  updateDayDisplay('map-date');
   startPolling();
 }
 
@@ -401,6 +402,7 @@ function changeDate(days, inputId) {
   const d = new Date(input.value);
   d.setDate(d.getDate() + days);
   input.valueAsDate = d;
+  updateDayDisplay(inputId);
   if(inputId === 'map-date') renderVerticalTimeline('map');
 }
 
