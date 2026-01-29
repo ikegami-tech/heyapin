@@ -429,6 +429,7 @@ function drawTimeAxis(containerId) {
 
 /* ==============================================
    レンダリング: 垂直タイムライン (予約一覧・マップ下部)
+   【高速化・軽量化対応版】
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -447,8 +448,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container = document.getElementById('rooms-container-map');
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
-        
-        // 7階→6階の順序で、かつ文字列型で比較して確実に部屋を取得
         targetRooms = [];
         const floorOrder = [7, 6]; 
         floorOrder.forEach(floor => {
@@ -460,7 +459,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 });
             }
         });
-        // マップで選択中の部屋があればハイライトするためにIDを保持しておく(描画は全部屋)
     } else { return; }
 
     if (!targetRooms || targetRooms.length === 0) {
@@ -468,155 +466,144 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         return;
     }
 
-    // 2. スクロール位置保存 (再描画対策)
+    // 2. スクロール位置保存
     let savedScrollTop = 0, savedScrollLeft = 0;
     const mapWrapper = document.querySelector('.map-wrapper');
     if (mode === 'map' && mapWrapper) {
         savedScrollTop = mapWrapper.scrollTop;
     } else if (container) {
         savedScrollTop = container.scrollTop;
-        savedScrollLeft = container.scrollLeft; // containerが横スクロールを持つためここから保存
+        savedScrollLeft = container.scrollLeft;
     }
 
-    // 3. コンテナの初期化とスタイル設定
+    // 3. コンテナの初期化
     if (container) {
         container.innerHTML = "";
-        
-        // ★重要: スクロールバーの持ち主を明確にする設定
         if (mode === 'map') {
-            // マップモード: 縦スクロールは親(mapWrapper)に任せるため auto/visible
             container.style.height = "auto";
             container.style.overflowY = "visible"; 
         } else {
-            // 一覧モード: 縦スクロールは自分自身(container)が持つか、親が持つか
-            // CSS構造上、container自体がスクロール枠になるように調整
             container.style.height = "100%";
             container.style.overflowY = "auto";
         }
-        
-        // 横スクロールは常にcontainerが持つ
         container.style.width = "100%";
         container.style.maxWidth = "100vw";
         container.style.overflowX = "auto"; 
-        
         container.style.display = "flex";
         container.style.flexWrap = "nowrap";
         container.style.alignItems = "flex-start";
         container.style.position = "relative";
-        
-        // スクロールの連鎖(バウンス)制御
         container.style.overscrollBehavior = (mode === 'map') ? "auto" : "contain";
-        
-        // カーソル設定
         container.style.cursor = "grab";
         container.style.userSelect = "none";
     }
     
     // ==============================================
-    // 【決定版】 ドラッグスクロール処理 (親要素基準)
+    // 【高速化版】 ドラッグスクロール & ホイール処理
     // ==============================================
     let isDown = false;
     let startX, startY;
     let startScrollLeft, startScrollTop;
     let hasDragged = false;
     let isTouch = false;
+    let rafId = null; // アニメーションフレーム管理用
 
     if (container) {
-        // ★最重要修正: スクロールバーの持ち主（親要素）を取得
         const scrollArea = container.closest('.calendar-scroll-area');
-
-        // タッチ開始を検知（スマホでの誤作動防止）
         container.addEventListener('touchstart', () => { isTouch = true; }, { passive: true });
-
-        // 縦スクロールの対象を決定
-        // マップ画面では、タイムラインだけでなく画面全体(mapWrapper)を縦に動かす
         const mapWrapper = document.querySelector('.map-wrapper');
-        // モードがmapならmapWrapper、それ以外ならscrollArea(親枠)を縦スクロール対象にする
         const vScrollTarget = (mode === 'map') ? mapWrapper : scrollArea;
 
-        // ★スクロールバーを持つ親要素が存在する場合のみ処理を行う
         if (scrollArea) {
-            // 初期カーソル設定
-            scrollArea.style.cursor = "grab";
-
-            // 1. マウスホイール (Shift+ホイール または 横スクロール操作への対応)
-            // containerではなく、scrollAreaに対してイベントを設定
+            // 1. マウスホイール (軽量化なし: 即時反応が必要なため)
             scrollArea.onwheel = (e) => {
                 if (e.ctrlKey) return; 
-
-                // 横方向のスクロール量 (deltaX) がある、または Shiftキーが押されている場合
                 if (e.deltaX !== 0 || e.shiftKey) {
                     e.preventDefault();
-                    // ★修正: 親枠(scrollArea)を横スクロールさせる
                     scrollArea.scrollLeft += (e.deltaX || e.deltaY);
                 }
             };
 
-            // 2. ドラッグ操作開始 (マウスダウン)
+            // 2. ドラッグ開始
             scrollArea.onmousedown = (e) => {
                 if (isTouch) return;
-
-                // 入力要素等の上ではドラッグしない
                 if (e.target.closest('.v-booking-bar') || 
                     ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) {
                     return;
                 }
-
-                e.preventDefault(); 
+                e.preventDefault();
                 
                 isDown = true;
                 hasDragged = false;
                 scrollArea.style.cursor = "grabbing";
                 
+                // ★高速化のキモ: ドラッグ中は「滑らかスクロール(CSS)」を一時的に切る
+                // これがないとJSの移動とCSSのアニメーションが喧嘩して重くなる
+                if (scrollArea) scrollArea.style.scrollBehavior = 'auto';
+                if (vScrollTarget) vScrollTarget.style.scrollBehavior = 'auto';
+                
                 startX = e.pageX;
                 startY = e.pageY;
-                
-                // ★修正: 横位置は「親枠(scrollArea)」から取得
                 startScrollLeft = scrollArea.scrollLeft;
-                
-                // ★修正: 縦位置は「vScrollTarget」から取得
                 startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
-
-                // ドラッグ中のイベントを登録
+                
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
             };
 
-            // 3. ドラッグ中 (マウスムーブ)
+            // 3. ドラッグ中 (requestAnimationFrameによる間引き処理)
             const onMouseMove = (e) => {
                 if (!isDown || isTouch) return;
                 e.preventDefault();
 
-                const x = e.pageX;
-                const y = e.pageY;
-                // 移動量を1.5倍に加速
-                const walkX = (x - startX) * 1.5;
-                const walkY = (y - startY) * 1.5;
+                // 既に描画待ちの処理があれば何もしない（処理を間引く）
+                if (rafId) return;
 
-                if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
-                    hasDragged = true;
-                }
+                const currentX = e.pageX;
+                const currentY = e.pageY;
 
-                // ★修正: 横移動は「親枠(scrollArea)」に適用
-                scrollArea.scrollLeft = startScrollLeft - walkX;
+                rafId = requestAnimationFrame(() => {
+                    const walkX = (currentX - startX) * 1.5;
+                    const walkY = (currentY - startY) * 1.5;
 
-                // ★修正: 縦移動は「vScrollTarget」に適用
-                if (vScrollTarget) {
-                    vScrollTarget.scrollTop = startScrollTop - walkY;
-                }
+                    if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
+                        hasDragged = true;
+                    }
+
+                    // 横移動
+                    scrollArea.scrollLeft = startScrollLeft - walkX;
+                    // 縦移動
+                    if (vScrollTarget) {
+                        vScrollTarget.scrollTop = startScrollTop - walkY;
+                    }
+
+                    rafId = null; // 処理完了フラグ解除
+                });
             };
 
-            // 4. ドラッグ終了 (マウスアップ)
+            // 4. ドラッグ終了
             const onMouseUp = () => {
                 isDown = false;
                 if (scrollArea) scrollArea.style.cursor = "grab";
+                
+                // 保留中の描画処理があればキャンセル
+                if (rafId) {
+                    cancelAnimationFrame(rafId);
+                    rafId = null;
+                }
+
+                // ★設定を元に戻す（CSSのsmoothスクロールを復活）
+                if (scrollArea) scrollArea.style.scrollBehavior = '';
+                if (vScrollTarget) vScrollTarget.style.scrollBehavior = '';
+
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
                 setTimeout(() => { hasDragged = false; }, 50);
             };
         }
     }
-    // --- 以下、データ描画処理 (既存のロジック) ---
+
+    // --- 以下、データ描画処理 (変更なし) ---
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     hourRowHeights = {}; 
@@ -635,7 +622,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         return isTargetRoom && (resDateNum === targetDateNum);
     });
 
-    // 高さ計算
     allRelevantReservations.forEach(res => {
         const start = new Date(res._startTime);
         const sHour = start.getHours();
@@ -659,7 +645,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     }
     hourTops[END_HOUR] = currentTop;
 
-    // 現在時刻線
     let nowTopPx = -1;
     const now = new Date();
     const todayStr = formatDateToNum(now);
@@ -671,7 +656,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
-    // 時間軸描画
     drawTimeAxis(timeAxisId);
     const axisContainer = document.getElementById(timeAxisId);
     if (axisContainer && container) {
@@ -702,7 +686,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
-    // 各部屋列の描画
     targetRooms.forEach(room => {
         const col = document.createElement('div');
         col.className = 'room-col';
@@ -867,7 +850,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.appendChild(col);
     });
 
-    // スクロール位置の復元
     if (container) {
         if (!shouldScroll) {
             if (mode === 'map' && mapWrapper) {
