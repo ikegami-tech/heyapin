@@ -370,6 +370,9 @@ function switchFloor(floor) {
     renderVerticalTimeline('map');
 }
 
+/* ==============================================
+   マップの部屋クリック時の処理 (修正版)
+   ============================================== */
 function selectRoomFromMap(element) {
   const roomId = element.getAttribute('data-room-id');
   const roomObj = masterData.rooms.find(r => String(r.roomId) === String(roomId));
@@ -380,11 +383,17 @@ function selectRoomFromMap(element) {
   }
   currentMapRoomId = roomId;
   document.getElementById('map-timeline-section').style.display = 'block';
-  document.getElementById('map-selected-room-name').innerText = roomObj.roomName;
+  
+  // ★修正: 要素が存在する場合だけ文字を更新する（削除済みなら無視してエラー回避）
+  const titleEl = document.getElementById('map-selected-room-name');
+  if (titleEl) {
+      titleEl.innerText = roomObj.roomName;
+  }
+
+  // タイムラインを描画してスクロール
   renderVerticalTimeline('map', true);
   document.getElementById('map-timeline-section').scrollIntoView({behavior: 'smooth'});
 }
-
 /* ==============================================
    5. タイムライン関連処理
    ============================================== */
