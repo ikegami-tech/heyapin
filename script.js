@@ -1210,9 +1210,10 @@ function openDetailModal(res) {
   const s = new Date(res._startTime);
   const e = new Date(res._endTime);
 
-  // ★修正: 曜日配列を用意して表示に追加
+  // ★修正: 曜日を追加
   const week = ['日', '月', '火', '水', '木', '金', '土'];
-  const dateStr = `${s.getMonth()+1}/${s.getDate()}(${week[s.getDay()]})`;
+  const w = week[s.getDay()];
+  const dateStr = `${s.getMonth()+1}/${s.getDate()}(${w})`;
   
   const timeStr = `${pad(s.getHours())}:${pad(s.getMinutes())} - ${pad(e.getHours())}:${pad(e.getMinutes())}`;
   document.getElementById('detail-time').innerText = `${dateStr} ${timeStr}`;
@@ -1268,22 +1269,19 @@ function openDetailModal(res) {
       } else { membersContainer.innerHTML = "<div class='detail-member-item'>-</div>"; }
   } else { membersContainer.innerHTML = "<div class='detail-member-item'>-</div>"; }
 
-  // 備考欄 (リンク化処理など)
+  // 備考欄
   let rawNote = getVal(res, ['note', 'description', '備考', 'メモ']) || '';
   let cleanNote = rawNote.replace(/【変更履歴】.*/g, '').replace(/^\s*[\r\n]/gm, '').trim();
-
   let escapedNote = cleanNote
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
-
   let linkedNote = escapedNote.replace(
       /(https?:\/\/[^\s]+)/g, 
       '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #3498db; text-decoration: underline;">$1</a>'
   );
-
   document.getElementById('detail-note').innerHTML = linkedNote;
 
   document.getElementById('btn-go-edit').onclick = function() {
@@ -1588,14 +1586,14 @@ function renderLogs() {
         return u ? u.userName : id;
     };
 
-    // ★修正: 曜日を追加したフォーマット関数
+    // ★修正: 曜日付きフォーマット関数
     const formatRange = (rangeStr) => {
         if (!rangeStr || !rangeStr.includes(' - ')) return rangeStr;
         const parts = rangeStr.split(' - ');
         const sDate = new Date(parts[0]);
         const eDate = new Date(parts[1]);
         if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) return rangeStr;
-
+        
         const week = ['日', '月', '火', '水', '木', '金', '土'];
         const w = week[sDate.getDay()];
         
@@ -1639,7 +1637,6 @@ function renderLogs() {
 
     renderPaginationControls(totalPages, totalItems, (currentLogPage - 1) * LOGS_PER_PAGE + 1, Math.min(currentLogPage * LOGS_PER_PAGE, totalItems));
 }
-
 function renderPaginationControls(totalPages, totalItems, startCount, endCount) {
     const container = document.getElementById('log-pagination');
     container.innerHTML = "";
@@ -1675,7 +1672,8 @@ function pad(n) { return n < 10 ? '0'+n : n; }
 // ★修正: 曜日を追加
 function formatDate(d) {
     const week = ['日', '月', '火', '水', '木', '金', '土'];
-    return `${d.getMonth()+1}/${d.getDate()}(${week[d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const w = week[d.getDay()];
+    return `${d.getMonth()+1}/${d.getDate()}(${w}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 function formatDateToNum(d) {
   if (isNaN(d.getTime())) return ""; 
