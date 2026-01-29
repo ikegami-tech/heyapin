@@ -87,12 +87,15 @@
       <div id="map-timeline-section" class="map-timeline-hidden">
         <h4 id="map-selected-room-name" class="map-room-title"></h4>
         
-        <div class="date-controller">
-          <button type="button" onclick="changeDate(-1, 'map-date')">&lt;</button>
-          <input type="date" id="map-date" onchange="renderVerticalTimeline('map')">
-          <button type="button" onclick="changeDate(1, 'map-date')">&gt;</button>
-        </div>
-
+       <div class="date-controller">
+  <button type="button" onclick="changeDate(-1, 'map-date')">&lt;</button>
+  <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+      <input type="date" id="map-date" onchange="renderVerticalTimeline('map'); updateDayDisplay('map-date');" style="margin-bottom:0;">
+      <span id="map-date-week" style="font-weight:bold; font-size:0.9rem;"></span>
+  </div>
+  <button type="button" onclick="changeDate(1, 'map-date')">&gt;</button>
+</div>
+        
         <div class="calendar-scroll-area">
             <div class="time-axis-col" id="time-axis-map"><div class="time-axis-header"></div></div>
             <div class="rooms-container" id="rooms-container-map"></div>
