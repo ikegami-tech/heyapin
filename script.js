@@ -492,9 +492,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.position = "relative";
     }
     
-   // ==============================================
-    // 【修正】 ドラッグスクロール処理 (PCのみ有効化 & マウスホイール対応)
-    // ==============================================
+  // ▼▼▼【再修正】ドラッグスクロール & ホイールスクロール機能 (左右斜め移動対応版) ▼▼▼
     let isDown = false;
     let startX, startY;
     let startScrollLeft, startScrollTop;
@@ -505,11 +503,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         // タッチ開始を検知したらフラグを立てる（スマホでの誤作動防止）
         container.addEventListener('touchstart', () => { isTouch = true; }, { passive: true });
 
-        // マップモード時のスクロール対象（親ラッパー または 自分自身）
-        // マップ画面では、タイムラインだけでなく画面全体(mapWrapper)を縦スクロールさせるため
+        // ★重要: スクロール対象の判定ロジック
+        // マップ画面(map)の時は、縦スクロールは画面全体(map-wrapper)で行う
+        // 予約一覧(all)の時は、縦スクロールはコンテナ自身で行う
         const mapWrapper = document.querySelector('.map-wrapper');
-        
-        // ★修正ポイント: マップモードなら親ラッパー、それ以外ならコンテナ自身を縦スクロール対象にする
         const vScrollTarget = (mode === 'map') ? mapWrapper : container;
 
         // 1. マウスホイール (Shift+ホイール または 横スクロール操作への対応)
@@ -547,9 +544,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             startX = e.pageX;
             startY = e.pageY;
             
-            // 現在のスクロール位置を保存
+            // ★重要: 横スクロールの現在位置は container から取得
             startScrollLeft = container.scrollLeft;
-            // 縦スクロール位置の取得元を分岐 (vScrollTargetがあればそこから、なければ0)
+            
+            // ★重要: 縦スクロールの現在位置は vScrollTarget から取得
             startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
         };
 
@@ -580,8 +578,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 hasDragged = true;
             }
 
-            // ★ここが重要: 横スクロールと縦スクロールを同時に適用
+            // ★重要: 横移動は container に適用
             container.scrollLeft = startScrollLeft - walkX;
+            
+            // ★重要: 縦移動は vScrollTarget に適用
             if (vScrollTarget) {
                 vScrollTarget.scrollTop = startScrollTop - walkY;
             }
