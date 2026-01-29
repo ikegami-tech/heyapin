@@ -1586,18 +1586,16 @@ function renderLogs() {
         return u ? u.userName : id;
     };
 
-    // ★修正: 曜日付きフォーマット関数
+    // ★修正: 曜日を追加したフォーマット関数
     const formatRange = (rangeStr) => {
         if (!rangeStr || !rangeStr.includes(' - ')) return rangeStr;
         const parts = rangeStr.split(' - ');
         const sDate = new Date(parts[0]);
         const eDate = new Date(parts[1]);
         if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) return rangeStr;
-        
+
         const week = ['日', '月', '火', '水', '木', '金', '土'];
         const w = week[sDate.getDay()];
-        
-        return `${sDate.getMonth() + 1}/${sDate.getDate()}(${w}) ${pad(sDate.getHours())}:${pad(sDate.getMinutes())} - ${pad(eDate.getHours())}:${pad(eDate.getMinutes())}`;
     };
 
     displayLogs.forEach(log => {
