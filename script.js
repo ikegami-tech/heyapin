@@ -686,6 +686,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
+    // 各部屋列の描画
     targetRooms.forEach(room => {
         const col = document.createElement('div');
         col.className = 'room-col';
@@ -696,6 +697,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
 
+        // 初期表示時のハイライト処理
         if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
             col.classList.add('target-highlight');
             if (shouldScroll) {
@@ -704,17 +706,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 }, 100);
             }
         }
-        
-        col.addEventListener('click', (e) => {
-            if (hasDragged) return;
-            if (mode !== 'map') return; 
-            currentMapRoomId = room.roomId;
-            container.querySelectorAll('.room-col').forEach(c => c.classList.remove('target-highlight'));
-            col.classList.add('target-highlight');
-            const titleEl = document.getElementById('map-selected-room-name');
-            if (titleEl) titleEl.innerText = room.roomName;
-        });
-
         const header = document.createElement('div');
         header.className = 'room-header';
         header.innerText = room.roomName;
@@ -729,6 +720,25 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         header.style.textAlign = "center";
         header.style.fontWeight = "bold";
         header.style.boxSizing = "border-box";
+        
+        // ★追加: ヘッダーにのみクリックイベントを設定
+        header.style.cursor = "pointer"; // クリックできる見た目にする
+        header.onclick = (e) => {
+            if (mode !== 'map') return; 
+            // 選択状態の更新
+            currentMapRoomId = room.roomId;
+            
+            // 全ての列からハイライトを消して、この列だけに追加
+            container.querySelectorAll('.room-col').forEach(c => c.classList.remove('target-highlight'));
+            col.classList.add('target-highlight');
+            
+            // タイトル更新
+            const titleEl = document.getElementById('map-selected-room-name');
+            if (titleEl) titleEl.innerText = room.roomName;
+            
+            e.stopPropagation(); // 親への伝播を止める
+        };
+
         col.appendChild(header);
 
         const body = document.createElement('div');
@@ -849,7 +859,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.appendChild(body);
         container.appendChild(col);
     });
-
     if (container) {
         if (!shouldScroll) {
             if (mode === 'map' && mapWrapper) {
