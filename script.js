@@ -431,7 +431,7 @@ function drawTimeAxis(containerId) {
 
 /* ==============================================
    レンダリング: 垂直タイムライン (予約一覧・マップ下部)
-   【高速化・軽量化対応版】
+   【赤線復活・高速化対応版】
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -508,7 +508,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     let startScrollLeft, startScrollTop;
     let hasDragged = false;
     let isTouch = false;
-    let rafId = null; // アニメーションフレーム管理用
+    let rafId = null; 
 
     if (container) {
         const scrollArea = container.closest('.calendar-scroll-area');
@@ -517,7 +517,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         const vScrollTarget = (mode === 'map') ? mapWrapper : scrollArea;
 
         if (scrollArea) {
-            // 1. マウスホイール (軽量化なし: 即時反応が必要なため)
             scrollArea.onwheel = (e) => {
                 if (e.ctrlKey) return; 
                 if (e.deltaX !== 0 || e.shiftKey) {
@@ -526,7 +525,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 }
             };
 
-            // 2. ドラッグ開始
             scrollArea.onmousedown = (e) => {
                 if (isTouch) return;
                 if (e.target.closest('.v-booking-bar') || 
@@ -534,13 +532,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                     return;
                 }
                 e.preventDefault();
-                
                 isDown = true;
                 hasDragged = false;
                 scrollArea.style.cursor = "grabbing";
                 
-                // ★高速化のキモ: ドラッグ中は「滑らかスクロール(CSS)」を一時的に切る
-                // これがないとJSの移動とCSSのアニメーションが喧嘩して重くなる
                 if (scrollArea) scrollArea.style.scrollBehavior = 'auto';
                 if (vScrollTarget) vScrollTarget.style.scrollBehavior = 'auto';
                 
@@ -553,12 +548,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 document.addEventListener('mouseup', onMouseUp);
             };
 
-            // 3. ドラッグ中 (requestAnimationFrameによる間引き処理)
             const onMouseMove = (e) => {
                 if (!isDown || isTouch) return;
                 e.preventDefault();
-
-                // 既に描画待ちの処理があれば何もしない（処理を間引く）
                 if (rafId) return;
 
                 const currentX = e.pageX;
@@ -571,30 +563,21 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                     if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
                         hasDragged = true;
                     }
-
-                    // 横移動
                     scrollArea.scrollLeft = startScrollLeft - walkX;
-                    // 縦移動
                     if (vScrollTarget) {
                         vScrollTarget.scrollTop = startScrollTop - walkY;
                     }
-
-                    rafId = null; // 処理完了フラグ解除
+                    rafId = null;
                 });
             };
 
-            // 4. ドラッグ終了
             const onMouseUp = () => {
                 isDown = false;
                 if (scrollArea) scrollArea.style.cursor = "grab";
-                
-                // 保留中の描画処理があればキャンセル
                 if (rafId) {
                     cancelAnimationFrame(rafId);
                     rafId = null;
                 }
-
-                // ★設定を元に戻す（CSSのsmoothスクロールを復活）
                 if (scrollArea) scrollArea.style.scrollBehavior = '';
                 if (vScrollTarget) vScrollTarget.style.scrollBehavior = '';
 
@@ -605,7 +588,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
-    // --- 以下、データ描画処理 (変更なし) ---
+    // --- データ描画処理 ---
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     hourRowHeights = {}; 
@@ -647,6 +630,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     }
     hourTops[END_HOUR] = currentTop;
 
+    // 現在時刻線の位置計算
     let nowTopPx = -1;
     const now = new Date();
     const todayStr = formatDateToNum(now);
@@ -688,7 +672,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
-    // 各部屋列の描画
     targetRooms.forEach(room => {
         const col = document.createElement('div');
         col.className = 'room-col';
@@ -699,7 +682,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
 
-        // 初期表示時のハイライト処理
         if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
             col.classList.add('target-highlight');
             if (shouldScroll) {
@@ -708,6 +690,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 }, 100);
             }
         }
+        
         const header = document.createElement('div');
         header.className = 'room-header';
         header.innerText = room.roomName;
@@ -722,35 +705,40 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         header.style.textAlign = "center";
         header.style.fontWeight = "bold";
         header.style.boxSizing = "border-box";
+        header.style.cursor = "pointer";
         
-        // ★追加: ヘッダーにのみクリックイベントを設定
-        header.style.cursor = "pointer"; // クリックできる見た目にする
         header.onclick = (e) => {
             if (mode !== 'map') return; 
-            // 選択状態の更新
             currentMapRoomId = room.roomId;
-            
-            // 全ての列からハイライトを消して、この列だけに追加
             container.querySelectorAll('.room-col').forEach(c => c.classList.remove('target-highlight'));
             col.classList.add('target-highlight');
-            
-            // タイトル更新
             const titleEl = document.getElementById('map-selected-room-name');
             if (titleEl) titleEl.innerText = room.roomName;
-            
-            e.stopPropagation(); // 親への伝播を止める
+            e.stopPropagation(); 
         };
 
         col.appendChild(header);
 
         const body = document.createElement('div');
         body.className = 'room-grid-body';
+        
+        // ★★★ 修正: 現在時刻線を強制的に表示（スタイル直接指定） ★★★
         if (nowTopPx !== -1) {
             const line = document.createElement('div');
             line.className = 'current-time-line';
             line.style.top = nowTopPx + "px";
+            // CSSが効いていない場合でも強制的に赤線を表示させる設定
+            line.style.position = 'absolute';
+            line.style.left = '0';
+            line.style.width = '100%';
+            line.style.height = '2px';
+            line.style.borderTop = '2px solid red';
+            line.style.zIndex = '50'; // 予約バーより手前に表示
+            line.style.pointerEvents = 'none'; // クリックの邪魔にならないように
             body.appendChild(line);
         }
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
         body.style.height = currentTop + "px";
         body.style.position = "relative";
 
@@ -861,6 +849,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.appendChild(body);
         container.appendChild(col);
     });
+
     if (container) {
         if (!shouldScroll) {
             if (mode === 'map' && mapWrapper) {
