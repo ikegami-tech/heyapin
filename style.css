@@ -758,3 +758,23 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   #avail-result-container { display: none; border-top: 1px solid #ddd; }
   .modal-expanded #avail-result-container { display: block; flex: 1; overflow-y: auto; min-height: 0; margin-top: 10px; }
 }
+/* --- 追加: ヘッダー戻るボタンとタイトルのスタイル --- */
+#header-title:hover {
+  opacity: 0.8;
+}
+
+.btn-header-back {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.7);
+  color: white;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-right: 15px;
+  vertical-align: middle;
+  transition: background 0.2s;
+}
+.btn-header-back:hover {
+  background: rgba(255,255,255,0.2);
+}
