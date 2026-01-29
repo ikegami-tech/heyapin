@@ -513,7 +513,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     }
     
     // ==============================================
-    // 【修正完了版】 ドラッグスクロール & ホイール処理
+    // 【決定版】 ドラッグスクロール処理 (親要素基準)
     // ==============================================
     let isDown = false;
     let startX, startY;
@@ -522,82 +522,99 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     let isTouch = false;
 
     if (container) {
-        // スマホでの誤動作防止
+        // ★最重要修正: スクロールバーの持ち主（親要素）を取得
+        const scrollArea = container.closest('.calendar-scroll-area');
+
+        // タッチ開始を検知（スマホでの誤作動防止）
         container.addEventListener('touchstart', () => { isTouch = true; }, { passive: true });
 
-        // ★重要: 縦スクロールを誰が担当するかを決定
-        // マップ画面の時は「mapWrapper(全体枠)」、それ以外は「container(自分)」
+        // 縦スクロールの対象を決定
+        // マップ画面では、タイムラインだけでなく画面全体(mapWrapper)を縦に動かす
         const mapWrapper = document.querySelector('.map-wrapper');
-        const vScrollTarget = (mode === 'map') ? mapWrapper : container;
+        // モードがmapならmapWrapper、それ以外ならscrollArea(親枠)を縦スクロール対象にする
+        const vScrollTarget = (mode === 'map') ? mapWrapper : scrollArea;
 
-        // 1. マウスホイール (Shift+ホイール or 横スクロール操作)
-        container.onwheel = (e) => {
-            if (e.ctrlKey) return; 
+        // ★スクロールバーを持つ親要素が存在する場合のみ処理を行う
+        if (scrollArea) {
+            // 初期カーソル設定
+            scrollArea.style.cursor = "grab";
 
-            // 横方向の成分がある、またはShiftキー押下時は「横スクロール」させる
-            if (e.deltaX !== 0 || e.shiftKey) {
+            // 1. マウスホイール (Shift+ホイール または 横スクロール操作への対応)
+            // containerではなく、scrollAreaに対してイベントを設定
+            scrollArea.onwheel = (e) => {
+                if (e.ctrlKey) return; 
+
+                // 横方向のスクロール量 (deltaX) がある、または Shiftキーが押されている場合
+                if (e.deltaX !== 0 || e.shiftKey) {
+                    e.preventDefault();
+                    // ★修正: 親枠(scrollArea)を横スクロールさせる
+                    scrollArea.scrollLeft += (e.deltaX || e.deltaY);
+                }
+            };
+
+            // 2. ドラッグ操作開始 (マウスダウン)
+            scrollArea.onmousedown = (e) => {
+                if (isTouch) return;
+
+                // 入力要素等の上ではドラッグしない
+                if (e.target.closest('.v-booking-bar') || 
+                    ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) {
+                    return;
+                }
+
+                e.preventDefault(); 
+                
+                isDown = true;
+                hasDragged = false;
+                scrollArea.style.cursor = "grabbing";
+                
+                startX = e.pageX;
+                startY = e.pageY;
+                
+                // ★修正: 横位置は「親枠(scrollArea)」から取得
+                startScrollLeft = scrollArea.scrollLeft;
+                
+                // ★修正: 縦位置は「vScrollTarget」から取得
+                startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
+
+                // ドラッグ中のイベントを登録
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            };
+
+            // 3. ドラッグ中 (マウスムーブ)
+            const onMouseMove = (e) => {
+                if (!isDown || isTouch) return;
                 e.preventDefault();
-                // 横スクロールは container に対して行う
-                container.scrollLeft += (e.deltaX || e.deltaY);
-            }
-            // 縦のみの場合はブラウザのデフォルト挙動(縦スクロール)に任せる
-        };
 
-        // 2. ドラッグ開始
-        container.onmousedown = (e) => {
-            if (isTouch) return;
-            // 入力要素等の上ではドラッグしない
-            if (e.target.closest('.v-booking-bar') || 
-                ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) {
-                return;
-            }
-            e.preventDefault();
-            
-            isDown = true;
-            hasDragged = false;
-            container.style.cursor = "grabbing";
-            
-            startX = e.pageX;
-            startY = e.pageY;
-            
-            // ★重要: 横位置は container から取得
-            startScrollLeft = container.scrollLeft;
-            // ★重要: 縦位置は vScrollTarget から取得
-            startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
-        };
+                const x = e.pageX;
+                const y = e.pageY;
+                // 移動量を1.5倍に加速
+                const walkX = (x - startX) * 1.5;
+                const walkY = (y - startY) * 1.5;
 
-        // ドラッグ終了
-        const stopDragging = () => {
-            isDown = false;
-            container.style.cursor = "grab";
-            setTimeout(() => { hasDragged = false; }, 50);
-        };
-        container.onmouseleave = stopDragging;
-        container.onmouseup = stopDragging;
+                if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
+                    hasDragged = true;
+                }
 
-        // 3. ドラッグ中 (マウス移動)
-        container.onmousemove = (e) => {
-            if (!isDown || isTouch) return;
-            e.preventDefault();
+                // ★修正: 横移動は「親枠(scrollArea)」に適用
+                scrollArea.scrollLeft = startScrollLeft - walkX;
 
-            const x = e.pageX;
-            const y = e.pageY;
-            // 移動量を1.5倍に加速
-            const walkX = (x - startX) * 1.5;
-            const walkY = (y - startY) * 1.5;
+                // ★修正: 縦移動は「vScrollTarget」に適用
+                if (vScrollTarget) {
+                    vScrollTarget.scrollTop = startScrollTop - walkY;
+                }
+            };
 
-            if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
-                hasDragged = true;
-            }
-
-            // ★重要: 横移動は container に適用 (ここが以前のコードの間違い箇所です)
-            container.scrollLeft = startScrollLeft - walkX;
-
-            // ★重要: 縦移動は vScrollTarget に適用
-            if (vScrollTarget) {
-                vScrollTarget.scrollTop = startScrollTop - walkY;
-            }
-        };
+            // 4. ドラッグ終了 (マウスアップ)
+            const onMouseUp = () => {
+                isDown = false;
+                if (scrollArea) scrollArea.style.cursor = "grab";
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                setTimeout(() => { hasDragged = false; }, 50);
+            };
+        }
     }
     // --- 以下、データ描画処理 (既存のロジック) ---
     const rawDateVal = document.getElementById(dateInputId).value;
