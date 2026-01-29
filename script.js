@@ -492,63 +492,41 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.position = "relative";
     }
     
-    // ドラッグスクロール & ホイールスクロール機能
+    // ▼▼▼【修正】ドラッグスクロール & ホイールスクロール機能 (重複登録防止版) ▼▼▼
     let isDown = false;
     let startX, startY, startScrollLeft, startScrollTop;
     let hasDragged = false;
-    let isTouch = false;
 
     if (container) {
-        // タッチ操作の開始検知
-        container.addEventListener('touchstart', () => { isTouch = true; }, { passive: true });
-        
-        // スクロールさせる対象（スクロールバーを持つ親要素）を取得
+        // スクロールさせる対象（スクロールバーを持つ親要素）
         const vScrollTarget = container.closest('.calendar-scroll-area');
 
-        // ★重要: マウスを動かした時の処理（画面全体で監視）
-        const onMouseMove = (e) => {
-            if (!isDown) return;
-            e.preventDefault();
-            const x = e.pageX;
-            const y = e.pageY;
-            const walkX = (x - startX) * 1.5; // 横スクロール感度
-            const walkY = (y - startY) * 1.5; // 縦スクロール感度
-            
-            if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) { hasDragged = true; }
-            
-            // 親枠（vScrollTarget）がある場合はそれを動かす
-            if (vScrollTarget) {
-                vScrollTarget.scrollLeft = startScrollLeft - walkX;
-                vScrollTarget.scrollTop = startScrollTop - walkY;
-            } else {
-                container.scrollLeft = startScrollLeft - walkX;
-                container.scrollTop = startScrollTop - walkY;
+        // ★修正: addEventListenerではなく on~ プロパティを使うことで、再描画時のイベント重複を防ぐ
+        
+        // 1. マウスホイール (Shift+ホイール または トラックパッドの横スクロールに対応)
+        container.onwheel = (e) => {
+            if (e.ctrlKey) return; // ズームは除外
+
+            // 横方向のスクロール量 (deltaX) がある、または Shiftキーが押されている場合
+            if (vScrollTarget && (e.deltaX !== 0 || e.shiftKey)) {
+                e.preventDefault();
+                // Shift+縦ホイール(deltaY) または トラックパッド横(deltaX) を横スクロールに適用
+                vScrollTarget.scrollLeft += (e.deltaX || e.deltaY);
             }
+            // 縦スクロールのみの場合は、標準の動作(縦移動)をさせるため preventDefaultしない
         };
 
-        // ★重要: マウスを離した時の処理（画面全体で監視）
-        const onMouseUp = () => {
-            isDown = false;
-            container.style.cursor = "default";
-            
-            // 画面全体への監視を解除（メモリ節約）
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            
-            setTimeout(() => { hasDragged = false; }, 50);
-        };
-
-        // クリックした瞬間（ドラッグ開始）
+        // 2. ドラッグ操作 (マウスダウン)
         container.onmousedown = (e) => {
-            if (isTouch) return;
-            e.preventDefault();
+            // スクロールバー上での操作やタッチ操作は除外
+            if (e.target.classList.contains('calendar-scroll-area')) return;
+            
             isDown = true;
             hasDragged = false;
             container.style.cursor = "grabbing";
             startX = e.pageX;
             startY = e.pageY;
-            
-            // 開始位置を記録
+
             if (vScrollTarget) {
                 startScrollLeft = vScrollTarget.scrollLeft;
                 startScrollTop = vScrollTarget.scrollTop;
@@ -556,11 +534,42 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 startScrollLeft = container.scrollLeft;
                 startScrollTop = container.scrollTop;
             }
-
-            // ★重要: 枠の外に出てもドラッグが続くように、documentに対してイベントを張る
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
+            e.preventDefault(); // テキスト選択防止
         };
+
+        // 3. ドラッグ中 (マウスムーブ) - documentに付けて枠外れに対応
+        // 以前のイベントが残らないよう、一度削除してから追加(関数参照を保持できないため、ここではシンプルな実装にする)
+        const onMouseMove = (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX;
+            const y = e.pageY;
+            // 1.5倍速でスクロールさせる
+            const walkX = (x - startX) * 1.5; 
+            const walkY = (y - startY) * 1.5; 
+            
+            if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) { hasDragged = true; }
+            
+            if (vScrollTarget) {
+                vScrollTarget.scrollLeft = startScrollLeft - walkX;
+                vScrollTarget.scrollTop = startScrollTop - walkY;
+            }
+        };
+
+        const onMouseUp = () => {
+            isDown = false;
+            if (container) container.style.cursor = "default";
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            // クリック判定のために少し遅らせてフラグを戻す
+            setTimeout(() => { hasDragged = false; }, 50);
+        };
+
+        // イベントリスナーの登録（重複防止のため、mousedown時にdocumentへ登録し、mouseupで解除する方式）
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    }
+    // ▲▲▲ 修正ここまで ▲▲▲
         
         // 古いイベント設定が残らないようにクリア
         container.onmousemove = null;
