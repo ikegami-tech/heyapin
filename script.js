@@ -1201,21 +1201,26 @@ async function deleteBooking() {
 }
 
 /* ==============================================
-   詳細モーダル表示 (曜日追加版)
+   詳細モーダル表示 (曜日追加・堅牢版)
    ============================================== */
 function openDetailModal(res) {
   currentDetailRes = res;
   const modal = document.getElementById('detailModal');
   
-  const s = new Date(res._startTime);
-  const e = new Date(res._endTime);
-
-  // ★修正: 曜日を追加
-  const week = ['日', '月', '火', '水', '木', '金', '土'];
-  const w = week[s.getDay()];
-  const dateStr = `${s.getMonth()+1}/${s.getDate()}(${w})`;
+  // 日付文字列を安全にパース
+  const safeDate = (str) => new Date(String(str).replace(/-/g, '/'));
   
+  const s = safeDate(res._startTime);
+  const e = safeDate(res._endTime);
+
+  const week = ['日', '月', '火', '水', '木', '金', '土'];
+  // getDay()が取れない場合のガード処理を追加
+  const dayIndex = s.getDay();
+  const w = isNaN(dayIndex) ? '?' : week[dayIndex];
+  
+  const dateStr = `${s.getMonth()+1}/${s.getDate()}(${w})`;
   const timeStr = `${pad(s.getHours())}:${pad(s.getMinutes())} - ${pad(e.getHours())}:${pad(e.getMinutes())}`;
+  
   document.getElementById('detail-time').innerText = `${dateStr} ${timeStr}`;
   
   const room = masterData.rooms.find(r => String(r.roomId) === String(res._resourceId));
@@ -1227,7 +1232,7 @@ function openDetailModal(res) {
   if (metaContainer) {
       const fmt = (dStr) => {
           if(!dStr) return "-";
-          const d = new Date(dStr);
+          const d = safeDate(dStr);
           if(isNaN(d.getTime())) return dStr; 
           return `${d.getFullYear()}/${('0'+(d.getMonth()+1)).slice(-2)}/${('0'+d.getDate()).slice(-2)} ${('0'+d.getHours()).slice(-2)}:${('0'+d.getMinutes()).slice(-2)}`;
       };
@@ -1533,7 +1538,7 @@ function searchLogs() { currentLogPage = 1; renderLogs(); }
 function changeLogPage(direction) { currentLogPage += direction; renderLogs(); }
 
 /* ==============================================
-   ログ一覧描画 (曜日追加版)
+   ログ一覧描画 (曜日追加・堅牢版)
    ============================================== */
 function renderLogs() {
     const tbody = document.getElementById('log-tbody');
@@ -1546,12 +1551,15 @@ function renderLogs() {
     let allLogs = [...masterData.logs].reverse(); 
     const filterText = document.getElementById('log-search-input').value.toLowerCase().trim();
     
+    // 安全な日付パース関数
+    const safeDate = (str) => new Date(String(str).replace(/-/g, '/'));
+
     if (filterText) {
         const searchKata = hiraToKata(filterText); 
         const searchHira = kataToHira(filterText);
 
         allLogs = allLogs.filter(log => {
-            const dateStr = formatDate(new Date(log.timestamp));
+            const dateStr = formatDate(safeDate(log.timestamp));
             let roomName = log.resourceName || "";
             const roomObj = masterData.rooms.find(r => String(r.roomId) === String(log.resourceId || log.resourceName));
             if (roomObj) roomName = roomObj.roomName;
@@ -1586,16 +1594,18 @@ function renderLogs() {
         return u ? u.userName : id;
     };
 
-    // ★修正: 曜日を追加したフォーマット関数
     const formatRange = (rangeStr) => {
         if (!rangeStr || !rangeStr.includes(' - ')) return rangeStr;
         const parts = rangeStr.split(' - ');
-        const sDate = new Date(parts[0]);
-        const eDate = new Date(parts[1]);
+        const sDate = safeDate(parts[0]);
+        const eDate = safeDate(parts[1]);
         if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) return rangeStr;
 
         const week = ['日', '月', '火', '水', '木', '金', '土'];
-        const w = week[sDate.getDay()];
+        const dayIndex = sDate.getDay();
+        const w = isNaN(dayIndex) ? '?' : week[dayIndex];
+        
+        return `${sDate.getMonth() + 1}/${sDate.getDate()}(${w}) ${pad(sDate.getHours())}:${pad(sDate.getMinutes())} - ${pad(eDate.getHours())}:${pad(eDate.getMinutes())}`;
     };
 
     displayLogs.forEach(log => {
@@ -1629,12 +1639,13 @@ function renderLogs() {
 
         const detailHtml = `<strong>${roomDisplay}</strong>${detailLines ? `<br><span style="font-size:0.85em; color:#666;">${detailLines}</span>` : ''}<br><span style="font-size:0.8em; color:#999;">${timeDisplay}</span>`;
 
-        tr.innerHTML = `<td>${formatDate(new Date(log.timestamp))}</td><td>${log.operatorName}</td><td>${log.action}</td><td>${detailHtml}</td>`;
+        tr.innerHTML = `<td>${formatDate(safeDate(log.timestamp))}</td><td>${log.operatorName}</td><td>${log.action}</td><td>${detailHtml}</td>`;
         tbody.appendChild(tr);
     });
 
     renderPaginationControls(totalPages, totalItems, (currentLogPage - 1) * LOGS_PER_PAGE + 1, Math.min(currentLogPage * LOGS_PER_PAGE, totalItems));
 }
+
 function renderPaginationControls(totalPages, totalItems, startCount, endCount) {
     const container = document.getElementById('log-pagination');
     container.innerHTML = "";
@@ -1667,12 +1678,16 @@ function renderPaginationControls(totalPages, totalItems, startCount, endCount) 
    ============================================== */
 function pad(n) { return n < 10 ? '0'+n : n; }
 
-// ★修正: 曜日を追加
+// ★修正: 曜日を追加 (安全対策済み)
 function formatDate(d) {
+    if (isNaN(d.getTime())) return "Invalid Date";
     const week = ['日', '月', '火', '水', '木', '金', '土'];
-    const w = week[d.getDay()];
+    const dayIndex = d.getDay();
+    const w = isNaN(dayIndex) ? '?' : week[dayIndex];
     return `${d.getMonth()+1}/${d.getDate()}(${w}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+// ...以下変更なし
 function formatDateToNum(d) {
   if (isNaN(d.getTime())) return ""; 
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
