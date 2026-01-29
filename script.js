@@ -513,7 +513,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     }
     
     // ==============================================
-    // 【修正箇所】 ドラッグスクロール & ホイール処理
+    // 【修正完了版】 ドラッグスクロール & ホイール処理
     // ==============================================
     let isDown = false;
     let startX, startY;
@@ -522,9 +522,12 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     let isTouch = false;
 
     if (container) {
+        // スマホでの誤動作防止
         container.addEventListener('touchstart', () => { isTouch = true; }, { passive: true });
 
-        // 縦スクロールを誰が担当するかを決定
+        // ★重要: 縦スクロールを誰が担当するかを決定
+        // マップ画面の時は「mapWrapper(全体枠)」、それ以外は「container(自分)」
+        const mapWrapper = document.querySelector('.map-wrapper');
         const vScrollTarget = (mode === 'map') ? mapWrapper : container;
 
         // 1. マウスホイール (Shift+ホイール or 横スクロール操作)
@@ -557,8 +560,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             startX = e.pageX;
             startY = e.pageY;
             
-            // ★重要: 横位置は container から、縦位置は vScrollTarget から取得
+            // ★重要: 横位置は container から取得
             startScrollLeft = container.scrollLeft;
+            // ★重要: 縦位置は vScrollTarget から取得
             startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
         };
 
@@ -586,16 +590,15 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 hasDragged = true;
             }
 
-            // ★重要: 横移動は container に適用
+            // ★重要: 横移動は container に適用 (ここが以前のコードの間違い箇所です)
             container.scrollLeft = startScrollLeft - walkX;
 
-            // ★重要: 縦移動は vScrollTarget (mapWrapperなど) に適用
+            // ★重要: 縦移動は vScrollTarget に適用
             if (vScrollTarget) {
                 vScrollTarget.scrollTop = startScrollTop - walkY;
             }
         };
     }
-
     // --- 以下、データ描画処理 (既存のロジック) ---
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
