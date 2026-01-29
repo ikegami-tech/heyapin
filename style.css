@@ -69,7 +69,11 @@ header {
   display: flex; justify-content: space-between; align-items: center;
   flex-shrink: 0;
 }
-.user-info { font-size: 0.8rem; }
+.user-info { 
+  font-size: 0.8rem;
+  display: flex;          /* 横並びにする */
+  align-items: center;    /* 縦位置を中央に揃える */
+}
 
 /* ヘッダー更新ボタン */
 .header-left-group {
