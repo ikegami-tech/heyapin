@@ -23,7 +23,7 @@
 <div id="app-screen">
   <header>
     <div class="header-left-group">
-      <div id="header-title">部屋予約</div>
+      <div id="header-title" onclick="switchTab('map-view')" style="cursor: pointer;">部屋予約</div>
       <button type="button" class="btn-header-refresh" onclick="manualRefresh()">
         <span>&#8635;</span> 更新
       </button>
@@ -31,6 +31,10 @@
     </div>
 
     <div class="user-info">
+      <button id="btn-header-back" class="btn-header-back" onclick="switchTab('map-view')" style="display: none;">
+        ↩ 戻る
+      </button>
+
       <div class="settings-container">
         <span class="settings-icon" onclick="toggleSettingsMenu()">&#9881;</span>
         <div id="settings-dropdown" class="settings-dropdown-content">
