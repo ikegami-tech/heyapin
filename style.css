@@ -413,8 +413,6 @@ header {
 .map-click-area.type-reception:hover { background: rgba(255, 165, 0, 0.6) !important; border: 2px solid orange !important; }
 .map-click-area.type-z:hover { background: rgba(0, 100, 255, 0.6) !important; border: 2px solid #0064ff !important; }
 
-.map-hint { margin-top: 5px; color: #666; font-size: 0.8rem; text-align: center; flex-shrink: 0; }
-
 /* 部屋詳細テーブル */
 .detail-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 .detail-table th { text-align: left; background: #f9f9f9; padding: 10px; width: 80px; border-bottom: 1px solid #eee; color: #555; font-weight: normal; }
