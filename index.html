@@ -87,13 +87,22 @@
       <div id="map-timeline-section" class="map-timeline-hidden">
         <h4 id="map-selected-room-name" class="map-room-title"></h4>
         
-       <div class="date-controller">
-  <button type="button" onclick="changeDate(-1, 'map-date')">&lt;</button>
-  <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
-      <input type="date" id="map-date" onchange="renderVerticalTimeline('map'); updateDayDisplay('map-date');" style="margin-bottom:0;">
-      <span id="map-date-week" style="font-weight:bold; font-size:0.9rem;"></span>
+      <div class="date-controller" style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+  <button type="button" onclick="changeDate(-1, 'map-date')" 
+          style="width: 50px !important; min-width: 50px !important; flex: 0 0 50px !important; height: 38px !important; padding: 0 !important; margin: 0 !important;">
+    &lt;
+  </button>
+
+  <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+      <input type="date" id="map-date" onchange="renderVerticalTimeline('map'); updateDayDisplay('map-date');" 
+             style="width: 150px !important; height: 38px !important; margin-bottom: 0 !important; font-size: 16px;">
+      <span id="map-date-week" style="font-weight:bold; font-size:1rem; min-width: 30px;"></span>
   </div>
-  <button type="button" onclick="changeDate(1, 'map-date')">&gt;</button>
+
+  <button type="button" onclick="changeDate(1, 'map-date')" 
+          style="width: 50px !important; min-width: 50px !important; flex: 0 0 50px !important; height: 38px !important; padding: 0 !important; margin: 0 !important;">
+    &gt;
+  </button>
 </div>
         
         <div class="calendar-scroll-area">
