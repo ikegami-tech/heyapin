@@ -278,11 +278,20 @@ function updateRoomSelect() {
   }
 }
 
+/* switchTab 関数をこれに置き換え */
 function switchTab(tabName) {
   document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
   const targetView = document.getElementById('view-' + tabName);
   if(targetView) targetView.classList.add('active');
   
+  // ▼▼▼ 追加: 戻るボタンの表示制御 ▼▼▼
+  const backBtn = document.getElementById('btn-header-back');
+  if (backBtn) {
+      // logs画面(履歴)のときだけ表示、それ以外は非表示
+      backBtn.style.display = (tabName === 'logs') ? 'inline-block' : 'none';
+  }
+  // ▲▲▲ 追加ここまで ▲▲▲
+
   if (tabName === 'map-view') {
       setTimeout(() => { switchFloor(currentFloor); }, 50);
   } else if (tabName === 'logs') {
