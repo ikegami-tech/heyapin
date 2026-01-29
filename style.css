@@ -159,19 +159,18 @@ header {
 
 /* 2. マップ画面専用の高さ固定設定（ここが重要） */
 #map-timeline-section .calendar-scroll-area {
-  /* 画面の高さの70%くらいを確保し、この枠内でスクロールさせる */
-  height: 70vh !important; 
+  /* 画面下ギリギリにならないよう、高さを少し控えめにし、下余白を確保 */
+  height: 65vh !important; 
   min-height: 400px !important;
   
-  /* 縦横スクロールを許可 */
   overflow: auto !important;
-  
-  /* 枠線 */
   border-top: 1px solid #ddd;
   border-bottom: 1px solid #ddd;
-  
-  /* スクロールを滑らかに */
   scroll-behavior: smooth;
+
+  /* スクロールバーがコンテンツに被らないように少しパディングを入れる */
+  padding-bottom: 5px; 
+  margin-bottom: 20px; 
 }
 
 .time-axis-col { 
