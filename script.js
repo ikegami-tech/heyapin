@@ -1046,6 +1046,10 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
     document.getElementById('input-title').value = "";
     document.getElementById('input-note').value = "";
     document.getElementById('btn-delete').style.display = 'none';
+     if(document.getElementById('check-repeat')) {
+        document.getElementById('check-repeat').checked = false;
+        toggleRepeatOptions();
+    }
     if (typeof currentUser !== 'undefined' && currentUser && currentUser.userId) {
         selectedParticipantIds.add(String(currentUser.userId));
     }
@@ -1072,7 +1076,20 @@ function getParticipantIdsFromRes(res) {
     }
     return list.map(id => String(id).trim()).filter(id => id !== "");
 }
+/* ==============================================
+   繰り返しオプションの表示切替
+   ============================================== */
+function toggleRepeatOptions() {
+    const chk = document.getElementById('check-repeat');
+    const area = document.getElementById('repeat-options');
+    if (chk && area) {
+        area.style.display = chk.checked ? 'block' : 'none';
+    }
+}
 
+/* ==============================================
+   予約保存処理 (繰り返し対応版)
+   ============================================== */
 async function saveBooking() {
     const id = document.getElementById('edit-res-id').value;
     const room = document.getElementById('input-room').value;
@@ -1081,8 +1098,9 @@ async function saveBooking() {
     const end = document.getElementById('input-end').value;
     const title = document.getElementById('input-title').value;
     const note = document.getElementById('input-note').value;
+    
+    // --- バリデーション ---
     const timePattern = /^([0-9]{1,2}):([0-9]{2})$/;
-  
     if (!timePattern.test(start) || !timePattern.test(end)) {
         alert("時間は「09:00」のように半角数字とコロン(:)で入力してください。");
         return;
@@ -1095,113 +1113,176 @@ async function saveBooking() {
         alert("利用時間は 7:00 〜 21:00 の範囲で設定してください。");
         return;
     }
-
     const startParts = start.split(':');
     const endParts = end.split(':');
     const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
     const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
-
     if (endMinutes - startMinutes < 15) {
         alert("最低でも15分以上の日時を設定してください。");
         return;
     }
 
-    const startTime = `${date.replace(/-/g, '/')} ${start}`;
-    const endTime = `${date.replace(/-/g, '/')} ${end}`;
+    // --- 予約データの生成 (単発 or 繰り返し) ---
+    let reservationList = []; // 作成する予約のリスト
     const pIds = Array.from(selectedParticipantIds).join(', ');
+    
+    const isRepeat = document.getElementById('check-repeat') && document.getElementById('check-repeat').checked;
 
-   const newStartObj = new Date(startTime);
-    const newEndObj = new Date(endTime);
+    if (!isRepeat || id) { 
+        // 通常予約 (または編集時)
+        // ※編集時は繰り返し設定があっても「その1件だけ」を修正する仕様とします
+        reservationList.push({
+            date: date,
+            startTime: `${date.replace(/-/g, '/')} ${start}`,
+            endTime: `${date.replace(/-/g, '/')} ${end}`
+        });
+    } else {
+        // 繰り返し予約の生成ロジック
+        const interval = parseInt(document.getElementById('repeat-interval').value) || 1;
+        const unit = document.getElementById('repeat-unit').value; // day, week, month
+        const endType = document.querySelector('input[name="repeat-end"]:checked').value; // none, date, count
+        
+        let currentDate = new Date(date.replace(/-/g, '/'));
+        let count = 0;
+        const maxCount = (endType === 'count') ? parseInt(document.getElementById('repeat-count').value) : 1000;
+        const untilDate = (endType === 'date') ? new Date(document.getElementById('repeat-until').value) : null;
+        const oneYearLater = new Date();
+        oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+
+        while (true) {
+            // 終了判定
+            if (endType === 'count' && count >= maxCount) break;
+            if (endType === 'date' && untilDate && currentDate > untilDate) break;
+            if (endType === 'none' && currentDate > oneYearLater) break; // 無限ループ防止(最大1年)
+            if (count > 366) break; // 安全装置
+
+            // 日付フォーマット
+            const y = currentDate.getFullYear();
+            const m = ('0' + (currentDate.getMonth() + 1)).slice(-2);
+            const d = ('0' + currentDate.getDate()).slice(-2);
+            const dateStr = `${y}-${m}-${d}`; // YYYY-MM-DD
+
+            reservationList.push({
+                date: dateStr,
+                startTime: `${y}/${m}/${d} ${start}`,
+                endTime: `${y}/${m}/${d} ${end}`
+            });
+
+            // 次の日付へ
+            count++;
+            if (unit === 'day') {
+                currentDate.setDate(currentDate.getDate() + interval);
+            } else if (unit === 'week') {
+                currentDate.setDate(currentDate.getDate() + (interval * 7));
+            } else if (unit === 'month') {
+                currentDate.setMonth(currentDate.getMonth() + interval);
+            }
+        }
+    }
+
+    if (reservationList.length === 0) {
+        alert("予約日が生成されませんでした。設定を確認してください。");
+        return;
+    }
+
+    // --- 全件の重複チェック ---
+    let conflictMessages = [];
     const checkTargets = Array.from(selectedParticipantIds);
 
-    // ▼▼▼ 変更箇所: エラー変数の準備 ▼▼▼
-    let conflictMessage = null;
+    for (const resData of reservationList) {
+        const newStartObj = new Date(resData.startTime);
+        const newEndObj = new Date(resData.endTime);
 
-    const conflictFound = checkTargets.some(targetUserId => {
-        const conflictRes = masterData.reservations.find(existingRes => {
-            if (id && String(existingRes.id) === String(id)) return false;
+        const conflictFound = checkTargets.some(targetUserId => {
+            const conflictRes = masterData.reservations.find(existingRes => {
+                // 編集時は自分自身を除外
+                if (id && String(existingRes.id) === String(id)) return false;
 
-            const exStart = new Date(existingRes._startTime || existingRes.startTime);
-            const exEnd = new Date(existingRes._endTime || existingRes.endTime);
-            if (isNaN(exStart.getTime()) || isNaN(exEnd.getTime())) return false;
+                const exStart = new Date(existingRes._startTime || existingRes.startTime);
+                const exEnd = new Date(existingRes._endTime || existingRes.endTime);
+                if (isNaN(exStart.getTime()) || isNaN(exEnd.getTime())) return false;
 
-            const isTimeOverlap = (exStart < newEndObj && exEnd > newStartObj);
-            if (!isTimeOverlap) return false;
+                const isTimeOverlap = (exStart < newEndObj && exEnd > newStartObj);
+                if (!isTimeOverlap) return false;
 
-            const exMemberIds = getParticipantIdsFromRes(existingRes);
-            return exMemberIds.includes(targetUserId);
+                const exMemberIds = getParticipantIdsFromRes(existingRes);
+                return exMemberIds.includes(targetUserId);
+            });
+
+            if (conflictRes) {
+                const conflictingUser = masterData.users.find(u => String(u.userId) === String(targetUserId));
+                const userName = conflictingUser ? conflictingUser.userName : targetUserId;
+                const roomObj = masterData.rooms.find(r => String(r.roomId) === String(conflictRes._resourceId || conflictRes.resourceId));
+                const roomName = roomObj ? roomObj.roomName : "不明な部屋";
+                
+                const cStart = new Date(conflictRes._startTime || conflictRes.startTime);
+                const cEnd = new Date(conflictRes._endTime || conflictRes.endTime);
+                const timeStr = `${pad(cStart.getHours())}:${pad(cStart.getMinutes())} - ${pad(cEnd.getHours())}:${pad(cEnd.getMinutes())}`;
+                const dateStr = `${cStart.getMonth()+1}/${cStart.getDate()}`;
+
+                conflictMessages.push(`・${dateStr} ${userName} (${roomName} ${timeStr})`);
+                return true;
+            }
+            return false;
         });
+    }
 
-        if (conflictRes) {
-            const conflictingUser = masterData.users.find(u => String(u.userId) === String(targetUserId));
-            const userName = conflictingUser ? conflictingUser.userName : targetUserId;
-            
-            const roomObj = masterData.rooms.find(r => String(r.roomId) === String(conflictRes._resourceId || conflictRes.resourceId));
-            const roomName = roomObj ? roomObj.roomName : "不明な部屋";
-            
-            const cStart = new Date(conflictRes._startTime || conflictRes.startTime);
-            const cEnd = new Date(conflictRes._endTime || conflictRes.endTime);
-            const timeStr = `${pad(cStart.getHours())}:${pad(cStart.getMinutes())} - ${pad(cEnd.getHours())}:${pad(cEnd.getMinutes())}`;
+    if (conflictMessages.length > 0) {
+        // 重複があっても確認して登録するかどうか
+        const msg = `以下の重複が見つかりました（${conflictMessages.length}件）：\n` + 
+                    conflictMessages.slice(0, 5).join('\n') + 
+                    (conflictMessages.length > 5 ? '\n...他' : '') +
+                    `\n\nこのまま重複して登録しますか？`;
+        if (!confirm(msg)) return;
+    } else if (reservationList.length > 1) {
+        if (!confirm(`${reservationList.length}件の予約を一括登録します。よろしいですか？`)) return;
+    }
 
-            // ▼▼▼ 変更箇所: alertではなくメッセージを生成して保持 ▼▼▼
-            conflictMessage = 
-                `【重複警告】\n\n` +
-                `「${userName}」さんは、以下の予約と時間が重なっています。\n` +
-                `--------------------------------\n` +
-                `場所： ${roomName}\n` +
-                `時間： ${timeStr}\n` +
-                `用件： ${getVal(conflictRes, ['title', 'subject']) || '(なし)'}\n` +
-                `--------------------------------\n` +
-                `このまま重複して登録しますか？`;
-            
-            return true; 
+    // --- 保存処理 (API呼び出し) ---
+    // ※GAS側が一括登録に対応していないため、ループで1件ずつ送信します
+    // ※完了までローディングを表示し続けます
+    document.getElementById('loading').style.display = 'flex';
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const resData of reservationList) {
+        const params = {
+            action: id ? 'updateReservation' : 'createReservation',
+            reservationId: id, // 新規の場合は空
+            resourceId: room,
+            startTime: resData.startTime,
+            endTime: resData.endTime,
+            reserverId: currentUser.userId,
+            operatorName: currentUser.userName,
+            participantIds: pIds, 
+            title: title,
+            note: note 
+        };
+
+        try {
+            const result = await callAPI(params);
+            if (result.status === 'success') {
+                successCount++;
+            } else {
+                failCount++;
+                console.error("Save failed:", result);
+            }
+        } catch(e) {
+            failCount++;
+            console.error("API Error:", e);
         }
-        return false;
-    });
-
-    // ▼▼▼ 変更箇所: confirmで確認し、キャンセルの場合のみ return する ▼▼▼
-    // (元のコードにあった if (conflictFound) return; をこれに置き換えます)
-    if (conflictFound) {
-        if (!confirm(conflictMessage)) return; 
     }
-    const params = {
-        action: id ? 'updateReservation' : 'createReservation',
-        reservationId: id,
-        resourceId: room,
-        startTime: startTime,
-        endTime: endTime,
-        reserverId: currentUser.userId,
-        operatorName: currentUser.userName,
-        participantIds: pIds, 
-        title: title,
-        note: note 
-    };
 
-    const result = await callAPI(params);
-    if(result.status === 'success') {
+    document.getElementById('loading').style.display = 'none';
+
+    if (failCount === 0) {
+        alert("保存しました (" + successCount + "件)");
         closeModal();
         loadAllData(true);
     } else {
-        alert("エラー: " + result.message);
-    }
-}
-
-async function deleteBooking() {
-    const id = document.getElementById('edit-res-id').value;
-    if (!id || !confirm("本当にこの予約を削除しますか？")) return;
-
-    const params = {
-        action: 'deleteReservation',
-        reservationId: id,
-        operatorName: currentUser ? currentUser.userName : 'Unknown'
-    };
-    const result = await callAPI(params);
-    if (result.status === 'success') {
-        alert("予約を削除しました");
+        alert(`完了しましたが、一部エラーが発生しました。\n成功: ${successCount}件\n失敗: ${failCount}件`);
         closeModal();
         loadAllData(true);
-    } else {
-        alert("削除エラー: " + result.message);
     }
 }
 
