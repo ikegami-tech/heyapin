@@ -815,3 +815,21 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
 .btn-header-back:hover {
   background: rgba(255,255,255,0.2);
 }
+/* --- 繰り返し設定のスタイル --- */
+#repeat-options input[type="radio"],
+#repeat-options input[type="checkbox"] {
+    width: auto !important;
+    margin-right: 5px;
+    height: auto !important;
+}
+#repeat-options select {
+    padding: 2px 5px;
+    height: 30px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+#repeat-options input[type="number"],
+#repeat-options input[type="date"] {
+    margin-bottom: 0 !important;
+    height: 30px !important;
+}
