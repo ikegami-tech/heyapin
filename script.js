@@ -71,19 +71,28 @@ window.onload = () => {
   initMapResizer();
 };
 
-async function callAPI(params) {
+/* ==============================================
+   API通信関数 (ローディング制御対応版)
+   ============================================== */
+async function callAPI(params, showLoading = true) {
   if(API_URL.indexOf("http") === -1) { alert("GASのURLを設定してください"); return { status: 'error' }; }
-  document.getElementById('loading').style.display = 'flex';
+  
+  // showLoading が true の場合のみローディングを表示
+  if (showLoading) document.getElementById('loading').style.display = 'flex';
+  
   const options = { method: 'POST', body: JSON.stringify(params), headers: { 'Content-Type': 'text/plain;charset=utf-8' } };
   try {
     const res = await fetch(API_URL, options);
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
-    document.getElementById('loading').style.display = 'none';
+    
+    // showLoading が true の場合のみローディングを非表示
+    if (showLoading) document.getElementById('loading').style.display = 'none';
+    
     if (json.status === 'error') { alert("システムエラー: " + json.message); return { status: 'error' }; }
     return json;
   } catch(e) {
-    document.getElementById('loading').style.display = 'none';
+    if (showLoading) document.getElementById('loading').style.display = 'none';
     alert("通信エラー: " + e.message);
     return { status: 'error' };
   }
@@ -1088,7 +1097,7 @@ function toggleRepeatOptions() {
 }
 
 /* ==============================================
-   予約保存処理 (繰り返し対応・高速並列処理版)
+   予約保存処理 (繰り返し対応・高速並列処理・ローディング修正版)
    ============================================== */
 async function saveBooking() {
     const id = document.getElementById('edit-res-id').value;
@@ -1179,7 +1188,7 @@ async function saveBooking() {
         return;
     }
 
-    // --- 全件の重複チェック (ここは高速なのでそのまま) ---
+    // --- 全件の重複チェック ---
     let conflictMessages = [];
     const checkTargets = Array.from(selectedParticipantIds);
 
@@ -1226,18 +1235,18 @@ async function saveBooking() {
     }
 
     // --- ★高速化: 5件ずつ並行して送信する ---
+    
+    // 全体のローディングを表示
     document.getElementById('loading').style.display = 'flex';
+    
     let successCount = 0;
     let failCount = 0;
     
-    // バッチサイズ（一度に送るリクエスト数）
-    // GASの制限（ロックエラー）を回避しつつ高速化するため "5" 程度が推奨です
     const BATCH_SIZE = 5; 
 
     for (let i = 0; i < reservationList.length; i += BATCH_SIZE) {
         const chunk = reservationList.slice(i, i + BATCH_SIZE);
         
-        // 5件同時に通信を開始し、全て終わるのを待つ (Promise.all)
         await Promise.all(chunk.map(async (resData) => {
             const params = {
                 action: id ? 'updateReservation' : 'createReservation',
@@ -1253,7 +1262,9 @@ async function saveBooking() {
             };
 
             try {
-                const result = await callAPI(params);
+                // ★修正: 第2引数に false を渡して、個別のローディング操作を無効化
+                const result = await callAPI(params, false);
+                
                 if (result.status === 'success') {
                     successCount++;
                 } else {
@@ -1267,6 +1278,7 @@ async function saveBooking() {
         }));
     }
 
+    // 処理完了後にローディングを消す
     document.getElementById('loading').style.display = 'none';
 
     if (failCount === 0) {
