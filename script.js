@@ -1088,7 +1088,7 @@ function toggleRepeatOptions() {
 }
 
 /* ==============================================
-   予約保存処理 (繰り返し対応版)
+   予約保存処理 (繰り返し対応・高速並列処理版)
    ============================================== */
 async function saveBooking() {
     const id = document.getElementById('edit-res-id').value;
@@ -1123,24 +1123,21 @@ async function saveBooking() {
     }
 
     // --- 予約データの生成 (単発 or 繰り返し) ---
-    let reservationList = []; // 作成する予約のリスト
+    let reservationList = []; 
     const pIds = Array.from(selectedParticipantIds).join(', ');
     
     const isRepeat = document.getElementById('check-repeat') && document.getElementById('check-repeat').checked;
 
     if (!isRepeat || id) { 
-        // 通常予約 (または編集時)
-        // ※編集時は繰り返し設定があっても「その1件だけ」を修正する仕様とします
         reservationList.push({
             date: date,
             startTime: `${date.replace(/-/g, '/')} ${start}`,
             endTime: `${date.replace(/-/g, '/')} ${end}`
         });
     } else {
-        // 繰り返し予約の生成ロジック
         const interval = parseInt(document.getElementById('repeat-interval').value) || 1;
-        const unit = document.getElementById('repeat-unit').value; // day, week, month
-        const endType = document.querySelector('input[name="repeat-end"]:checked').value; // none, date, count
+        const unit = document.getElementById('repeat-unit').value; 
+        const endType = document.querySelector('input[name="repeat-end"]:checked').value; 
         
         let currentDate = new Date(date.replace(/-/g, '/'));
         let count = 0;
@@ -1150,17 +1147,15 @@ async function saveBooking() {
         oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
 
         while (true) {
-            // 終了判定
             if (endType === 'count' && count >= maxCount) break;
             if (endType === 'date' && untilDate && currentDate > untilDate) break;
-            if (endType === 'none' && currentDate > oneYearLater) break; // 無限ループ防止(最大1年)
-            if (count > 366) break; // 安全装置
+            if (endType === 'none' && currentDate > oneYearLater) break; 
+            if (count > 366) break; 
 
-            // 日付フォーマット
             const y = currentDate.getFullYear();
             const m = ('0' + (currentDate.getMonth() + 1)).slice(-2);
             const d = ('0' + currentDate.getDate()).slice(-2);
-            const dateStr = `${y}-${m}-${d}`; // YYYY-MM-DD
+            const dateStr = `${y}-${m}-${d}`; 
 
             reservationList.push({
                 date: dateStr,
@@ -1168,7 +1163,6 @@ async function saveBooking() {
                 endTime: `${y}/${m}/${d} ${end}`
             });
 
-            // 次の日付へ
             count++;
             if (unit === 'day') {
                 currentDate.setDate(currentDate.getDate() + interval);
@@ -1185,7 +1179,7 @@ async function saveBooking() {
         return;
     }
 
-    // --- 全件の重複チェック ---
+    // --- 全件の重複チェック (ここは高速なのでそのまま) ---
     let conflictMessages = [];
     const checkTargets = Array.from(selectedParticipantIds);
 
@@ -1195,16 +1189,12 @@ async function saveBooking() {
 
         const conflictFound = checkTargets.some(targetUserId => {
             const conflictRes = masterData.reservations.find(existingRes => {
-                // 編集時は自分自身を除外
                 if (id && String(existingRes.id) === String(id)) return false;
-
                 const exStart = new Date(existingRes._startTime || existingRes.startTime);
                 const exEnd = new Date(existingRes._endTime || existingRes.endTime);
                 if (isNaN(exStart.getTime()) || isNaN(exEnd.getTime())) return false;
-
                 const isTimeOverlap = (exStart < newEndObj && exEnd > newStartObj);
                 if (!isTimeOverlap) return false;
-
                 const exMemberIds = getParticipantIdsFromRes(existingRes);
                 return exMemberIds.includes(targetUserId);
             });
@@ -1214,12 +1204,10 @@ async function saveBooking() {
                 const userName = conflictingUser ? conflictingUser.userName : targetUserId;
                 const roomObj = masterData.rooms.find(r => String(r.roomId) === String(conflictRes._resourceId || conflictRes.resourceId));
                 const roomName = roomObj ? roomObj.roomName : "不明な部屋";
-                
                 const cStart = new Date(conflictRes._startTime || conflictRes.startTime);
                 const cEnd = new Date(conflictRes._endTime || conflictRes.endTime);
                 const timeStr = `${pad(cStart.getHours())}:${pad(cStart.getMinutes())} - ${pad(cEnd.getHours())}:${pad(cEnd.getMinutes())}`;
                 const dateStr = `${cStart.getMonth()+1}/${cStart.getDate()}`;
-
                 conflictMessages.push(`・${dateStr} ${userName} (${roomName} ${timeStr})`);
                 return true;
             }
@@ -1228,7 +1216,6 @@ async function saveBooking() {
     }
 
     if (conflictMessages.length > 0) {
-        // 重複があっても確認して登録するかどうか
         const msg = `以下の重複が見つかりました（${conflictMessages.length}件）：\n` + 
                     conflictMessages.slice(0, 5).join('\n') + 
                     (conflictMessages.length > 5 ? '\n...他' : '') +
@@ -1238,39 +1225,46 @@ async function saveBooking() {
         if (!confirm(`${reservationList.length}件の予約を一括登録します。よろしいですか？`)) return;
     }
 
-    // --- 保存処理 (API呼び出し) ---
-    // ※GAS側が一括登録に対応していないため、ループで1件ずつ送信します
-    // ※完了までローディングを表示し続けます
+    // --- ★高速化: 5件ずつ並行して送信する ---
     document.getElementById('loading').style.display = 'flex';
     let successCount = 0;
     let failCount = 0;
+    
+    // バッチサイズ（一度に送るリクエスト数）
+    // GASの制限（ロックエラー）を回避しつつ高速化するため "5" 程度が推奨です
+    const BATCH_SIZE = 5; 
 
-    for (const resData of reservationList) {
-        const params = {
-            action: id ? 'updateReservation' : 'createReservation',
-            reservationId: id, // 新規の場合は空
-            resourceId: room,
-            startTime: resData.startTime,
-            endTime: resData.endTime,
-            reserverId: currentUser.userId,
-            operatorName: currentUser.userName,
-            participantIds: pIds, 
-            title: title,
-            note: note 
-        };
+    for (let i = 0; i < reservationList.length; i += BATCH_SIZE) {
+        const chunk = reservationList.slice(i, i + BATCH_SIZE);
+        
+        // 5件同時に通信を開始し、全て終わるのを待つ (Promise.all)
+        await Promise.all(chunk.map(async (resData) => {
+            const params = {
+                action: id ? 'updateReservation' : 'createReservation',
+                reservationId: id,
+                resourceId: room,
+                startTime: resData.startTime,
+                endTime: resData.endTime,
+                reserverId: currentUser.userId,
+                operatorName: currentUser.userName,
+                participantIds: pIds, 
+                title: title,
+                note: note 
+            };
 
-        try {
-            const result = await callAPI(params);
-            if (result.status === 'success') {
-                successCount++;
-            } else {
+            try {
+                const result = await callAPI(params);
+                if (result.status === 'success') {
+                    successCount++;
+                } else {
+                    failCount++;
+                    console.error("Save failed:", result);
+                }
+            } catch(e) {
                 failCount++;
-                console.error("Save failed:", result);
+                console.error("API Error:", e);
             }
-        } catch(e) {
-            failCount++;
-            console.error("API Error:", e);
-        }
+        }));
     }
 
     document.getElementById('loading').style.display = 'none';
@@ -1285,7 +1279,6 @@ async function saveBooking() {
         loadAllData(true);
     }
 }
-
 /* ==============================================
    詳細モーダル表示 (曜日追加・堅牢版)
    ============================================== */
