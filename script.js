@@ -1097,7 +1097,7 @@ function toggleRepeatOptions() {
 }
 
 /* ==============================================
-   予約保存処理 (進捗バー表示機能付き)
+   予約保存処理 (繰り返し最大3ヶ月・高速並列処理版)
    ============================================== */
 async function saveBooking() {
     const id = document.getElementById('edit-res-id').value;
@@ -1152,14 +1152,18 @@ async function saveBooking() {
         let count = 0;
         const maxCount = (endType === 'count') ? parseInt(document.getElementById('repeat-count').value) : 1000;
         const untilDate = (endType === 'date') ? new Date(document.getElementById('repeat-until').value) : null;
-        const oneYearLater = new Date();
-        oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+        
+        // ★修正: 上限を「3ヶ月後」に設定
+        const maxLimitDate = new Date();
+        maxLimitDate.setMonth(maxLimitDate.getMonth() + 3);
 
         while (true) {
             if (endType === 'count' && count >= maxCount) break;
             if (endType === 'date' && untilDate && currentDate > untilDate) break;
-            if (endType === 'none' && currentDate > oneYearLater) break; 
-            if (count > 366) break; 
+            // ★修正: 3ヶ月を超えたら終了
+            if (endType === 'none' && currentDate > maxLimitDate) break; 
+            // ★修正: 安全装置も3ヶ月に合わせて調整 (毎日作成でも約92回なので100回で十分)
+            if (count > 100) break; 
 
             const y = currentDate.getFullYear();
             const m = ('0' + (currentDate.getMonth() + 1)).slice(-2);
@@ -1234,14 +1238,13 @@ async function saveBooking() {
         if (!confirm(`${reservationList.length}件の予約を一括登録します。よろしいですか？`)) return;
     }
 
-    // --- ★進捗バー初期化 ---
+    // --- 進捗バー初期化 ---
     const loadingEl = document.getElementById('loading');
     const wrapper = document.getElementById('progress-wrapper');
     const bar = document.getElementById('progress-bar');
     const txt = document.getElementById('progress-text');
     
     loadingEl.style.display = 'flex';
-    // 1件だけならバーは出さない（一瞬で終わるため）
     if (reservationList.length > 1) {
         wrapper.style.display = 'block';
         bar.style.width = '0%';
@@ -1252,7 +1255,7 @@ async function saveBooking() {
 
     let successCount = 0;
     let failCount = 0;
-    let processedCount = 0; // 処理済み件数
+    let processedCount = 0; 
     
     const BATCH_SIZE = 5; 
 
@@ -1285,7 +1288,6 @@ async function saveBooking() {
                 failCount++;
                 console.error("API Error:", e);
             } finally {
-                // ★進捗更新
                 processedCount++;
                 if (reservationList.length > 1) {
                     const percentage = Math.round((processedCount / reservationList.length) * 100);
@@ -1296,10 +1298,9 @@ async function saveBooking() {
         }));
     }
 
-    // 完了後、少し待ってから非表示（100%を見せるため）
     setTimeout(() => {
         loadingEl.style.display = 'none';
-        wrapper.style.display = 'none'; // バーを隠しておく
+        wrapper.style.display = 'none'; 
 
         if (failCount === 0) {
             alert("保存しました (" + successCount + "件)");
