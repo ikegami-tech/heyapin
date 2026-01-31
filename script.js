@@ -1097,7 +1097,7 @@ function toggleRepeatOptions() {
 }
 
 /* ==============================================
-   予約保存処理 (繰り返し対応・高速並列処理・ローディング修正版)
+   予約保存処理 (進捗バー表示機能付き)
    ============================================== */
 async function saveBooking() {
     const id = document.getElementById('edit-res-id').value;
@@ -1234,13 +1234,25 @@ async function saveBooking() {
         if (!confirm(`${reservationList.length}件の予約を一括登録します。よろしいですか？`)) return;
     }
 
-    // --- ★高速化: 5件ずつ並行して送信する ---
+    // --- ★進捗バー初期化 ---
+    const loadingEl = document.getElementById('loading');
+    const wrapper = document.getElementById('progress-wrapper');
+    const bar = document.getElementById('progress-bar');
+    const txt = document.getElementById('progress-text');
     
-    // 全体のローディングを表示
-    document.getElementById('loading').style.display = 'flex';
-    
+    loadingEl.style.display = 'flex';
+    // 1件だけならバーは出さない（一瞬で終わるため）
+    if (reservationList.length > 1) {
+        wrapper.style.display = 'block';
+        bar.style.width = '0%';
+        txt.innerText = `0 / ${reservationList.length} 件完了`;
+    } else {
+        wrapper.style.display = 'none';
+    }
+
     let successCount = 0;
     let failCount = 0;
+    let processedCount = 0; // 処理済み件数
     
     const BATCH_SIZE = 5; 
 
@@ -1262,9 +1274,7 @@ async function saveBooking() {
             };
 
             try {
-                // ★修正: 第2引数に false を渡して、個別のローディング操作を無効化
                 const result = await callAPI(params, false);
-                
                 if (result.status === 'success') {
                     successCount++;
                 } else {
@@ -1274,22 +1284,33 @@ async function saveBooking() {
             } catch(e) {
                 failCount++;
                 console.error("API Error:", e);
+            } finally {
+                // ★進捗更新
+                processedCount++;
+                if (reservationList.length > 1) {
+                    const percentage = Math.round((processedCount / reservationList.length) * 100);
+                    bar.style.width = percentage + '%';
+                    txt.innerText = `${processedCount} / ${reservationList.length} 件完了`;
+                }
             }
         }));
     }
 
-    // 処理完了後にローディングを消す
-    document.getElementById('loading').style.display = 'none';
+    // 完了後、少し待ってから非表示（100%を見せるため）
+    setTimeout(() => {
+        loadingEl.style.display = 'none';
+        wrapper.style.display = 'none'; // バーを隠しておく
 
-    if (failCount === 0) {
-        alert("保存しました (" + successCount + "件)");
-        closeModal();
-        loadAllData(true);
-    } else {
-        alert(`完了しましたが、一部エラーが発生しました。\n成功: ${successCount}件\n失敗: ${failCount}件`);
-        closeModal();
-        loadAllData(true);
-    }
+        if (failCount === 0) {
+            alert("保存しました (" + successCount + "件)");
+            closeModal();
+            loadAllData(true);
+        } else {
+            alert(`完了しましたが、一部エラーが発生しました。\n成功: ${successCount}件\n失敗: ${failCount}件`);
+            closeModal();
+            loadAllData(true);
+        }
+    }, 200);
 }
 /* ==============================================
    詳細モーダル表示 (曜日追加・堅牢版)
