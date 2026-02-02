@@ -3,7 +3,7 @@
    ============================================== */
 // Google Apps Script (GAS) のウェブアプリURL。
 // このURLに対してデータの取得や保存の通信を行います。
-const API_URL = "https://script.google.com/macros/s/AKfycbwRT-tfBEJZw1bSdM7waIDITEeNve9boU6detJJUB5fa3cxISVrGyCdAGe8ymPIyluD/exec";
+const API_URL = "https://qjmcdwjdzk.execute-api.ap-northeast-1.amazonaws.com";
 
 // ブラウザのローカルストレージに保存する際のキー名
 const SESSION_KEY_USER = 'bookingApp_User';       // ログイン中のユーザー情報を保存
@@ -1205,6 +1205,9 @@ function toggleRepeatOptions() {
    予約データを生成し、GASへ送信して保存します。
    繰り返し予約の場合は複数件のデータを生成し、並列送信します。
    ============================================== */
+/* ==============================================
+   予約保存処理 (修正版：1件ずつ順番に保存してエラー回避)
+   ============================================== */
 async function saveBooking() {
     // フォームから値を取得
     const id = document.getElementById('edit-res-id').value;
@@ -1247,6 +1250,8 @@ async function saveBooking() {
     if (!isRepeat || id) { 
         // 単発予約、または既存予約の編集時
         reservationList.push({
+            isUpdate: !!id, // 編集かどうか
+            reservationId: id || "", 
             date: date,
             startTime: `${date.replace(/-/g, '/')} ${start}`,
             endTime: `${date.replace(/-/g, '/')} ${end}`
@@ -1270,16 +1275,18 @@ async function saveBooking() {
             // 終了条件のチェック
             if (endType === 'count' && count >= maxCount) break;
             if (endType === 'date' && untilDate && currentDate > untilDate) break;
-            if (endType === 'none' && currentDate > maxLimitDate) break; // 3ヶ月制限
-            if (count > 100) break; // 無限ループ防止(安全装置)
+            if (endType === 'none' && currentDate > maxLimitDate) break; 
+            if (count > 100) break; // 無限ループ防止
 
             const y = currentDate.getFullYear();
             const m = ('0' + (currentDate.getMonth() + 1)).slice(-2);
             const d = ('0' + currentDate.getDate()).slice(-2);
             const dateStr = `${y}-${m}-${d}`; 
 
-            // リストに追加
+            // リストに追加 (繰り返し作成時はすべて「新規」扱いなのでIDは空)
             reservationList.push({
+                isUpdate: false,
+                reservationId: "", 
                 date: dateStr,
                 startTime: `${y}/${m}/${d} ${start}`,
                 endTime: `${y}/${m}/${d} ${end}`
@@ -1303,6 +1310,7 @@ async function saveBooking() {
     }
 
     // --- 全件の重複チェック ---
+    // (省略せず実装: ここで簡易チェック)
     let conflictMessages = [];
     const checkTargets = Array.from(selectedParticipantIds);
 
@@ -1310,7 +1318,6 @@ async function saveBooking() {
         const newStartObj = new Date(resData.startTime);
         const newEndObj = new Date(resData.endTime);
 
-        // 既存の予約と時間が被っていないか確認
         const conflictFound = checkTargets.some(targetUserId => {
             const conflictRes = masterData.reservations.find(existingRes => {
                 if (id && String(existingRes.id) === String(id)) return false;
@@ -1324,7 +1331,6 @@ async function saveBooking() {
             });
 
             if (conflictRes) {
-                // 重複が見つかった場合、メッセージを作成
                 const conflictingUser = masterData.users.find(u => String(u.userId) === String(targetUserId));
                 const userName = conflictingUser ? conflictingUser.userName : targetUserId;
                 const roomObj = masterData.rooms.find(r => String(r.roomId) === String(conflictRes._resourceId || conflictRes.resourceId));
@@ -1340,7 +1346,6 @@ async function saveBooking() {
         });
     }
 
-    // 重複時の警告
     if (conflictMessages.length > 0) {
         const msg = `以下の重複が見つかりました（${conflictMessages.length}件）：\n` + 
                     conflictMessages.slice(0, 5).join('\n') + 
@@ -1351,7 +1356,7 @@ async function saveBooking() {
         if (!confirm(`${reservationList.length}件の予約を一括登録します。よろしいですか？`)) return;
     }
 
-    // --- 進捗バー初期化 ---
+    // --- 送信処理 (ここを修正: 1件ずつ順番に送る) ---
     const loadingEl = document.getElementById('loading');
     const wrapper = document.getElementById('progress-wrapper');
     const bar = document.getElementById('progress-bar');
@@ -1369,54 +1374,47 @@ async function saveBooking() {
     let successCount = 0;
     let failCount = 0;
     let processedCount = 0; 
-    
-    // 一度に並列送信する件数(5件ずつ)
-    const BATCH_SIZE = 5; 
 
-    // --- 送信ループ ---
-    for (let i = 0; i < reservationList.length; i += BATCH_SIZE) {
-        const chunk = reservationList.slice(i, i + BATCH_SIZE);
-        
-        // 並列処理でAPI送信
-        await Promise.all(chunk.map(async (resData) => {
-            const params = {
-                action: id ? 'updateReservation' : 'createReservation',
-                reservationId: id,
-                resourceId: room,
-                startTime: resData.startTime,
-                endTime: resData.endTime,
-                reserverId: currentUser.userId,
-                operatorName: currentUser.userName,
-                participantIds: pIds, 
-                title: title,
-                note: note 
-            };
+    // ★重要: 並列処理(Promise.all)をやめて、for...ofループで1つずつawaitする
+    for (const resData of reservationList) {
+        const params = {
+            action: resData.isUpdate ? 'updateReservation' : 'createReservation',
+            reservationId: resData.reservationId,
+            resourceId: room,
+            startTime: resData.startTime,
+            endTime: resData.endTime,
+            reserverId: currentUser.userId,
+            operatorName: currentUser.userName,
+            participantIds: pIds, 
+            title: title,
+            note: note 
+        };
 
-            try {
-                // バックグラウンドモードで送信(第2引数false)
-                const result = await callAPI(params, false);
-                if (result.status === 'success') {
-                    successCount++;
-                } else {
-                    failCount++;
-                    console.error("Save failed:", result);
-                }
-            } catch(e) {
+        try {
+            // 第2引数falseでバックグラウンド送信（loading制御はここで行うため）
+            const result = await callAPI(params, false);
+            
+            if (result.status === 'success') {
+                successCount++;
+            } else {
                 failCount++;
-                console.error("API Error:", e);
-            } finally {
-                // 進捗状況の更新
-                processedCount++;
-                if (reservationList.length > 1) {
-                    const percentage = Math.round((processedCount / reservationList.length) * 100);
-                    bar.style.width = percentage + '%';
-                    txt.innerText = `${processedCount} / ${reservationList.length} 件完了`;
-                }
+                console.error("Save failed:", result);
             }
-        }));
+        } catch(e) {
+            failCount++;
+            console.error("API Error:", e);
+        }
+
+        // 進捗状況の更新
+        processedCount++;
+        if (reservationList.length > 1) {
+            const percentage = Math.round((processedCount / reservationList.length) * 100);
+            bar.style.width = percentage + '%';
+            txt.innerText = `${processedCount} / ${reservationList.length} 件完了`;
+        }
     }
 
-    // 処理完了後、少し待ってから終了メッセージを表示
+    // 処理完了後
     setTimeout(() => {
         loadingEl.style.display = 'none';
         wrapper.style.display = 'none'; 
@@ -2349,5 +2347,48 @@ function updateDayDisplay(inputId) {
         } else {
             displaySpan.innerText = "";
         }
+    }
+}
+/* ==============================================
+   追加: 予約削除機能
+   ============================================== */
+async function deleteBooking() {
+    // 編集中の予約IDを取得
+    const resId = document.getElementById('edit-res-id').value;
+    
+    // IDがない（新規作成画面など）場合は何もしない
+    if (!resId) return;
+
+    // 確認ダイアログ
+    if (!confirm("本当にこの予約を削除しますか？\n（この操作は取り消せません）")) return;
+
+    // ローディング表示
+    const loadingEl = document.getElementById('loading');
+    if(loadingEl) loadingEl.style.display = 'flex';
+
+    // 削除APIを呼び出すパラメータ
+    const params = {
+        action: 'deleteReservation',
+        reservationId: resId,
+        operatorName: currentUser ? currentUser.userName : 'Unknown'
+    };
+
+    try {
+        // API通信実行
+        const result = await callAPI(params, false); // 第2引数falseでcallAPI内のloading制御を無効化し手動制御
+        
+        if(loadingEl) loadingEl.style.display = 'none';
+
+        if (result.status === 'success') {
+            alert("予約を削除しました");
+            closeModal();       // モーダルを閉じる
+            loadAllData(true);  // 画面を再読み込み
+        } else {
+            alert("削除エラー: " + result.message);
+        }
+    } catch (e) {
+        if(loadingEl) loadingEl.style.display = 'none';
+        console.error(e);
+        alert("通信エラーが発生しました");
     }
 }
