@@ -1439,7 +1439,12 @@ function openDetailModal(res) {
   const modal = document.getElementById('detailModal');
   
   // 日付文字列を安全にパース
-  const safeDate = (str) => new Date(String(str).replace(/-/g, '/'));
+  // 修正後（これに書き換える）
+const safeDate = (str) => {
+    const s = String(str);
+    // Tが含まれる(DB形式)ならそのまま、そうでなければ/に置換(古い形式対策)
+    return s.includes('T') ? new Date(s) : new Date(s.replace(/-/g, '/'));
+};
   
   const s = safeDate(res._startTime);
   const e = safeDate(res._endTime);
@@ -1797,8 +1802,11 @@ function renderLogs() {
     let allLogs = [...masterData.logs].reverse(); 
     const filterText = document.getElementById('log-search-input').value.toLowerCase().trim();
     
-    // 安全な日付パース関数
-    const safeDate = (str) => new Date(String(str).replace(/-/g, '/'));
+   // 修正後（これに書き換える）
+const safeDate = (str) => {
+    const s = String(str);
+    return s.includes('T') ? new Date(s) : new Date(s.replace(/-/g, '/'));
+};
 
     // フィルタリング処理
     if (filterText) {
