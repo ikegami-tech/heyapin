@@ -864,3 +864,65 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
     margin-bottom: 0 !important;
     height: 30px !important;
 }
+/* ==============================================
+   固定表示(Sticky)修正用パッチ
+   デバッグ結果に基づき、親要素のスクロール制限を解除します
+   ============================================== */
+
+/* 1. 親要素の制限を解除し、ページ全体でスクロールできるようにする */
+body, html {
+    overflow-y: auto !important; /* 念のため */
+}
+
+.view-container {
+    overflow: visible !important; /* hidden を解除 */
+    height: auto !important;
+}
+
+.map-wrapper {
+    overflow: visible !important; /* auto (赤枠の原因) を解除 */
+    height: auto !important;      /* 高さを中身に合わせる */
+    display: block !important;    /* レイアウト崩れ防止 */
+}
+
+/* 2. カレンダーエリアの設定変更 */
+/* 高さを固定せず(auto)、縦スクロールはブラウザに任せる(visible) */
+/* 横スクロールだけはこのエリア内で完結させる(auto) */
+.calendar-scroll-area, 
+#map-timeline-section .calendar-scroll-area {
+    height: auto !important;     /* 65vhの固定を解除し、全件表示する */
+    min-height: 0 !important;
+    overflow-y: visible !important; /* 縦ははみ出させる（ブラウザでスクロール） */
+    overflow-x: auto !important;    /* 横スクロールは維持 */
+    display: block !important;
+}
+
+/* 3. ヘッダー（部屋タブ・時間軸）を画面最上部に固定 */
+.room-header,
+.time-axis-header {
+    position: sticky !important;
+    top: 0 !important;           /* 画面の一番上に張り付く */
+    z-index: 9999 !important;    /* 最前面に */
+    background-color: #fafafa;   /* 背景色（透け防止） */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* 影をつけてわかりやすく */
+}
+
+/* 時間軸の列も固定 */
+.time-axis-col {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 10000 !important; /* 部屋ヘッダーよりさらに手前でもOK */
+    background-color: #fff;
+}
+
+/* 4. 日付操作バーも固定する場合（お好みで） */
+.date-controller {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10001 !important; /* ヘッダーよりさらに上 */
+    background: #f9f9f9;
+}
+/* 日付バーがある場合は、部屋ヘッダーの位置を少し下にずらす */
+.room-header, .time-axis-header {
+    top: 59px !important; /* date-controllerの高さ分ずらす（約60px） */
+}
