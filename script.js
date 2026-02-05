@@ -909,13 +909,21 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 // バー要素の作成
                 const bar = document.createElement('div');
                 // 修正後（これに書き換える）
-let classType = room.type;
-if (!classType) {
-    if (room.roomName.indexOf('会議室') !== -1) classType = 'meeting'; // 緑
-    else if (room.roomName.indexOf('応接室') !== -1) classType = 'reception'; // オレンジ
-    else if (room.roomName.indexOf('Z') !== -1 || room.roomName.indexOf('Ｚ') !== -1) classType = 'z'; // 青
-    else classType = 'default';
+let classType = 'default';
+
+// 1. まず部屋名を見て色を決める (最優先)
+if (room.roomName.indexOf('会議室') !== -1) {
+    classType = 'meeting';    // 緑
+} else if (room.roomName.indexOf('応接室') !== -1) {
+    classType = 'reception';  // オレンジ
+} else if (room.roomName.indexOf('Z') !== -1 || room.roomName.indexOf('Ｚ') !== -1) {
+    classType = 'z';          // 青
+} 
+// 2. 名前で決まらなかった場合だけ、DBの設定を使う
+else if (room.type) {
+    classType = room.type;
 }
+
 bar.className = `v-booking-bar type-${classType}`;
                 bar.style.top = (topPx + 1) + "px";
                 bar.style.height = (heightPx - 2) + "px";
