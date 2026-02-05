@@ -133,24 +133,13 @@ header {
    5. タイムライン (カレンダー)
    ============================================== */
 .date-controller {
-  text-align: center;
-  padding: 10px;
-  background: #f9f9f9;
-  border-bottom: 1px solid #ddd;
-  display: flex;
-  gap: 10px;
-  justify-content: center;
+  text-align: center; padding: 10px;
+  background: #f9f9f9; border-bottom: 1px solid #ddd;
+  display: flex; gap: 10px; justify-content: center;
   flex-shrink: 0;
-  
-  /* ▼▼▼ 追加: 画面の一番上に張り付く設定 ▼▼▼ */
-  position: sticky;
-  top: 0;
-  z-index: 1000; /* 他の要素より手前に表示 */
-  /* ▲▲▲ 追加ここまで ▲▲▲ */
 }
 
 /* 1. 全体のコンテナ設定 */
-/* style.css 150行目付近 */
 .calendar-scroll-area {
   flex: 1; 
   width: 100%; 
@@ -159,14 +148,18 @@ header {
   display: flex;
   background: white;
   
-  /* ▼▼▼ ここを修正 ▼▼▼ */
-  overflow: auto !important; /* 縦横両方のスクロールをここで管理 */
-  height: 65vh;             /* 画面の高さの約65%に固定（マップの下に収まるサイズ） */
-  border-top: 1px solid #ddd;
-  /* ▲▲▲ 修正ここまで ▲▲▲ */
-
+  /* 文字選択防止 */
   user-select: none;
   -webkit-user-select: none;
+}
+/* ▼▼▼ 追加・修正: マップ画面下のタイムライン専用設定 ▼▼▼ */
+#map-timeline-section {
+  display: block !important;
+  width: 100%;
+  flex-shrink: 0;
+  margin-top: 10px;
+  /* ページ自体の余白確保 */
+  padding-bottom: 50px; 
 }
 
 /* 2. マップ画面専用の高さ固定設定（ここが重要） */
@@ -185,32 +178,32 @@ header {
   margin-bottom: 20px; 
 }
 
-/* style.css 170行目付近 */
 .time-axis-col { 
   width: 50px; 
   flex-shrink: 0; 
+  
+  /* スクロールしても左に張り付く設定 */
+  position: sticky; 
+  left: 0; 
+  z-index: 100 !important;
+  
+  /* 重要な修正: 背景を白にして、裏に潜り込んだ予約枠を見えなくする */
   background: #fff;
   border-right: 1px solid #ddd;
   
-  /* ▼▼▼ ここを修正 ▼▼▼ */
-  position: sticky !important; 
-  left: 0;           /* 左端に固定 */
-  z-index: 100 !important; 
-  /* ▲▲▲ 修正ここまで ▲▲▲ */
+  /* 影をつけて境界をわかりやすくする（お好みで削除可） */
+  box-shadow: 2px 0 5px rgba(0,0,0,0.05);
 }
 
-/* style.css 180行目付近 */
 .time-axis-header { 
   height: 40px; 
   border-bottom: 1px solid #ddd; 
   background: #f9f9f9;
-
-  /* ▼▼▼ ここを修正 ▼▼▼ */
-  position: sticky !important; 
-  top: 0 !important;   /* 上に固定 */
-  left: 0 !important;  /* 左にも固定 */
-  z-index: 110 !important; /* 一番手前に表示 */
-  /* ▲▲▲ 修正ここまで ▲▲▲ */
+  
+  /* 縦スクロール時に上に張り付く設定 */
+  position: sticky; 
+  top: 0; 
+  z-index: 110 !important;
 }
 
 .time-label {
@@ -243,20 +236,21 @@ header {
   z-index: 10;
 }
 
-/* style.css 205行目付近 */
+/* 3. 部屋名ヘッダーの固定設定 */
 .room-header { 
   height: 40px; 
   display: flex; align-items: center; justify-content: center;
   font-size: 0.8rem; font-weight: bold;
+  
+  /* ★これを入れるだけで固定されます */
+  position: sticky !important; 
+  top: 0; 
+  z-index: 90 !important; 
+  
   background: #fafafa; 
   border-bottom: 1px solid #ddd;
   padding: 0 5px; text-align: center; word-break: break-all;
-
-  /* ▼▼▼ ここを修正（topは0でOKになります） ▼▼▼ */
-  position: sticky !important; 
-  top: 0 !important;   /* エリアの最上部に固定 */
-  z-index: 90 !important; 
-  /* ▲▲▲ 修正ここまで ▲▲▲ */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 .room-col.target-highlight .room-header {
@@ -323,29 +317,9 @@ header {
   overflow: hidden !important; text-overflow: ellipsis !important;
 }
 
-/* style.css の真ん中あたり (Section 6付近) */
-
-/* ▼▼▼ ここを修正（border-top を border-left に変更） ▼▼▼ */
-.type-meeting { 
-    background: var(--meeting-bg); 
-    border: none; 
-    border-left: 5px solid var(--meeting-border); 
-    color: #333;
-}
-.type-reception { 
-    background: var(--reception-bg); 
-    border: none; 
-    border-left: 5px solid var(--reception-border); 
-    color: #333;
-}
-/* Z部屋用（.type-z と .type-zoom 両方対応させておきます） */
-.type-z, .type-zoom { 
-    background: var(--zoom-bg); 
-    border: none; 
-    border-left: 5px solid var(--zoom-border); 
-    color: #333;
-}
-/* ▲▲▲ 修正ここまで ▲▲▲ */
+.type-meeting { background: var(--meeting-bg); border-top: 4px solid var(--meeting-border); }
+.type-reception { background: var(--reception-bg); border-top: 4px solid var(--reception-border); }
+.type-zoom { background: var(--zoom-bg); border-top: 4px solid var(--zoom-border); }
 
 /* ==============================================
    7. ログ (リスト) 画面
@@ -863,85 +837,4 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
 #repeat-options input[type="date"] {
     margin-bottom: 0 !important;
     height: 30px !important;
-}
-/* ==============================================
-   最終修正：二段構成の固定ヘッダーパッチ
-   ============================================== */
-
-/* 1. 全体のスクロールを親要素一つに集約する */
-html, body {
-    height: 100% !important;
-    overflow: hidden !important;
-}
-
-#app-screen {
-    height: 100vh !important;
-    display: flex !important;
-    flex-direction: column !important;
-}
-
-/* カレンダーとマップが入る大枠を唯一のスクロールエリアにする */
-.map-wrapper {
-    flex: 1 !important;
-    overflow-y: auto !important;  /* ここだけで縦にスクロールさせる */
-    overflow-x: hidden !important;
-    position: relative !important;
-    display: block !important;
-}
-
-/* 2. カレンダーエリアの内部スクロールを解除 */
-#map-timeline-section .calendar-scroll-area {
-    height: auto !important;
-    overflow-y: visible !important; /* 縦スクロールを親に任せる */
-    overflow-x: auto !important;    /* 横スクロール（部屋列の移動）は維持 */
-    display: flex !important;
-    position: relative !important;
-}
-
-/* 3. 【最重要】位置固定（Sticky）の設定 */
-
-/* 一段目：日付操作バー */
-.date-controller {
-    position: sticky !important;
-    top: 0 !important;             /* 画面の一番上に張り付く */
-    z-index: 2000 !important;      /* 部屋名より上に設定 */
-    background: #f9f9f9 !important;
-    border-bottom: 1px solid #ddd !important;
-    padding: 10px !important;
-}
-
-/* 二段目：部屋名ヘッダー（日付バーの真下に張り付くようにする） */
-.room-header,
-.time-axis-header {
-    position: sticky !important;
-    top: 58px !important;          /* 日付バーの高さ分（実測値）を空ける */
-    z-index: 1000 !important;
-    background-color: #fafafa !important;
-    border-bottom: 1px solid #999 !important;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
-}
-
-/* 左端：時間軸の列を左に固定 */
-.time-axis-col {
-    position: sticky !important;
-    left: 0 !important;            /* 横スクロール時に左に張り付く */
-    z-index: 1500 !important;      /* 予約バー(z-index:5)より手前、ヘッダーと同じくらい */
-    background-color: #fff !important;
-    border-right: 1px solid #ddd !important;
-}
-
-/* 左上角：時間軸のヘッダー（空欄部分）を最前面に固定 */
-.time-axis-header {
-    left: 0 !important;
-    z-index: 2100 !important;      /* 日付バー(2000)よりも手前に */
-}
-
-/* 4. レイアウト崩れ防止の調整 */
-.floor-map-unit {
-    display: block !important;     /* flexだと中央寄せなどで崩れる場合があるため */
-    margin-bottom: 20px !important;
-}
-
-#map-timeline-section {
-    padding-top: 0 !important;     /* 上の余白を詰める */
 }
