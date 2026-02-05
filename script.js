@@ -906,54 +906,29 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 const minHeightPx = hourRowHeights[sHour] * (15 / 60);
                 if (heightPx < minHeightPx) heightPx = minHeightPx; // 最小高さを確保
 
-                // バー要素の作成
+               // バー要素の作成
                 const bar = document.createElement('div');
 
                 /* ==============================================
-                   【最終修正版】CSSの影響を断ち切り、理想のデザインを強制適用
+                   【最終修正版】CSSクラスを正しく割り当てるだけのシンプル設計
                    ============================================== */
-                // 1. 部屋名から「色の数値(RGB)」だけを決める
-                let rgb = '153, 153, 153'; // デフォルト（グレー）
+                let className = 'v-booking-bar'; // 基本クラス
                 const rName = (room.roomName || "").trim();
 
+                // 部屋名から適用するクラス名を決定
                 if (rName.indexOf('会議室') !== -1) {
-                    rgb = '0, 200, 80';    // 会議室＝緑
+                    className += ' type-meeting';    // CSSで緑になる
                 } else if (rName.indexOf('応接室') !== -1) {
-                    rgb = '255, 165, 0';   // 応接室＝オレンジ
+                    className += ' type-reception';  // CSSでオレンジになる
                 } else if (rName.indexOf('Z') !== -1 || rName.indexOf('Ｚ') !== -1) {
-                    rgb = '0, 100, 255';   // Z＝青
-                } 
-
-                // 2. 【重要】クラス名には「色を決める名前(type-xxx)」を入れない！
-                // これにより、CSSファイルに残っている古い設定（緑色の枠など）を無視させます
-                bar.className = 'v-booking-bar'; 
-                
-                // 3. スタイルを直接書き込む（理想の画像：上に太い線＋背景は薄い色）
-                // cssTextを使うことで、他の設定を全て無効化して優先させます
-                bar.style.cssText = `
-                    top: ${topPx + 1}px;
-                    height: ${heightPx - 2}px;
-                    z-index: 5;
-                    position: absolute;
-                    left: 2px;
-                    width: calc(100% - 4px);
-                    background-color: rgba(${rgb}, 0.15) !important;
-                    border: none !important;
-                    border-top: 4px solid rgba(${rgb}, 1.0) !important;
-                    color: #333 !important;
-                    font-size: 0.9em;
-                    line-height: 1.1;
-                    padding: 2px;
-                    box-sizing: border-box;
-                    overflow: hidden;
-                `;
-                // 2. デザインを強制適用（左に太い線、背景は薄く）
-                bar.style.border = 'none'; // 一旦枠線を消す
-                bar.style.borderLeft = `5px solid rgba(${rgb}, 1.0)`; // ★左側に太い線
-                bar.style.backgroundColor = `rgba(${rgb}, 0.2)`;      // ★背景はかなり薄く
-                bar.style.color = '#333';                             // 文字は黒
-
-                // 3. 位置とサイズの指定
+                    className += ' type-z';          // CSSで青になる
+                } else {
+                    // 名前で決まらない場合、DBの値を使う（念のため）
+                    if (room.type && room.type !== 'undefined') {
+                        className += ` type-${room.type}`;
+                    }
+                }
+                bar.className = className;
                 bar.style.top = (topPx + 1) + "px";
                 bar.style.height = (heightPx - 2) + "px";
                 bar.style.zIndex = "5";
