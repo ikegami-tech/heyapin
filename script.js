@@ -510,7 +510,7 @@ function drawTimeAxis(containerId) {
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
 
-    // 1. モードによる表示対象の設定 (全体表示 か マップ連動表示 か)
+    // 1. モードによる表示対象の設定
     if (mode === 'all') {
         container = document.getElementById('rooms-container-all');
         dateInputId = 'timeline-date';
@@ -525,7 +525,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
         targetRooms = [];
-        // 7階、6階の順で部屋を取得
         const floorOrder = [7, 6]; 
         floorOrder.forEach(floor => {
             const config = mapConfig[floor];
@@ -538,42 +537,52 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         });
     } else { return; }
 
-    // 部屋データがなければメッセージを表示して終了
     if (!targetRooms || targetRooms.length === 0) {
         if (container) container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
         return;
     }
 
-    // 2. 現在のスクロール位置を保存 (再描画後に復元するため)
+    // 2. 現在のスクロール位置を保存
     let savedScrollTop = 0, savedScrollLeft = 0;
     const mapWrapper = document.querySelector('.map-wrapper');
-    if (mode === 'map' && mapWrapper) {
-        savedScrollTop = mapWrapper.scrollTop;
+    const scrollArea = container ? container.closest('.calendar-scroll-area') : null;
+
+    if (mode === 'map' && scrollArea) {
+        // マップモードなら外側のスクロールエリアの位置を保存
+        savedScrollTop = scrollArea.scrollTop;
+        savedScrollLeft = scrollArea.scrollLeft;
     } else if (container) {
         savedScrollTop = container.scrollTop;
         savedScrollLeft = container.scrollLeft;
     }
 
-    // 3. コンテナの初期化 (HTMLのリセットとスタイルの適用)
+    // 3. コンテナの初期化 (★修正箇所)
     if (container) {
         container.innerHTML = "";
+        
+        // --- ★ここから修正 ---
         if (mode === 'map') {
+            // マップモード：スクロールは親の .calendar-scroll-area に任せる
+            // 自身は overflow: visible にしてヘッダー固定(sticky)を機能させる
             container.style.height = "auto";
             container.style.overflowY = "visible"; 
+            container.style.overflowX = "visible"; 
         } else {
+            // 全表示モード：自身がスクロールコンテナになる
             container.style.height = "100%";
             container.style.overflowY = "auto";
+            container.style.overflowX = "auto"; 
         }
+        // --- ★ここまで修正 ---
+
         container.style.width = "100%";
         container.style.maxWidth = "100vw";
-        container.style.overflowX = "auto"; 
         container.style.display = "flex";
         container.style.flexWrap = "nowrap";
         container.style.alignItems = "flex-start";
         container.style.position = "relative";
         container.style.overscrollBehavior = (mode === 'map') ? "auto" : "contain";
         
-        // 初期カーソルを「矢印」に設定
         container.style.cursor = "default";
         container.style.userSelect = "none";
     }
