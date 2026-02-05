@@ -1,31 +1,19 @@
 /* ==============================================
    1. 定数定義 & 設定
    ============================================== */
-// Google Apps Script (GAS) のウェブアプリURL。
-// このURLに対してデータの取得や保存の通信を行います。
 const API_URL = "https://qjmcdwjdzk.execute-api.ap-northeast-1.amazonaws.com";
+const SESSION_KEY_USER = 'bookingApp_User';       // 保存するキー名(ユーザー)
+const SESSION_KEY_TIME = 'bookingApp_LoginTime';  // 保存するキー名(時間)
+const SESSION_DURATION = 12 * 60 * 60 * 1000;     // 12時間 (ミリ秒)
 
-// ブラウザのローカルストレージに保存する際のキー名
-const SESSION_KEY_USER = 'bookingApp_User';       // ログイン中のユーザー情報を保存
-const SESSION_KEY_TIME = 'bookingApp_LoginTime';  // 最終ログイン時刻を保存
-
-// ログイン状態を保持する期間の計算
-// 30日 × 24時間 × 60分 × 60秒 × 1000ミリ秒 = 30日分
-const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; 
-
-// Base64画像データ (長いため省略しています)
-// マップ表示に使われる画像の元データです。
+// Base64画像データ (省略)
 const IMG_7F = "data:image/png;base64,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"
 const IMG_6F = "data:image/png;base64,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"
 
-
-// マップの設定データ
-// 各階(7階, 6階)の画像と、クリック可能なエリア(部屋)の座標・サイズ・色を定義しています。
 const mapConfig = {
     7: {
         image: IMG_7F, 
         areas: [
-            // top, left: 位置(%), width, height: サイズ(%), color: 背景色
             { id: "Z 角", name: "Z 角", top: 11.1, left: 0.0, width: 12.0, height: 7.1, color: "rgba(0, 100, 255, 0.3)" },
             { id: "Z 中", name: "Z 中", top: 0.0, left: 56.0, width: 12.0, height: 6.8, color: "rgba(0, 100, 255, 0.3)" },
             { id: "会議室2", name: "会議室2", top: 15.0, left: 79.0, width: 21.0, height: 22.5, color: "rgba(0, 200, 80, 0.3)" },
@@ -50,81 +38,63 @@ const mapConfig = {
     }
 };
 
-// タイムラインの表示開始時間と終了時間
 const START_HOUR = 7;
 const END_HOUR = 22;
-const BASE_HOUR_HEIGHT = 100; // 1時間あたりの高さ(px)の基準値
+const BASE_HOUR_HEIGHT = 100; 
 
-// アプリケーション全体で使用するグローバル変数
-let currentUser = null; // ログイン中のユーザー情報
-let masterData = { rooms: [], users: [], reservations: [], logs: [], groups: [] }; // サーバーから取得した全データ
+let currentUser = null;
+let masterData = { rooms: [], users: [], reservations: [], logs: [], groups: [] };
 
-// 状態管理用の変数
-let selectedParticipantIds = new Set(); // 予約時に選択された参加者ID
-let groupCreateSelectedIds = new Set(); // グループ作成時に選択されたメンバーID
-let originalParticipantIds = new Set(); // 編集前の参加者ID(比較用)
-let currentMapRoomId = null; // マップ上で現在選択されている部屋ID
-let currentFloor = 7; // 現在表示中の階層(マップ)
-let currentTimelineFloor = 7; // 現在表示中の階層(タイムライン)
-let currentLogPage = 1; // ログ画面の現在のページ番号
-const LOGS_PER_PAGE = 50; // ログ画面の1ページあたりの表示件数
-let isDeleteMode = false; // グループ削除モードかどうか
-let isEditMode = false; // グループ編集モードかどうか
-let currentDetailRes = null; // 詳細表示中の予約データ
-let hourRowHeights = {}; // 各時間の行の高さを動的に管理するオブジェクト
+// 状態管理変数
+let selectedParticipantIds = new Set();
+let groupCreateSelectedIds = new Set();
+let originalParticipantIds = new Set();
+let currentMapRoomId = null; 
+let currentFloor = 7; 
+let currentTimelineFloor = 7;
+let currentLogPage = 1;
+const LOGS_PER_PAGE = 50;
+let isDeleteMode = false;
+let isEditMode = false;
+let currentDetailRes = null;
+let hourRowHeights = {}; 
 
 /* ==============================================
    2. 初期化 & API通信
    ============================================== */
-// 画面読み込み時に実行される処理
 window.onload = () => {
-  // 本日の日付を各カレンダー入力欄にセット
   const d = new Date();
   if(document.getElementById('timeline-date')) document.getElementById('timeline-date').valueAsDate = d;
   if(document.getElementById('map-date')) document.getElementById('map-date').valueAsDate = d;
 
-  // 自動ログインチェックと、マップ画像のサイズ調整監視を開始
   checkAutoLogin();
   initMapResizer();
 };
 
-/* ==============================================
-   API通信関数 (ローディング制御対応版)
-   GASとの通信を一手に引き受ける関数です。
-   ============================================== */
-async function callAPI(params, showLoading = true) {
+async function callAPI(params) {
   if(API_URL.indexOf("http") === -1) { alert("GASのURLを設定してください"); return { status: 'error' }; }
-  
-  // showLoading が true の場合のみ、画面に「読み込み中」を表示
-  if (showLoading) document.getElementById('loading').style.display = 'flex';
-  
+  document.getElementById('loading').style.display = 'flex';
   const options = { method: 'POST', body: JSON.stringify(params), headers: { 'Content-Type': 'text/plain;charset=utf-8' } };
   try {
-    // サーバーへリクエスト送信
     const res = await fetch(API_URL, options);
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
-    
-    // 通信終了後、showLoading が true なら「読み込み中」を消す
-    if (showLoading) document.getElementById('loading').style.display = 'none';
-    
+    document.getElementById('loading').style.display = 'none';
     if (json.status === 'error') { alert("システムエラー: " + json.message); return { status: 'error' }; }
     return json;
   } catch(e) {
-    if (showLoading) document.getElementById('loading').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
     alert("通信エラー: " + e.message);
     return { status: 'error' };
   }
 }
 
-// ログインボタンが押された時の処理
 async function tryLogin() {
   const id = document.getElementById('loginId').value.trim();
   const pass = document.getElementById('loginPass').value.trim();
   if(!id || !pass) return;
   document.getElementById('loading').style.display = 'flex';
   
-  // ログイン用のパラメータを作成して送信
   const url = new URL(API_URL);
   url.searchParams.append('action', 'login');
   url.searchParams.append('userId', id);
@@ -135,17 +105,14 @@ async function tryLogin() {
     document.getElementById('loading').style.display = 'none';
     
     if (json.status === 'success') {
-      // ログイン成功時：ユーザー情報を保存し、アプリ画面を表示
       currentUser = json.user;
       document.getElementById('display-user-name').innerText = currentUser.userName;
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app-screen').style.display = 'flex'; 
       
-      // 次回自動ログイン用にローカルストレージへ保存
       localStorage.setItem(SESSION_KEY_USER, JSON.stringify(currentUser));
       localStorage.setItem(SESSION_KEY_TIME, new Date().getTime().toString());
 
-      // データの読み込み開始
       loadAllData();
     } else { 
       alert("ログイン失敗: " + json.message); 
@@ -156,7 +123,6 @@ async function tryLogin() {
   }
 }
 
-// ページを開いた時に、前回のログイン情報が残っているか確認する処理
 function checkAutoLogin() {
   const storedUser = localStorage.getItem(SESSION_KEY_USER);
   const storedTime = localStorage.getItem(SESSION_KEY_TIME);
@@ -165,7 +131,6 @@ function checkAutoLogin() {
     const now = new Date().getTime();
     const loginTime = parseInt(storedTime, 10);
 
-    // 有効期限内（30日）であれば自動ログイン
     if (now - loginTime < SESSION_DURATION) {
       try {
         currentUser = JSON.parse(storedUser);
@@ -178,7 +143,6 @@ function checkAutoLogin() {
         console.error("保存データの読み込みに失敗しました", e);
       }
     } else {
-      // 期限切れなら情報を削除
       console.log("セッション有効期限切れです");
       localStorage.removeItem(SESSION_KEY_USER);
       localStorage.removeItem(SESSION_KEY_TIME);
@@ -186,21 +150,18 @@ function checkAutoLogin() {
   }
 }
 
-// ログアウト処理
 function logout() { 
   localStorage.removeItem(SESSION_KEY_USER);
   localStorage.removeItem(SESSION_KEY_TIME);
-  location.reload(); // ページを再読み込みしてログイン画面へ
+  location.reload(); 
 }
 
-// 全データ（部屋、予約、ログ等）をサーバーから取得する処理
 async function loadAllData(isUpdate = false, isBackground = false) {
-  // バックグラウンド更新でなければローディング画面を表示
   if (!isBackground) document.getElementById('loading').style.display = 'flex';
   
   const url = new URL(API_URL);
   url.searchParams.append('action', 'getAllData');
-  url.searchParams.append('_t', new Date().getTime()); // キャッシュ防止用パラメータ
+  url.searchParams.append('_t', new Date().getTime()); 
   
   try {
     const res = await fetch(url.toString(), { method: 'GET', headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
@@ -209,9 +170,9 @@ async function loadAllData(isUpdate = false, isBackground = false) {
     if (!isBackground) document.getElementById('loading').style.display = 'none';
 
     if (json.status === 'success') {
-      masterData = json.data; // データをグローバル変数に格納
-      if (isUpdate) refreshUI(); // 更新なら画面を再描画
-      else initUI(); // 初回ならUIの初期化
+      masterData = json.data;
+      if (isUpdate) refreshUI();
+      else initUI();
     } else { 
       if (!isBackground) alert("読込エラー: " + json.message); 
     }
@@ -224,40 +185,37 @@ async function loadAllData(isUpdate = false, isBackground = false) {
 /* ==============================================
    3. UI初期化・更新・タブ切り替え
    ============================================== */
-// アプリ起動時のUIセットアップ
 function initUI() {
-  updateRoomSelect(); // 部屋選択プルダウンの作成
-  renderGroupButtons(); // グループボタンの作成
+  updateRoomSelect();
+  renderGroupButtons();
   
   currentFloor = 7;
-  renderDualMaps(); // マップの描画
-  switchFloor(7); // 初期表示は7階
+  renderDualMaps(); 
+  switchFloor(7); 
   
   document.getElementById('view-map-view').classList.add('active');
 
-  initCustomTimePickers(); // 時間選択UIの初期化
-  updateRefreshTime(); // 更新時間の表示
-  updateDayDisplay('map-date'); // 曜日の表示
-  startPolling(); // 自動更新の開始
+  initCustomTimePickers();
+  updateRefreshTime();
+  updateDayDisplay('map-date');
+  startPolling();
 }
 
 /* --- 自動更新 (ポーリング) --- */
-const POLLING_INTERVAL_ACTIVE = 20000;   // 操作中は20秒ごとに更新
-const POLLING_INTERVAL_IDLE   = 600000;  // 放置中は10分ごとに更新
-const IDLE_TIMEOUT            = 60000;   // 1分操作がなければアイドル状態とみなす
+const POLLING_INTERVAL_ACTIVE = 20000;   
+const POLLING_INTERVAL_IDLE   = 600000;  
+const IDLE_TIMEOUT            = 60000;   
 
 let pollingTimer = null;
 let idleCheckTimer = null;
 let isUserIdle = false;
 let lastActivityTime = new Date().getTime();
 
-// ユーザーの操作（マウス移動やクリック）を検知する機能
 function initIdleDetection() {
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
     events.forEach(evt => {
         window.addEventListener(evt, () => {
             lastActivityTime = new Date().getTime();
-            // アイドル状態から復帰したら即座に更新し、頻繁な更新間隔に戻す
             if (isUserIdle) {
                 console.log("操作検知: アクティブモード復帰");
                 isUserIdle = false;
@@ -267,23 +225,20 @@ function initIdleDetection() {
         }, { passive: true });
     });
 
-    // 定期的に「最後の操作からどれくらい経ったか」をチェック
     if (idleCheckTimer) clearInterval(idleCheckTimer);
     idleCheckTimer = setInterval(() => {
         const now = new Date().getTime();
         if (!isUserIdle && (now - lastActivityTime > IDLE_TIMEOUT)) {
             console.log("アイドルモード移行");
             isUserIdle = true;
-            restartPolling(POLLING_INTERVAL_IDLE); // 更新間隔を遅くする
+            restartPolling(POLLING_INTERVAL_IDLE);
         }
     }, 5000);
 }
 
-// 自動更新タイマーを再設定する関数
 function restartPolling(interval) {
     if (pollingTimer) clearInterval(pollingTimer);
     pollingTimer = setInterval(() => {
-        // モーダルが開いている間は更新しない（入力の邪魔になるため）
         const modalOpen = document.querySelectorAll('.modal[style*="display: flex"]').length > 0;
         if (!modalOpen) {
             console.log(`自動更新実行 (${interval/1000}秒間隔)`);
@@ -292,19 +247,16 @@ function restartPolling(interval) {
     }, interval);
 }
 
-// ポーリングの開始
 function startPolling() {
     initIdleDetection();
     restartPolling(POLLING_INTERVAL_ACTIVE);
 }
 
-// データの再読み込みに合わせて画面表示を更新する関数
 function refreshUI() {
   renderLogs();
   renderGroupButtons();
   updateRoomSelect();
 
-  // マップ画面が開いていればタイムラインも更新
   if (document.getElementById('view-map-view').classList.contains('active')) {
       if(document.getElementById('map-timeline-section').style.display !== 'none') {
           renderVerticalTimeline('map');
@@ -312,7 +264,6 @@ function refreshUI() {
   }
 }
 
-// 予約フォームの部屋選択プルダウンを最新データで更新
 function updateRoomSelect() {
   const roomSelect = document.getElementById('input-room');
   if (roomSelect) {
@@ -324,22 +275,23 @@ function updateRoomSelect() {
       op.innerText = r.roomName;
       roomSelect.appendChild(op);
     });
-    // 元々選択されていた値を保持
     if(currentVal) roomSelect.value = currentVal;
   }
 }
 
-/* 画面タブ（マップ画面、履歴画面など）を切り替える関数 */
+/* switchTab 関数をこれに置き換え */
 function switchTab(tabName) {
   document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
   const targetView = document.getElementById('view-' + tabName);
   if(targetView) targetView.classList.add('active');
   
-  // 履歴画面の時だけ「戻る」ボタンを表示
+  // ▼▼▼ 追加: 戻るボタンの表示制御 ▼▼▼
   const backBtn = document.getElementById('btn-header-back');
   if (backBtn) {
+      // logs画面(履歴)のときだけ表示、それ以外は非表示
       backBtn.style.display = (tabName === 'logs') ? 'inline-block' : 'none';
   }
+  // ▲▲▲ 追加ここまで ▲▲▲
 
   if (tabName === 'map-view') {
       setTimeout(() => { switchFloor(currentFloor); }, 50);
@@ -348,7 +300,6 @@ function switchTab(tabName) {
   }
 }
 
-// 7階と6階のマップ画像と、クリック可能な透明エリア(オーバーレイ)を描画
 function renderDualMaps() {
     [7, 6].forEach(floor => {
         const config = mapConfig[floor];
@@ -361,17 +312,14 @@ function renderDualMaps() {
         if (!container) return;
         container.innerHTML = '';
 
-        // 各部屋のクリックエリアを作成
         config.areas.forEach(area => {
             const div = document.createElement("div");
             div.className = "map-click-area"; 
             
-            // 部屋タイプによって色分けクラスを付与
             if (area.name.indexOf("会議室") !== -1) div.classList.add("type-meeting");
             else if (area.name.indexOf("応接室") !== -1) div.classList.add("type-reception");
             else if (area.name.indexOf("Z") !== -1 || area.name.indexOf("Ｚ") !== -1) div.classList.add("type-z");
 
-            // 位置とサイズを設定
             div.style.top = area.top + "%";
             div.style.left = area.left + "%";
             div.style.width = area.width + "%";
@@ -379,7 +327,6 @@ function renderDualMaps() {
             div.innerText = area.name;
             if(area.color) div.style.backgroundColor = area.color;
             
-            // 部屋IDを埋め込み、クリックイベントを設定
             div.setAttribute('data-room-id', area.id);
             div.onclick = function() { selectRoomFromMap(this); };
             container.appendChild(div);
@@ -387,12 +334,10 @@ function renderDualMaps() {
     });
 }
 
-// 階数タブ(7階/6階)を切り替える関数
 function switchFloor(floor) {
     currentFloor = floor;
     currentMapRoomId = null;
 
-    // タブの見た目を切り替え
     const mapContainer = document.getElementById('view-map-view');
     if(mapContainer) {
         mapContainer.querySelectorAll('.floor-tab').forEach(tab => tab.classList.remove('active'));
@@ -400,7 +345,6 @@ function switchFloor(floor) {
     const activeTab = document.getElementById(`tab-${floor}f`);
     if(activeTab) activeTab.classList.add('active');
 
-    // 表示エリアの切り替え
     const area7 = document.getElementById('area-7f');
     const area6 = document.getElementById('area-6f');
     if(area7) area7.classList.remove('active');
@@ -409,7 +353,7 @@ function switchFloor(floor) {
     const activeArea = document.getElementById(`area-${floor}f`);
     if(activeArea) {
         activeArea.classList.add('active');
-        // サイズ固定のスタイルをリセット
+        // ★修正: サイズ固定リセット
         const wrapper = activeArea.querySelector('.map-inner-wrapper');
         if (wrapper) {
             wrapper.style.width = '';
@@ -417,11 +361,9 @@ function switchFloor(floor) {
         }
     }
 
-    // タイトル更新
     const titleEl = document.getElementById('map-selected-room-name');
     if(titleEl) titleEl.innerText = `${floor}階 予約状況`;
     
-    // タイムラインエリアを表示
     const timelineSec = document.getElementById('map-timeline-section');
     if(timelineSec) timelineSec.style.display = 'block';
 
@@ -442,21 +384,19 @@ function selectRoomFromMap(element) {
   currentMapRoomId = roomId;
   document.getElementById('map-timeline-section').style.display = 'block';
   
-  // 選択された部屋名をタイトルに表示(要素があれば)
+  // ★修正: 要素が存在する場合だけ文字を更新する（削除済みなら無視してエラー回避）
   const titleEl = document.getElementById('map-selected-room-name');
   if (titleEl) {
       titleEl.innerText = roomObj.roomName;
   }
 
-  // タイムラインを描画して、そこまでスクロール
+  // タイムラインを描画してスクロール
   renderVerticalTimeline('map', true);
   document.getElementById('map-timeline-section').scrollIntoView({behavior: 'smooth'});
 }
-
 /* ==============================================
    5. タイムライン関連処理
    ============================================== */
-// (未使用の可能性あり) タイムラインのみの画面での階切り替え
 function switchTimelineFloor(floor) {
     currentTimelineFloor = floor;
     document.querySelectorAll('#view-timeline .floor-tab').forEach(tab => tab.classList.remove('active'));
@@ -465,24 +405,21 @@ function switchTimelineFloor(floor) {
     renderVerticalTimeline('all');
 }
 
-// 日付変更ボタン(< >)を押した時の処理
 function changeDate(days, inputId) {
   const input = document.getElementById(inputId);
   if (!input) return;
   const d = new Date(input.value);
-  d.setDate(d.getDate() + days); // 日付を加算・減算
+  d.setDate(d.getDate() + days);
   input.valueAsDate = d;
-  updateDayDisplay(inputId); // 曜日の更新
-  if(inputId === 'map-date') renderVerticalTimeline('map'); // 再描画
+  updateDayDisplay(inputId);
+  if(inputId === 'map-date') renderVerticalTimeline('map');
 }
 
-// 時間軸(左側の7:00, 8:00...)を描画する処理
 function drawTimeAxis(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = "";
   
-  // 上部の余白
   const header = document.createElement('div');
   header.className = 'time-axis-header';
   header.style.height = "40px"; 
@@ -490,7 +427,6 @@ function drawTimeAxis(containerId) {
   header.style.flexShrink = "0";
   container.appendChild(header);
 
-  // START_HOUR から END_HOUR までループして時間を表示
   for (let i = START_HOUR; i < END_HOUR; i++) {
       const height = hourRowHeights[i] || BASE_HOUR_HEIGHT;
       const div = document.createElement('div');
@@ -505,12 +441,11 @@ function drawTimeAxis(containerId) {
 /* ==============================================
    レンダリング: 垂直タイムライン (予約一覧・マップ下部)
    【カーソル修正・曜日・赤線・高速化 全部入り版】
-   予約状況を縦型のタイムラインとして描画するメイン関数です。
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
 
-    // 1. モードによる表示対象の設定 (全体表示 か マップ連動表示 か)
+    // 1. モードによる対象コンテナ等の決定
     if (mode === 'all') {
         container = document.getElementById('rooms-container-all');
         dateInputId = 'timeline-date';
@@ -525,7 +460,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
         targetRooms = [];
-        // 7階、6階の順で部屋を取得
         const floorOrder = [7, 6]; 
         floorOrder.forEach(floor => {
             const config = mapConfig[floor];
@@ -538,13 +472,12 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         });
     } else { return; }
 
-    // 部屋データがなければメッセージを表示して終了
     if (!targetRooms || targetRooms.length === 0) {
         if (container) container.innerHTML = "<div style='padding:20px;'>部屋データが見つかりません。</div>";
         return;
     }
 
-    // 2. 現在のスクロール位置を保存 (再描画後に復元するため)
+    // 2. スクロール位置保存
     let savedScrollTop = 0, savedScrollLeft = 0;
     const mapWrapper = document.querySelector('.map-wrapper');
     if (mode === 'map' && mapWrapper) {
@@ -554,7 +487,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         savedScrollLeft = container.scrollLeft;
     }
 
-    // 3. コンテナの初期化 (HTMLのリセットとスタイルの適用)
+    // 3. コンテナの初期化
     if (container) {
         container.innerHTML = "";
         if (mode === 'map') {
@@ -573,21 +506,20 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.style.position = "relative";
         container.style.overscrollBehavior = (mode === 'map') ? "auto" : "contain";
         
-        // 初期カーソルを「矢印」に設定
+        // ★修正: 初期カーソルを「default（矢印）」にする
         container.style.cursor = "default";
         container.style.userSelect = "none";
     }
     
     // ==============================================
     // 【高速化版】 ドラッグスクロール & ホイール処理
-    // マウスで掴んでスクロールする機能の実装です
     // ==============================================
-    let isDown = false; // マウスボタンが押されているか
-    let startX, startY; // ドラッグ開始座標
-    let startScrollLeft, startScrollTop; // ドラッグ開始時のスクロール位置
-    let hasDragged = false; // ドラッグ操作が行われたか(クリックとの区別用)
-    let isTouch = false; // タッチデバイス判定
-    let rafId = null; // アニメーションフレームID (描画の最適化用)
+    let isDown = false;
+    let startX, startY;
+    let startScrollLeft, startScrollTop;
+    let hasDragged = false;
+    let isTouch = false;
+    let rafId = null; 
 
     if (container) {
         const scrollArea = container.closest('.calendar-scroll-area');
@@ -596,10 +528,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         const vScrollTarget = (mode === 'map') ? mapWrapper : scrollArea;
 
         if (scrollArea) {
-            // 初期カーソル設定
+            // 初期カーソル設定（ここもdefaultにする）
             scrollArea.style.cursor = "default";
 
-            // ホイールスクロールの制御 (横スクロール対応)
             scrollArea.onwheel = (e) => {
                 if (e.ctrlKey) return; 
                 if (e.deltaX !== 0 || e.shiftKey) {
@@ -608,10 +539,8 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 }
             };
 
-            // ドラッグ開始 (マウスダウン)
             scrollArea.onmousedown = (e) => {
                 if (isTouch) return;
-                // 予約バーや入力欄の上ではドラッグを開始しない
                 if (e.target.closest('.v-booking-bar') || 
                     ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) {
                     return;
@@ -620,10 +549,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 isDown = true;
                 hasDragged = false;
                 
-                // ホールド時はカーソルを「グー」にする
+                // ★ホールド時は「grabbing（グー）」にする
                 scrollArea.style.cursor = "grabbing";
                 
-                // スクロール動作を即時にするためにsmoothスクロールを一時停止
                 if (scrollArea) scrollArea.style.scrollBehavior = 'auto';
                 if (vScrollTarget) vScrollTarget.style.scrollBehavior = 'auto';
                 
@@ -636,22 +564,20 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 document.addEventListener('mouseup', onMouseUp);
             };
 
-            // ドラッグ中 (マウスムーブ)
             const onMouseMove = (e) => {
                 if (!isDown || isTouch) return;
                 e.preventDefault();
-                if (rafId) return; // 既に描画待機中なら何もしない(間引き)
+                if (rafId) return;
 
                 const currentX = e.pageX;
                 const currentY = e.pageY;
 
-                // 描画タイミングに合わせてスクロール位置を更新
                 rafId = requestAnimationFrame(() => {
-                    const walkX = (currentX - startX) * 1.5; // 横移動量(1.5倍速)
-                    const walkY = (currentY - startY) * 1.5; // 縦移動量
+                    const walkX = (currentX - startX) * 1.5;
+                    const walkY = (currentY - startY) * 1.5;
 
                     if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) {
-                        hasDragged = true; // 一定以上動いたらドラッグとみなす
+                        hasDragged = true;
                     }
                     scrollArea.scrollLeft = startScrollLeft - walkX;
                     if (vScrollTarget) {
@@ -661,17 +587,15 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 });
             };
 
-            // ドラッグ終了 (マウスアップ)
             const onMouseUp = () => {
                 isDown = false;
-                // カーソルを「矢印」に戻す
+                // ★離したら「default（矢印）」に戻す
                 if (scrollArea) scrollArea.style.cursor = "default";
                 
                 if (rafId) {
                     cancelAnimationFrame(rafId);
                     rafId = null;
                 }
-                // スクロール設定を元に戻す
                 if (scrollArea) scrollArea.style.scrollBehavior = '';
                 if (vScrollTarget) vScrollTarget.style.scrollBehavior = '';
 
@@ -686,11 +610,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     const rawDateVal = document.getElementById(dateInputId).value;
     const targetDateNum = formatDateToNum(new Date(rawDateVal));
     hourRowHeights = {}; 
-    // 各時間の高さを初期化
     for (let h = START_HOUR; h < END_HOUR; h++) hourRowHeights[h] = BASE_HOUR_HEIGHT;
 
     const DYNAMIC_CHARS_PER_LINE = 12;
-    // 表示対象の予約データを抽出
     const allRelevantReservations = masterData.reservations.filter(res => {
         const startTimeVal = getVal(res, ['startTime', 'start_time', '開始日時', '開始']);
         if (!startTimeVal) return false;
@@ -703,7 +625,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         return isTargetRoom && (resDateNum === targetDateNum);
     });
 
-    // 予約の内容量に応じて、行の高さを自動調整する計算
     allRelevantReservations.forEach(res => {
         const start = new Date(res._startTime);
         const sHour = start.getHours();
@@ -719,7 +640,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     });
 
-    // 各時間のY座標(top)を計算
     const hourTops = {};
     let currentTop = 0;
     for (let h = START_HOUR; h < END_HOUR; h++) {
@@ -728,7 +648,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     }
     hourTops[END_HOUR] = currentTop;
 
-    // 現在時刻の赤線の位置を計算
     let nowTopPx = -1;
     const now = new Date();
     const todayStr = formatDateToNum(now);
@@ -740,7 +659,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
-    // 時間軸を描画
     drawTimeAxis(timeAxisId);
     const axisContainer = document.getElementById(timeAxisId);
     if (axisContainer && container) {
@@ -748,7 +666,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         axisContainer.style.overflow = "hidden";
         axisContainer.style.display = "block";
         
-        // コンテナのスクロールに合わせて時間軸もスクロールさせる
         if (mode === 'all') {
             container.onscroll = () => { axisContainer.scrollTop = container.scrollTop; };
             axisContainer.scrollTop = savedScrollTop;
@@ -761,7 +678,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             axisContainer.style.height = currentTop + "px";
         }
         
-        // ヘッダー固定処理
         const axisHeader = axisContainer.querySelector('.time-axis-header');
         if (axisHeader) {
             axisHeader.style.position = "sticky";
@@ -773,7 +689,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
-    // 各部屋の列を描画
     targetRooms.forEach(room => {
         const col = document.createElement('div');
         col.className = 'room-col';
@@ -784,7 +699,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
 
-        // マップで選択された部屋をハイライトし、そこへスクロール
         if (mode === 'map' && String(room.roomId) === String(currentMapRoomId)) {
             col.classList.add('target-highlight');
             if (shouldScroll) {
@@ -794,7 +708,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             }
         }
         
-        // 部屋名ヘッダーの作成
         const header = document.createElement('div');
         header.className = 'room-header';
         header.innerText = room.roomName;
@@ -811,7 +724,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         header.style.boxSizing = "border-box";
         header.style.cursor = "pointer";
         
-        // ヘッダークリック時の処理(マップモードでの選択切り替え)
         header.onclick = (e) => {
             if (mode !== 'map') return; 
             currentMapRoomId = room.roomId;
@@ -824,11 +736,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
         col.appendChild(header);
 
-        // 予約バーを表示するボディ部分
         const body = document.createElement('div');
         body.className = 'room-grid-body';
         
-        // 現在時刻の赤線を描画
         if (nowTopPx !== -1) {
             const line = document.createElement('div');
             line.className = 'current-time-line';
@@ -846,7 +756,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         body.style.height = currentTop + "px";
         body.style.position = "relative";
 
-        // 時間ごとの区切り線を描画
         for (let h = START_HOUR; h < END_HOUR; h++) {
             const slot = document.createElement('div');
             slot.className = 'grid-slot';
@@ -856,15 +765,13 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             body.appendChild(slot);
         }
 
-        // 空き部分クリックで新規予約モーダルを開く
         body.onclick = (e) => {
-            if (!isTouch && hasDragged) return; // ドラッグ中は無視
-            if (e.target.closest('.v-booking-bar')) return; // 予約バーの上は無視
+            if (!isTouch && hasDragged) return;
+            if (e.target.closest('.v-booking-bar')) return;
 
             const rect = body.getBoundingClientRect();
             const clickY = e.clientY - rect.top;
             
-            // クリック位置から時間を計算
             let clickedHour = -1;
             let clickedMin = 0;
             for (let h = START_HOUR; h < END_HOUR; h++) {
@@ -874,14 +781,13 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                     clickedHour = h;
                     const height = bottom - top;
                     const relativeY = clickY - top;
-                    if (relativeY >= height / 2) clickedMin = 30; // 下半分なら30分
+                    if (relativeY >= height / 2) clickedMin = 30;
                     break;
                 }
             }
             if (clickedHour !== -1) openModal(null, room.roomId, clickedHour, clickedMin);
         };
 
-        // 予約バーの描画
         const reservations = allRelevantReservations.filter(res => String(res._resourceId) === String(room.roomId));
         reservations.forEach(res => {
             const start = new Date(res._startTime);
@@ -891,12 +797,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             let eHour = end.getHours();
             let eMin = end.getMinutes();
 
-            // 表示範囲外の補正
             if (sHour < START_HOUR) { sHour = START_HOUR; sMin = 0; }
             if (eHour >= END_HOUR) { eHour = END_HOUR; eMin = 0; }
 
             if (sHour < END_HOUR && (sHour > START_HOUR || (sHour === START_HOUR && sMin >= 0))) {
-                // 開始・終了位置(ピクセル)の計算
                 const topPx = hourTops[sHour] + (hourRowHeights[sHour] * (sMin / 60));
                 let bottomPx = 0;
                 if (eHour === END_HOUR) bottomPx = hourTops[END_HOUR];
@@ -904,43 +808,33 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
                 let heightPx = bottomPx - topPx;
                 const minHeightPx = hourRowHeights[sHour] * (15 / 60);
-                if (heightPx < minHeightPx) heightPx = minHeightPx; // 最小高さを確保
+                if (heightPx < minHeightPx) heightPx = minHeightPx;
 
-               // バー要素の作成
                 const bar = document.createElement('div');
-
-                /* ==============================================
-                   【最終修正版】CSSクラスを正しく割り当てるだけのシンプル設計
-                   ============================================== */
-                let className = 'v-booking-bar'; // 基本クラス
-                const rName = (room.roomName || "").trim();
-
-                // 部屋名から適用するクラス名を決定
-                if (rName.indexOf('会議室') !== -1) {
-                    className += ' type-meeting';    // CSSで緑になる
-                } else if (rName.indexOf('応接室') !== -1) {
-                    className += ' type-reception';  // CSSでオレンジになる
-                } else if (rName.indexOf('Z') !== -1 || rName.indexOf('Ｚ') !== -1) {
-                    className += ' type-z';          // CSSで青になる
-                } else {
-                    // 名前で決まらない場合、DBの値を使う（念のため）
-                    if (room.type && room.type !== 'undefined') {
-                        className += ` type-${room.type}`;
-                    }
+                
+                // ★修正開始: 部屋名からCSSクラスを判定して色を適用する
+                let cssType = room.type;
+                // room.typeが無い、または不一致の場合、名前から判定
+                if (!cssType || (cssType !== 'meeting' && cssType !== 'reception' && cssType !== 'zoom')) {
+                    if (room.roomName.indexOf("会議室") !== -1) cssType = "meeting";
+                    else if (room.roomName.indexOf("応接室") !== -1) cssType = "reception";
+                    else if (room.roomName.indexOf("Z") !== -1 || room.roomName.indexOf("Ｚ") !== -1) cssType = "zoom";
                 }
-                bar.className = className;
+                bar.className = `v-booking-bar type-${cssType}`;
+                // ★修正終了
+
                 bar.style.top = (topPx + 1) + "px";
                 bar.style.height = (heightPx - 2) + "px";
                 bar.style.zIndex = "5";
                 bar.style.position = "absolute";
                 bar.style.left = "2px";
                 bar.style.width = "calc(100% - 4px)";
+
                 let displayTitle = getVal(res, ['title', 'subject', '件名', 'タイトル']) || '予約';
                 const startTimeStr = `${start.getHours()}:${pad(start.getMinutes())}`;
                 const endTimeStr = `${end.getHours()}:${pad(end.getMinutes())}`;
                 const timeRangeStr = `${startTimeStr}-${endTimeStr}`;
 
-                // 参加者名の表示処理
                 let participantsStr = "";
                 let pIdsRaw = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
                 if (pIdsRaw) {
@@ -962,14 +856,12 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                      }
                 }
 
-                // バー内部のHTML構成
                 bar.innerHTML = `
                       <div style="width:100%; font-weight:bold; font-size:0.85em; line-height:1.1; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${timeRangeStr}</div>
                       <div style="width:100%; font-weight:bold; font-size:0.9em; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayTitle}</div>
                       <div style="width:100%; font-weight:bold; font-size:0.9em; line-height:1.1; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${participantsStr}</div>
                   `;
 
-                // クリックで詳細モーダルを開く
                 bar.onclick = (e) => {
                     if (!isTouch && hasDragged) return;
                     e.stopPropagation();
@@ -983,7 +875,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.appendChild(col);
     });
 
-    // スクロール位置の復元処理
     if (container) {
         if (!shouldScroll) {
             if (mode === 'map' && mapWrapper) {
@@ -995,7 +886,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             }
         }
         
-        // スクロールバーの幅調整
         const axisContainerEnd = document.getElementById(timeAxisId);
         if (mode === 'all' && axisContainerEnd) {
             axisContainerEnd.scrollTop = savedScrollTop;
@@ -1015,7 +905,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
    ============================================== */
 
 /* ★修正: 共通時間計算関数 (新規予約・空き検索の両方で使用) */
-// 開始時間を変更したときに、終了時間を自動で+1時間する処理
 function calculateEndTime(startId, endId) {
   const startInput = document.getElementById(startId);
   const endInput = document.getElementById(endId);
@@ -1045,7 +934,6 @@ function calculateEndTime(startId, endId) {
 function autoSetEndTime() { calculateEndTime('input-start', 'input-end'); }
 function autoSetAvailEndTime() { calculateEndTime('avail-start', 'avail-end'); }
 
-// 時間入力欄で、時/分を選択しやすくする処理
 function selectTimePart(elm) {
     setTimeout(() => {
         const val = elm.value;
@@ -1057,7 +945,6 @@ function selectTimePart(elm) {
     }, 10);
 }
 
-// 矢印キーで時/分の選択を移動する処理
 function handleTimeArrowKeys(event, elm) {
     if (event.key === 'Enter') { elm.blur(); return; }
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
@@ -1073,7 +960,6 @@ function handleTimeArrowKeys(event, elm) {
     }
 }
 
-// 全角数字を半角に直し、フォーマットを整える処理
 function formatTimeInput(elm) {
     let val = elm.value.trim();
     if (!val) return;
@@ -1091,7 +977,7 @@ function formatTimeInput(elm) {
     }
 }
 
-/* 予約モーダルを開く関数 (新規・編集兼用) */
+/* ----- 修正後の openModal 関数（ここだけ書き換えてください） ----- */
 function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin = 0) {
   const modal = document.getElementById('bookingModal');
   modal.style.display = 'flex';
@@ -1104,7 +990,6 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
    
   if (res) {
     // === 編集モード ===
-    // 既存の予約データをフォームに入力
     document.getElementById('modal-title').innerText = "予約編集";
     document.getElementById('edit-res-id').value = res.id;
     const rId = res._resourceId || res.resourceId || res.roomId; 
@@ -1123,7 +1008,6 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
     document.getElementById('input-title').value = getVal(res, ['title', 'subject', '件名', 'タイトル', '用件', 'name']);
     document.getElementById('input-note').value = getVal(res, ['note', 'description', '備考', 'メモ', '詳細', 'body']);
     
-    // 参加者の復元
     const pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
     if (pIds) {
         let idList = [];
@@ -1152,7 +1036,7 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
     document.getElementById('edit-res-id').value = "";
     if(defaultRoomId) document.getElementById('input-room').value = defaultRoomId;
     
-    // 現在選択中の日付を取得
+    // ▼▼▼【ここが修正箇所】エラーの原因だった日付取得ロジックを修正 ▼▼▼
     const dateInput = document.getElementById('map-date');
     let currentTabDate = dateInput ? dateInput.value : '';
     
@@ -1160,10 +1044,10 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
         const now = new Date();
         currentTabDate = `${now.getFullYear()}-${('0' + (now.getMonth() + 1)).slice(-2)}-${('0' + now.getDate()).slice(-2)}`;
     }
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     
     document.getElementById('input-date').value = currentTabDate;
 
-    // クリックした時間のセット
     const sHour = clickHour !== null ? clickHour : 9;
     const sMin  = clickMin;
     document.getElementById('input-start').value = `${pad(sHour)}:${pad(sMin)}`;
@@ -1173,13 +1057,6 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
     document.getElementById('input-title').value = "";
     document.getElementById('input-note').value = "";
     document.getElementById('btn-delete').style.display = 'none';
-    
-    // 繰り返し設定のリセット
-     if(document.getElementById('check-repeat')) {
-        document.getElementById('check-repeat').checked = false;
-        toggleRepeatOptions();
-    }
-    // 自分自身を参加者に追加
     if (typeof currentUser !== 'undefined' && currentUser && currentUser.userId) {
         selectedParticipantIds.add(String(currentUser.userId));
     }
@@ -1192,7 +1069,6 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
 }
 function closeModal() { document.getElementById('bookingModal').style.display = 'none'; }
 
-// 予約データから参加者IDの配列を取り出すヘルパー関数
 function getParticipantIdsFromRes(res) {
     const pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
     if (!pIds) return [];
@@ -1207,28 +1083,8 @@ function getParticipantIdsFromRes(res) {
     }
     return list.map(id => String(id).trim()).filter(id => id !== "");
 }
-/* ==============================================
-   繰り返しオプションの表示切替
-   チェックボックスの状態に応じて詳細設定エリアの表示/非表示を切り替えます
-   ============================================== */
-function toggleRepeatOptions() {
-    const chk = document.getElementById('check-repeat');
-    const area = document.getElementById('repeat-options');
-    if (chk && area) {
-        area.style.display = chk.checked ? 'block' : 'none';
-    }
-}
 
-/* ==============================================
-   予約保存処理 (繰り返し最大3ヶ月・高速並列処理版)
-   予約データを生成し、GASへ送信して保存します。
-   繰り返し予約の場合は複数件のデータを生成し、並列送信します。
-   ============================================== */
-/* ==============================================
-   予約保存処理 (修正版：1件ずつ順番に保存してエラー回避)
-   ============================================== */
 async function saveBooking() {
-    // フォームから値を取得
     const id = document.getElementById('edit-res-id').value;
     const room = document.getElementById('input-room').value;
     const date = document.getElementById('input-date').value;
@@ -1236,9 +1092,8 @@ async function saveBooking() {
     const end = document.getElementById('input-end').value;
     const title = document.getElementById('input-title').value;
     const note = document.getElementById('input-note').value;
-    
-    // --- 入力値バリデーション ---
     const timePattern = /^([0-9]{1,2}):([0-9]{2})$/;
+  
     if (!timePattern.test(start) || !timePattern.test(end)) {
         alert("時間は「09:00」のように半角数字とコロン(:)で入力してください。");
         return;
@@ -1251,219 +1106,125 @@ async function saveBooking() {
         alert("利用時間は 7:00 〜 21:00 の範囲で設定してください。");
         return;
     }
+
     const startParts = start.split(':');
     const endParts = end.split(':');
     const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
     const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+
     if (endMinutes - startMinutes < 15) {
         alert("最低でも15分以上の日時を設定してください。");
         return;
     }
 
-    // --- 予約データの生成 (単発 or 繰り返し) ---
-    let reservationList = []; 
+    const startTime = `${date.replace(/-/g, '/')} ${start}`;
+    const endTime = `${date.replace(/-/g, '/')} ${end}`;
     const pIds = Array.from(selectedParticipantIds).join(', ');
-    
-    const isRepeat = document.getElementById('check-repeat') && document.getElementById('check-repeat').checked;
 
-    if (!isRepeat || id) { 
-        // 単発予約、または既存予約の編集時
-        reservationList.push({
-            isUpdate: !!id, // 編集かどうか
-            reservationId: id || "", 
-            date: date,
-            startTime: `${date.replace(/-/g, '/')} ${start}`,
-            endTime: `${date.replace(/-/g, '/')} ${end}`
-        });
-    } else {
-        // 繰り返し予約の生成ロジック
-        const interval = parseInt(document.getElementById('repeat-interval').value) || 1;
-        const unit = document.getElementById('repeat-unit').value; 
-        const endType = document.querySelector('input[name="repeat-end"]:checked').value; 
-        
-        let currentDate = new Date(date.replace(/-/g, '/'));
-        let count = 0;
-        const maxCount = (endType === 'count') ? parseInt(document.getElementById('repeat-count').value) : 1000;
-        const untilDate = (endType === 'date') ? new Date(document.getElementById('repeat-until').value) : null;
-        
-        // 上限を「3ヶ月後」に設定
-        const maxLimitDate = new Date();
-        maxLimitDate.setMonth(maxLimitDate.getMonth() + 3);
-
-        while (true) {
-            // 終了条件のチェック
-            if (endType === 'count' && count >= maxCount) break;
-            if (endType === 'date' && untilDate && currentDate > untilDate) break;
-            if (endType === 'none' && currentDate > maxLimitDate) break; 
-            if (count > 100) break; // 無限ループ防止
-
-            const y = currentDate.getFullYear();
-            const m = ('0' + (currentDate.getMonth() + 1)).slice(-2);
-            const d = ('0' + currentDate.getDate()).slice(-2);
-            const dateStr = `${y}-${m}-${d}`; 
-
-            // リストに追加 (繰り返し作成時はすべて「新規」扱いなのでIDは空)
-            reservationList.push({
-                isUpdate: false,
-                reservationId: "", 
-                date: dateStr,
-                startTime: `${y}/${m}/${d} ${start}`,
-                endTime: `${y}/${m}/${d} ${end}`
-            });
-
-            // 次の日付へ進める
-            count++;
-            if (unit === 'day') {
-                currentDate.setDate(currentDate.getDate() + interval);
-            } else if (unit === 'week') {
-                currentDate.setDate(currentDate.getDate() + (interval * 7));
-            } else if (unit === 'month') {
-                currentDate.setMonth(currentDate.getMonth() + interval);
-            }
-        }
-    }
-
-    if (reservationList.length === 0) {
-        alert("予約日が生成されませんでした。設定を確認してください。");
-        return;
-    }
-
-    // --- 全件の重複チェック ---
-    // (省略せず実装: ここで簡易チェック)
-    let conflictMessages = [];
+   const newStartObj = new Date(startTime);
+    const newEndObj = new Date(endTime);
     const checkTargets = Array.from(selectedParticipantIds);
 
-    for (const resData of reservationList) {
-        const newStartObj = new Date(resData.startTime);
-        const newEndObj = new Date(resData.endTime);
+    // ▼▼▼ 変更箇所: エラー変数の準備 ▼▼▼
+    let conflictMessage = null;
 
-        const conflictFound = checkTargets.some(targetUserId => {
-            const conflictRes = masterData.reservations.find(existingRes => {
-                if (id && String(existingRes.id) === String(id)) return false;
-                const exStart = new Date(existingRes._startTime || existingRes.startTime);
-                const exEnd = new Date(existingRes._endTime || existingRes.endTime);
-                if (isNaN(exStart.getTime()) || isNaN(exEnd.getTime())) return false;
-                const isTimeOverlap = (exStart < newEndObj && exEnd > newStartObj);
-                if (!isTimeOverlap) return false;
-                const exMemberIds = getParticipantIdsFromRes(existingRes);
-                return exMemberIds.includes(targetUserId);
-            });
+    const conflictFound = checkTargets.some(targetUserId => {
+        const conflictRes = masterData.reservations.find(existingRes => {
+            if (id && String(existingRes.id) === String(id)) return false;
 
-            if (conflictRes) {
-                const conflictingUser = masterData.users.find(u => String(u.userId) === String(targetUserId));
-                const userName = conflictingUser ? conflictingUser.userName : targetUserId;
-                const roomObj = masterData.rooms.find(r => String(r.roomId) === String(conflictRes._resourceId || conflictRes.resourceId));
-                const roomName = roomObj ? roomObj.roomName : "不明な部屋";
-                const cStart = new Date(conflictRes._startTime || conflictRes.startTime);
-                const cEnd = new Date(conflictRes._endTime || conflictRes.endTime);
-                const timeStr = `${pad(cStart.getHours())}:${pad(cStart.getMinutes())} - ${pad(cEnd.getHours())}:${pad(cEnd.getMinutes())}`;
-                const dateStr = `${cStart.getMonth()+1}/${cStart.getDate()}`;
-                conflictMessages.push(`・${dateStr} ${userName} (${roomName} ${timeStr})`);
-                return true;
-            }
-            return false;
+            const exStart = new Date(existingRes._startTime || existingRes.startTime);
+            const exEnd = new Date(existingRes._endTime || existingRes.endTime);
+            if (isNaN(exStart.getTime()) || isNaN(exEnd.getTime())) return false;
+
+            const isTimeOverlap = (exStart < newEndObj && exEnd > newStartObj);
+            if (!isTimeOverlap) return false;
+
+            const exMemberIds = getParticipantIdsFromRes(existingRes);
+            return exMemberIds.includes(targetUserId);
         });
-    }
 
-    if (conflictMessages.length > 0) {
-        const msg = `以下の重複が見つかりました（${conflictMessages.length}件）：\n` + 
-                    conflictMessages.slice(0, 5).join('\n') + 
-                    (conflictMessages.length > 5 ? '\n...他' : '') +
-                    `\n\nこのまま重複して登録しますか？`;
-        if (!confirm(msg)) return;
-    } else if (reservationList.length > 1) {
-        if (!confirm(`${reservationList.length}件の予約を一括登録します。よろしいですか？`)) return;
-    }
-
-    // --- 送信処理 (ここを修正: 1件ずつ順番に送る) ---
-    const loadingEl = document.getElementById('loading');
-    const wrapper = document.getElementById('progress-wrapper');
-    const bar = document.getElementById('progress-bar');
-    const txt = document.getElementById('progress-text');
-    
-    loadingEl.style.display = 'flex';
-    if (reservationList.length > 1) {
-        wrapper.style.display = 'block';
-        bar.style.width = '0%';
-        txt.innerText = `0 / ${reservationList.length} 件完了`;
-    } else {
-        wrapper.style.display = 'none';
-    }
-
-    let successCount = 0;
-    let failCount = 0;
-    let processedCount = 0; 
-
-    // ★重要: 並列処理(Promise.all)をやめて、for...ofループで1つずつawaitする
-    for (const resData of reservationList) {
-        const params = {
-            action: resData.isUpdate ? 'updateReservation' : 'createReservation',
-            reservationId: resData.reservationId,
-            resourceId: room,
-            startTime: resData.startTime,
-            endTime: resData.endTime,
-            reserverId: currentUser.userId,
-            operatorName: currentUser.userName,
-            participantIds: pIds, 
-            title: title,
-            note: note 
-        };
-
-        try {
-            // 第2引数falseでバックグラウンド送信（loading制御はここで行うため）
-            const result = await callAPI(params, false);
+        if (conflictRes) {
+            const conflictingUser = masterData.users.find(u => String(u.userId) === String(targetUserId));
+            const userName = conflictingUser ? conflictingUser.userName : targetUserId;
             
-            if (result.status === 'success') {
-                successCount++;
-            } else {
-                failCount++;
-                console.error("Save failed:", result);
-            }
-        } catch(e) {
-            failCount++;
-            console.error("API Error:", e);
-        }
+            const roomObj = masterData.rooms.find(r => String(r.roomId) === String(conflictRes._resourceId || conflictRes.resourceId));
+            const roomName = roomObj ? roomObj.roomName : "不明な部屋";
+            
+            const cStart = new Date(conflictRes._startTime || conflictRes.startTime);
+            const cEnd = new Date(conflictRes._endTime || conflictRes.endTime);
+            const timeStr = `${pad(cStart.getHours())}:${pad(cStart.getMinutes())} - ${pad(cEnd.getHours())}:${pad(cEnd.getMinutes())}`;
 
-        // 進捗状況の更新
-        processedCount++;
-        if (reservationList.length > 1) {
-            const percentage = Math.round((processedCount / reservationList.length) * 100);
-            bar.style.width = percentage + '%';
-            txt.innerText = `${processedCount} / ${reservationList.length} 件完了`;
+            // ▼▼▼ 変更箇所: alertではなくメッセージを生成して保持 ▼▼▼
+            conflictMessage = 
+                `【重複警告】\n\n` +
+                `「${userName}」さんは、以下の予約と時間が重なっています。\n` +
+                `--------------------------------\n` +
+                `場所： ${roomName}\n` +
+                `時間： ${timeStr}\n` +
+                `用件： ${getVal(conflictRes, ['title', 'subject']) || '(なし)'}\n` +
+                `--------------------------------\n` +
+                `このまま重複して登録しますか？`;
+            
+            return true; 
         }
+        return false;
+    });
+
+    // ▼▼▼ 変更箇所: confirmで確認し、キャンセルの場合のみ return する ▼▼▼
+    // (元のコードにあった if (conflictFound) return; をこれに置き換えます)
+    if (conflictFound) {
+        if (!confirm(conflictMessage)) return; 
     }
+    const params = {
+        action: id ? 'updateReservation' : 'createReservation',
+        reservationId: id,
+        resourceId: room,
+        startTime: startTime,
+        endTime: endTime,
+        reserverId: currentUser.userId,
+        operatorName: currentUser.userName,
+        participantIds: pIds, 
+        title: title,
+        note: note 
+    };
 
-    // 処理完了後
-    setTimeout(() => {
-        loadingEl.style.display = 'none';
-        wrapper.style.display = 'none'; 
-
-        if (failCount === 0) {
-            alert("保存しました (" + successCount + "件)");
-            closeModal();
-            loadAllData(true);
-        } else {
-            alert(`完了しましたが、一部エラーが発生しました。\n成功: ${successCount}件\n失敗: ${failCount}件`);
-            closeModal();
-            loadAllData(true);
-        }
-    }, 200);
+    const result = await callAPI(params);
+    if(result.status === 'success') {
+        closeModal();
+        loadAllData(true);
+    } else {
+        alert("エラー: " + result.message);
+    }
 }
+
+async function deleteBooking() {
+    const id = document.getElementById('edit-res-id').value;
+    if (!id || !confirm("本当にこの予約を削除しますか？")) return;
+
+    const params = {
+        action: 'deleteReservation',
+        reservationId: id,
+        operatorName: currentUser ? currentUser.userName : 'Unknown'
+    };
+    const result = await callAPI(params);
+    if (result.status === 'success') {
+        alert("予約を削除しました");
+        closeModal();
+        loadAllData(true);
+    } else {
+        alert("削除エラー: " + result.message);
+    }
+}
+
 /* ==============================================
    詳細モーダル表示 (曜日追加・堅牢版)
-   予約をクリックしたときに詳細情報を表示する処理
    ============================================== */
 function openDetailModal(res) {
   currentDetailRes = res;
   const modal = document.getElementById('detailModal');
   
   // 日付文字列を安全にパース
-  // 修正後（これに書き換える）
-const safeDate = (str) => {
-    const s = String(str);
-    // Tが含まれる(DB形式)ならそのまま、そうでなければ/に置換(古い形式対策)
-    return s.includes('T') ? new Date(s) : new Date(s.replace(/-/g, '/'));
-};
+  const safeDate = (str) => new Date(String(str).replace(/-/g, '/'));
   
   const s = safeDate(res._startTime);
   const e = safeDate(res._endTime);
@@ -1482,7 +1243,7 @@ const safeDate = (str) => {
   document.getElementById('detail-room').innerText = room ? room.roomName : res._resourceId;
   document.getElementById('detail-title').innerText = getVal(res, ['title', 'subject', '件名', 'タイトル']) || '(なし)';
 
-  // 登録者・編集者情報の表示
+  // 登録者・編集者情報
   const metaContainer = document.getElementById('detail-meta-info');
   if (metaContainer) {
       const fmt = (dStr) => {
@@ -1500,7 +1261,7 @@ const safeDate = (str) => {
       metaContainer.innerHTML = html;
   }
 
-  // 参加者リストの表示
+  // 参加者リスト
   const membersContainer = document.getElementById('detail-members');
   membersContainer.innerHTML = "";
   let pIdsStr = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
@@ -1529,7 +1290,7 @@ const safeDate = (str) => {
       } else { membersContainer.innerHTML = "<div class='detail-member-item'>-</div>"; }
   } else { membersContainer.innerHTML = "<div class='detail-member-item'>-</div>"; }
 
-  // 備考欄の表示 (URLがあればリンク化)
+  // 備考欄
   let rawNote = getVal(res, ['note', 'description', '備考', 'メモ']) || '';
   let cleanNote = rawNote.replace(/【変更履歴】.*/g, '').replace(/^\s*[\r\n]/gm, '').trim();
   let escapedNote = cleanNote
@@ -1544,7 +1305,6 @@ const safeDate = (str) => {
   );
   document.getElementById('detail-note').innerHTML = linkedNote;
 
-  // 編集ボタン
   document.getElementById('btn-go-edit').onclick = function() {
       closeDetailModal();        
       openModal(currentDetailRes); 
@@ -1555,7 +1315,6 @@ function closeDetailModal() { document.getElementById('detailModal').style.displ
 
 /* ==============================================
    7. メンバー/グループ選択 (シャトル)
-   左側のリストから右側のリストへメンバーを移動させるUIの処理
    ============================================== */
 function renderGenericShuttle(filterText, targetSet, candidatesContainerId, selectedContainerId, searchInputId) {
     const rawInput = (filterText || "").trim();
@@ -1570,23 +1329,20 @@ function renderGenericShuttle(filterText, targetSet, candidatesContainerId, sele
     leftList.innerHTML = "";
     rightList.innerHTML = "";
 
-    // ユーザーリストをループして表示
     masterData.users.forEach(u => {
         if (!u.userId) return;
         const uidStr = String(u.userId);
         
-        // 既に選択されている場合
         if (targetSet.has(uidStr)) {
             const div = document.createElement('div');
             div.className = 'shuttle-item icon-remove';
             div.innerText = u.userName;
             div.onclick = () => {
-                targetSet.delete(uidStr); // 削除
+                targetSet.delete(uidStr);
                 renderGenericShuttle(rawInput, targetSet, candidatesContainerId, selectedContainerId, searchInputId);
             };
             rightList.appendChild(div);
         } else {
-            // 検索フィルタリング
             const name = (u.userName || "").toLowerCase();
             const kana = (u.kana || "").toLowerCase();
 
@@ -1602,7 +1358,7 @@ function renderGenericShuttle(filterText, targetSet, candidatesContainerId, sele
                 div.innerText = u.userName;
                 
                 div.onclick = () => {
-                    targetSet.add(uidStr); // 追加
+                    targetSet.add(uidStr);
                     if (searchInputId) {
                         const inputEl = document.getElementById(searchInputId);
                         if(inputEl) inputEl.value = "";
@@ -1615,21 +1371,18 @@ function renderGenericShuttle(filterText, targetSet, candidatesContainerId, sele
     });
 }
 
-// 通常の予約画面用のシャトル描画
 function renderShuttleLists(filterText = "") {
     const searchId = 'shuttle-search-input'; 
     const text = filterText || document.getElementById(searchId).value;
     renderGenericShuttle(text, selectedParticipantIds, 'list-candidates', 'list-selected', searchId);
 }
 
-// グループ作成画面用のシャトル描画
 function renderGroupCreateShuttle() {
     const searchId = 'group-shuttle-search'; 
     const text = document.getElementById(searchId).value;
     renderGenericShuttle(text, groupCreateSelectedIds, 'group-create-candidates', 'group-create-selected', searchId);
 }
 
-// グループボタンを押した時にメンバーを一括選択する処理
 function selectGroupMembers(idsStr) {
   if (!idsStr) return;
   const rawIds = String(idsStr).split(/[,、\s]+/);
@@ -1641,7 +1394,6 @@ function selectGroupMembers(idsStr) {
       if (user) { targetUsers.push(user); }
   });
 
-  // 全員選択済みなら解除、そうでなければ追加
   const isAllSelected = targetUsers.every(u => selectedParticipantIds.has(String(u.userId)));
   if (isAllSelected) {
       targetUsers.forEach(u => selectedParticipantIds.delete(String(u.userId)));
@@ -1651,7 +1403,6 @@ function selectGroupMembers(idsStr) {
   renderShuttleLists(document.getElementById('shuttle-search-input').value);
 }
 
-// グループボタン（チップ）を描画する処理
 function renderGroupButtons() {
   const container = document.getElementById('group-buttons-area');
   container.innerHTML = "";
@@ -1701,7 +1452,6 @@ function renderGroupButtons() {
   }
 }
 
-// 個別のグループボタンを作成
 function createGroupButton(container, name, ids, isCustom, groupId) {
     const btn = document.createElement('div');
     btn.className = 'group-chip';
@@ -1730,7 +1480,6 @@ function createGroupButton(container, name, ids, isCustom, groupId) {
     container.appendChild(btn);
 }
 
-// グループ作成・編集モーダルを開く
 function openGroupModal(groupId = null, groupName = "", memberIds = "") {
     document.getElementById('groupCreateModal').style.display = 'flex';
     const titleEl = document.getElementById('group-modal-title');
@@ -1759,7 +1508,6 @@ function openGroupModal(groupId = null, groupName = "", memberIds = "") {
     renderGroupCreateShuttle();
 }
 
-// 新規グループを保存
 async function saveNewGroup() {
     const id = document.getElementById('edit-group-id').value;
     const name = document.getElementById('new-group-name').value.trim();
@@ -1788,7 +1536,6 @@ async function saveNewGroup() {
 }
 function closeGroupModal() { document.getElementById('groupCreateModal').style.display = 'none'; }
 
-// 共有グループを削除
 async function deleteSharedGroup(groupId, groupName) {
     if(!confirm(`共有グループ「${groupName}」を本当に削除しますか？\n（全社員の画面から消えます）`)) return;
     const result = await callAPI({ action: 'deleteGroup', groupId: groupId });
@@ -1808,7 +1555,6 @@ function changeLogPage(direction) { currentLogPage += direction; renderLogs(); }
 
 /* ==============================================
    ログ一覧描画 (曜日追加・堅牢版)
-   操作ログをテーブル形式で表示します
    ============================================== */
 function renderLogs() {
     const tbody = document.getElementById('log-tbody');
@@ -1821,13 +1567,9 @@ function renderLogs() {
     let allLogs = [...masterData.logs].reverse(); 
     const filterText = document.getElementById('log-search-input').value.toLowerCase().trim();
     
-   // 修正後（これに書き換える）
-const safeDate = (str) => {
-    const s = String(str);
-    return s.includes('T') ? new Date(s) : new Date(s.replace(/-/g, '/'));
-};
+    // 安全な日付パース関数
+    const safeDate = (str) => new Date(String(str).replace(/-/g, '/'));
 
-    // フィルタリング処理
     if (filterText) {
         const searchKata = hiraToKata(filterText); 
         const searchHira = kataToHira(filterText);
@@ -1856,7 +1598,6 @@ const safeDate = (str) => {
         });
     }
 
-    // ページネーション処理
     const totalItems = allLogs.length;
     const totalPages = Math.ceil(totalItems / LOGS_PER_PAGE) || 1;
     if (currentLogPage < 1) currentLogPage = 1;
@@ -1921,7 +1662,6 @@ const safeDate = (str) => {
     renderPaginationControls(totalPages, totalItems, (currentLogPage - 1) * LOGS_PER_PAGE + 1, Math.min(currentLogPage * LOGS_PER_PAGE, totalItems));
 }
 
-// ページネーションコントロールの描画
 function renderPaginationControls(totalPages, totalItems, startCount, endCount) {
     const container = document.getElementById('log-pagination');
     container.innerHTML = "";
@@ -1951,9 +1691,7 @@ function renderPaginationControls(totalPages, totalItems, startCount, endCount) 
 
 /* ==============================================
    9. ユーティリティ関数
-   便利機能群です
    ============================================== */
-// 数字を2桁に埋める (9 -> 09)
 function pad(n) { return n < 10 ? '0'+n : n; }
 
 // ★修正: 曜日を追加 (安全対策済み)
@@ -1970,21 +1708,18 @@ function formatDateToNum(d) {
   if (isNaN(d.getTime())) return ""; 
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 }
-// ひらがなをカタカナに変換
 function hiraToKata(str) {
     return str.replace(/[\u3041-\u3096]/g, function(match) {
         var chr = match.charCodeAt(0) + 0x60;
         return String.fromCharCode(chr);
     });
 }
-// カタカナをひらがなに変換
 function kataToHira(str) {
     return str.replace(/[\u30A1-\u30F6]/g, function(match) {
         var chr = match.charCodeAt(0) - 0x60;
         return String.fromCharCode(chr);
     });
 }
-// 安全にオブジェクトの値を取得
 function getVal(obj, keys) {
     if(!obj) return "";
     for (const k of keys) {
@@ -1995,7 +1730,6 @@ function getVal(obj, keys) {
 
 /* ==============================================
    10. マップ画像と座標枠の自動同期
-   ウィンドウサイズが変わってもマップのクリック位置がずれないようにする処理
    ============================================== */
 function initMapResizer() {
   const resizeObserver = new ResizeObserver(entries => {
@@ -2024,7 +1758,7 @@ function initMapResizer() {
    追加: 空き状況検索 (Availability Search) 機能
    ============================================== */
 
-// 空き状況検索モーダルを開く
+// モーダルを開く
 function openAvailabilityModal() {
     const modal = document.getElementById('availabilityModal');
     if (!modal) return;
@@ -2125,7 +1859,6 @@ function execAvailabilitySearch() {
 }
 /* ==============================================
    11. 空き状況検索 ⇔ 予約画面連携
-   検索結果から予約画面へ遷移する処理
    ============================================== */
 function transitionToBooking(roomName, dateVal, startVal, endVal) {
   document.getElementById('availabilityModal').style.display = 'none';
@@ -2156,7 +1889,7 @@ function transitionToBooking(roomName, dateVal, startVal, endVal) {
 
   document.getElementById('bookingModal').style.display = 'flex';
   document.getElementById('btn-back-avail').style.display = 'inline-block'; 
-  document.getElementById('btn-modal-cancel').style.display = 'none';        
+  document.getElementById('btn-modal-cancel').style.display = 'none';       
 }
 
 function backToAvailability() {
@@ -2164,7 +1897,6 @@ function backToAvailability() {
   document.getElementById('availabilityModal').style.display = 'flex';
 }
 
-// 現在時刻までスクロールする処理
 function scrollToNow() {
   const container = document.getElementById('rooms-container-all');
   const axis = document.getElementById('time-axis-all');
@@ -2184,13 +1916,11 @@ function scrollToNow() {
 /* ==============================================
    12. 設定メニュー & その他機能
    ============================================== */
-// 設定メニューの表示切り替え
 function toggleSettingsMenu() {
   const dropdown = document.getElementById("settings-dropdown");
   dropdown.classList.toggle("show");
 }
 
-// 手動更新ボタン
 function manualRefresh() {
   const dropdown = document.getElementById("settings-dropdown");
   if(dropdown) dropdown.classList.remove("show");
@@ -2199,7 +1929,6 @@ function manualRefresh() {
   updateRefreshTime();
 }
 
-// 設定メニュー外をクリックしたら閉じる
 window.onclick = function(event) {
   if (event.target.matches('.settings-icon')) return;
   const dropdown = document.getElementById("settings-dropdown");
@@ -2208,7 +1937,7 @@ window.onclick = function(event) {
   }
 }
 
-/* パスワード変更モーダル */
+/* パスワード変更 */
 function openPasswordModal() {
   const dropdown = document.getElementById("settings-dropdown");
   if(dropdown) dropdown.classList.remove("show");
@@ -2243,7 +1972,7 @@ async function savePassword() {
   }
 }
 
-/* カスタム時間ピッカー (15分刻みのドロップダウンを作成) */
+/* カスタム時間ピッカー */
 function initCustomTimePickers() {
   const wrappers = document.querySelectorAll('.time-picker-wrapper');
   
@@ -2281,21 +2010,21 @@ function initCustomTimePickers() {
     const arrow = wrapper.querySelector('.time-picker-arrow');
     if (arrow) {
       arrow.onclick = (e) => {
-          e.stopPropagation();
-          document.querySelectorAll('.custom-time-dropdown').forEach(d => {
-             if(d !== dropdown) d.classList.remove('show');
-          });
-          
-          if (dropdown.classList.contains('show')) {
-              dropdown.classList.remove('show');
-          } else {
-              dropdown.classList.add('show');
-              const currentVal = wrapper.querySelector('input').value;
-              if (currentVal) {
-                  const targetItem = Array.from(dropdown.children).find(child => child.innerText === currentVal);
-                  if (targetItem) dropdown.scrollTop = targetItem.offsetTop;
-              }
-          }
+         e.stopPropagation();
+         document.querySelectorAll('.custom-time-dropdown').forEach(d => {
+            if(d !== dropdown) d.classList.remove('show');
+         });
+         
+         if (dropdown.classList.contains('show')) {
+             dropdown.classList.remove('show');
+         } else {
+             dropdown.classList.add('show');
+             const currentVal = wrapper.querySelector('input').value;
+             if (currentVal) {
+                 const targetItem = Array.from(dropdown.children).find(child => child.innerText === currentVal);
+                 if (targetItem) dropdown.scrollTop = targetItem.offsetTop;
+             }
+         }
       };
     }
   });
@@ -2374,48 +2103,5 @@ function updateDayDisplay(inputId) {
         } else {
             displaySpan.innerText = "";
         }
-    }
-}
-/* ==============================================
-   追加: 予約削除機能
-   ============================================== */
-async function deleteBooking() {
-    // 編集中の予約IDを取得
-    const resId = document.getElementById('edit-res-id').value;
-    
-    // IDがない（新規作成画面など）場合は何もしない
-    if (!resId) return;
-
-    // 確認ダイアログ
-    if (!confirm("本当にこの予約を削除しますか？\n（この操作は取り消せません）")) return;
-
-    // ローディング表示
-    const loadingEl = document.getElementById('loading');
-    if(loadingEl) loadingEl.style.display = 'flex';
-
-    // 削除APIを呼び出すパラメータ
-    const params = {
-        action: 'deleteReservation',
-        reservationId: resId,
-        operatorName: currentUser ? currentUser.userName : 'Unknown'
-    };
-
-    try {
-        // API通信実行
-        const result = await callAPI(params, false); // 第2引数falseでcallAPI内のloading制御を無効化し手動制御
-        
-        if(loadingEl) loadingEl.style.display = 'none';
-
-        if (result.status === 'success') {
-            alert("予約を削除しました");
-            closeModal();       // モーダルを閉じる
-            loadAllData(true);  // 画面を再読み込み
-        } else {
-            alert("削除エラー: " + result.message);
-        }
-    } catch (e) {
-        if(loadingEl) loadingEl.style.display = 'none';
-        console.error(e);
-        alert("通信エラーが発生しました");
     }
 }
