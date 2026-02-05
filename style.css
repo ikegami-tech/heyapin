@@ -865,64 +865,75 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
     height: 30px !important;
 }
 /* ==============================================
-   固定表示(Sticky)修正用パッチ
-   デバッグ結果に基づき、親要素のスクロール制限を解除します
+   再修正：レイアウト崩れ防止 ＆ ヘッダー固定パッチ
    ============================================== */
 
-/* 1. 親要素の制限を解除し、ページ全体でスクロールできるようにする */
-body, html {
-    overflow-y: auto !important; /* 念のため */
+/* 1. 親要素のスクロール設定を元に戻し、画面内に収める */
+html, body {
+    height: 100% !important;
+    overflow: hidden !important; /* ページ全体の勝手なスクロールを禁止 */
 }
 
-.view-container {
-    overflow: visible !important; /* hidden を解除 */
-    height: auto !important;
+#app-screen {
+    height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
+/* 2. カレンダーを包むメインエリア：ここを「スクロールの主役」にする */
 .map-wrapper {
-    overflow: visible !important; /* auto (赤枠の原因) を解除 */
-    height: auto !important;      /* 高さを中身に合わせる */
-    display: block !important;    /* レイアウト崩れ防止 */
-}
-
-/* 2. カレンダーエリアの設定変更 */
-/* 高さを固定せず(auto)、縦スクロールはブラウザに任せる(visible) */
-/* 横スクロールだけはこのエリア内で完結させる(auto) */
-.calendar-scroll-area, 
-#map-timeline-section .calendar-scroll-area {
-    height: auto !important;     /* 65vhの固定を解除し、全件表示する */
-    min-height: 0 !important;
-    overflow-y: visible !important; /* 縦ははみ出させる（ブラウザでスクロール） */
-    overflow-x: auto !important;    /* 横スクロールは維持 */
+    flex: 1 !important;
+    overflow-y: auto !important;  /* ここで縦スクロールさせる */
+    overflow-x: hidden !important;
     display: block !important;
+    position: relative !important;
+    border: none !important; /* デバッグの赤枠を消す */
 }
 
-/* 3. ヘッダー（部屋タブ・時間軸）を画面最上部に固定 */
+/* 3. マップ部分はそのまま上に置く（スクロールすれば上に流れる） */
+#dual-map-container {
+    flex-shrink: 0 !important;
+}
+
+/* 4. カレンダーエリア：横スクロールのみを担当させる */
+#map-timeline-section .calendar-scroll-area {
+    height: auto !important;      /* 高さを固定せず、中身を出し切る */
+    overflow-y: visible !important; /* 縦スクロールは親の .map-wrapper に任せる */
+    overflow-x: auto !important;    /* 横スクロールだけはここで制御 */
+    display: flex !important;
+    position: relative !important;
+}
+
+/* 5. 【重要】部屋名ヘッダーと日付バーを画面上部に固定する */
+
+/* 日付操作バーの固定 */
+.date-controller {
+    position: sticky !important;
+    top: 0 !important;      /* .map-wrapper の一番上に張り付く */
+    z-index: 1001 !important;
+    background: #f9f9f9 !important;
+}
+
+/* 部屋名の固定（日付バーのすぐ下に固定） */
 .room-header,
 .time-axis-header {
     position: sticky !important;
-    top: 0 !important;           /* 画面の一番上に張り付く */
-    z-index: 9999 !important;    /* 最前面に */
-    background-color: #fafafa;   /* 背景色（透け防止） */
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* 影をつけてわかりやすく */
+    top: 58px !important;    /* 日付バーの高さ分（約58px）空けて固定 */
+    z-index: 1000 !important;
+    background-color: #fafafa !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
 }
 
-/* 時間軸の列も固定 */
+/* 時間軸（左側）の固定 */
 .time-axis-col {
     position: sticky !important;
-    left: 0 !important;
-    z-index: 10000 !important; /* 部屋ヘッダーよりさらに手前でもOK */
-    background-color: #fff;
+    left: 0 !important;      /* 横スクロール時に左に張り付く */
+    z-index: 1002 !important;
+    background-color: #fff !important;
 }
 
-/* 4. 日付操作バーも固定する場合（お好みで） */
-.date-controller {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 10001 !important; /* ヘッダーよりさらに上 */
-    background: #f9f9f9;
-}
-/* 日付バーがある場合は、部屋ヘッダーの位置を少し下にずらす */
-.room-header, .time-axis-header {
-    top: 59px !important; /* date-controllerの高さ分ずらす（約60px） */
+/* 時間軸のヘッダー（左上角）は最前面 */
+.time-axis-header {
+    left: 0 !important;
+    z-index: 1003 !important;
 }
