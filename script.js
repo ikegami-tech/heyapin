@@ -908,24 +908,27 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
                 // バー要素の作成
                 const bar = document.createElement('div');
-                // 修正後（これに書き換える）
+                // 【修正版】名前を見て、クラスだけでなく「色」も直接塗るコード
 let classType = 'default';
-const rName = (room.roomName || "").trim(); // 安全のため整理
+let bgColor = '#e0e0e0'; // デフォルト（灰色）
 
-// 1. 部屋名を見て色を強制的に決める (最優先)
+const rName = (room.roomName || "").trim();
+
+// 部屋名から色を決定
 if (rName.indexOf('会議室') !== -1) {
-    classType = 'meeting';    // 緑
+    classType = 'meeting';
+    bgColor = 'rgba(0, 200, 80, 0.6)';   // 緑色
 } else if (rName.indexOf('応接室') !== -1) {
-    classType = 'reception';  // オレンジ
+    classType = 'reception';
+    bgColor = 'rgba(255, 165, 0, 0.6)';  // オレンジ色
 } else if (rName.indexOf('Z') !== -1 || rName.indexOf('Ｚ') !== -1) {
-    classType = 'z';          // 青
-} 
-// 2. 名前で決まらなかった場合だけ、DBの設定を使う
-else if (room.type && room.type.trim() !== "") {
-    classType = room.type;
+    classType = 'z';
+    bgColor = 'rgba(0, 100, 255, 0.6)';  // 青色
 }
 
 bar.className = `v-booking-bar type-${classType}`;
+bar.style.backgroundColor = bgColor; // ★ここで強制的に色をつける！
+bar.style.color = '#000'; // 文字色は黒で見やすく
                 bar.style.top = (topPx + 1) + "px";
                 bar.style.height = (heightPx - 2) + "px";
                 bar.style.zIndex = "5";
