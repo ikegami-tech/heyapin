@@ -910,17 +910,18 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 const bar = document.createElement('div');
                 // 修正後（これに書き換える）
 let classType = 'default';
+const rName = (room.roomName || "").trim(); // 安全のため整理
 
-// 1. まず部屋名を見て色を決める (最優先)
-if (room.roomName.indexOf('会議室') !== -1) {
+// 1. 部屋名を見て色を強制的に決める (最優先)
+if (rName.indexOf('会議室') !== -1) {
     classType = 'meeting';    // 緑
-} else if (room.roomName.indexOf('応接室') !== -1) {
+} else if (rName.indexOf('応接室') !== -1) {
     classType = 'reception';  // オレンジ
-} else if (room.roomName.indexOf('Z') !== -1 || room.roomName.indexOf('Ｚ') !== -1) {
+} else if (rName.indexOf('Z') !== -1 || rName.indexOf('Ｚ') !== -1) {
     classType = 'z';          // 青
 } 
 // 2. 名前で決まらなかった場合だけ、DBの設定を使う
-else if (room.type) {
+else if (room.type && room.type.trim() !== "") {
     classType = room.type;
 }
 
