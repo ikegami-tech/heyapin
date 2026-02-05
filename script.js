@@ -908,50 +908,46 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
                 // バー要素の作成
                 const bar = document.createElement('div');
+
                 /* ==============================================
-               【修正版2】理想のデザイン（薄い背景＋濃い上の線）にするコード
-               ============================================== */
+                   【再修正版】デザインを「左線＋薄い背景」に統一するコード
+                   ============================================== */
                 let classType = 'default';
-                let baseColor = '153, 153, 153'; // デフォルト（グレー）
-            
+                let rgb = '153, 153, 153'; // デフォルト（グレー）
+
                 const rName = (room.roomName || "").trim();
-            
+
                 // 1. 部屋名から「基本の色（RGB）」を決める
                 if (rName.indexOf('会議室') !== -1) {
                     classType = 'meeting';
-                    baseColor = '0, 200, 80';    // 緑
+                    rgb = '0, 200, 80';    // 緑
                 } else if (rName.indexOf('応接室') !== -1) {
                     classType = 'reception';
-                    baseColor = '255, 165, 0';   // オレンジ
+                    rgb = '255, 165, 0';   // オレンジ
                 } else if (rName.indexOf('Z') !== -1 || rName.indexOf('Ｚ') !== -1) {
                     classType = 'z';
-                    baseColor = '0, 100, 255';   // 青
+                    rgb = '0, 100, 255';   // 青
                 } 
-                // データベースの設定があればそれを使う場合の処理（予備）
+                // DBに設定があればそれを使う（予備）
                 else if (room.type && room.type.trim() !== "") {
                     classType = room.type;
-                    // DB値からの色推測は難しいためデフォルト色のままにするか、
-                    // 必要ならここで条件分岐を追加できます
                 }
-            
+
                 bar.className = `v-booking-bar type-${classType}`;
                 
-                // 2. デザインを直接指定（CSSが効かなくてもこれで理想の見た目になります）
-                // 背景は薄く（透明度 0.15）
-                bar.style.backgroundColor = `rgba(${baseColor}, 0.15)`;
-                // 上の線は濃く（透明度 1.0）
-                bar.style.borderTop = `3px solid rgba(${baseColor}, 1.0)`;
-                // 左の線も少し濃く
-                bar.style.borderLeft = `1px solid rgba(${baseColor}, 0.5)`;
-                // 文字色は黒
-                bar.style.color = '#333';
+                // 2. デザインを強制適用（左に太い線、背景は薄く）
+                bar.style.border = 'none'; // 一旦枠線を消す
+                bar.style.borderLeft = `5px solid rgba(${rgb}, 1.0)`; // ★左側に太い線
+                bar.style.backgroundColor = `rgba(${rgb}, 0.2)`;      // ★背景はかなり薄く
+                bar.style.color = '#333';                             // 文字は黒
+
+                // 3. 位置とサイズの指定
                 bar.style.top = (topPx + 1) + "px";
                 bar.style.height = (heightPx - 2) + "px";
                 bar.style.zIndex = "5";
                 bar.style.position = "absolute";
                 bar.style.left = "2px";
                 bar.style.width = "calc(100% - 4px)";
-
                 let displayTitle = getVal(res, ['title', 'subject', '件名', 'タイトル']) || '予約';
                 const startTimeStr = `${start.getHours()}:${pad(start.getMinutes())}`;
                 const endTimeStr = `${end.getHours()}:${pad(end.getMinutes())}`;
