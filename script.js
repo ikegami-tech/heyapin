@@ -908,7 +908,15 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
                 // バー要素の作成
                 const bar = document.createElement('div');
-                bar.className = `v-booking-bar type-${room.type}`;
+                // 修正後（これに書き換える）
+let classType = room.type;
+if (!classType) {
+    if (room.roomName.indexOf('会議室') !== -1) classType = 'meeting'; // 緑
+    else if (room.roomName.indexOf('応接室') !== -1) classType = 'reception'; // オレンジ
+    else if (room.roomName.indexOf('Z') !== -1 || room.roomName.indexOf('Ｚ') !== -1) classType = 'z'; // 青
+    else classType = 'default';
+}
+bar.className = `v-booking-bar type-${classType}`;
                 bar.style.top = (topPx + 1) + "px";
                 bar.style.height = (heightPx - 2) + "px";
                 bar.style.zIndex = "5";
