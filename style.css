@@ -133,10 +133,20 @@ header {
    5. タイムライン (カレンダー)
    ============================================== */
 .date-controller {
-  text-align: center; padding: 10px;
-  background: #f9f9f9; border-bottom: 1px solid #ddd;
-  display: flex; gap: 10px; justify-content: center;
+  text-align: center;
+  padding: 10px;
+  background: #f9f9f9;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
   flex-shrink: 0;
+  
+  /* ▼▼▼ 追加: 画面の一番上に張り付く設定 ▼▼▼ */
+  position: sticky;
+  top: 0;
+  z-index: 1000; /* 他の要素より手前に表示 */
+  /* ▲▲▲ 追加ここまで ▲▲▲ */
 }
 
 /* 1. 全体のコンテナ設定 */
@@ -195,15 +205,18 @@ header {
   box-shadow: 2px 0 5px rgba(0,0,0,0.05);
 }
 
+/* style.css 180行目付近 */
+
 .time-axis-header { 
   height: 40px; 
   border-bottom: 1px solid #ddd; 
   background: #f9f9f9;
   
-  /* 縦スクロール時に上に張り付く設定 */
+  /* ▼▼▼ 修正: topを0から59pxに変更 ▼▼▼ */
   position: sticky; 
-  top: 0; 
-  z-index: 110 !important;
+  top: 59px !important; /* 部屋ヘッダーと高さを合わせる */
+  z-index: 950 !important;
+  /* ▲▲▲ 修正ここまで ▲▲▲ */
 }
 
 .time-label {
@@ -242,10 +255,11 @@ header {
   display: flex; align-items: center; justify-content: center;
   font-size: 0.8rem; font-weight: bold;
   
-  /* ★これを入れるだけで固定されます */
+  /* ▼▼▼ 修正: topを0から59pxに変更 ▼▼▼ */
   position: sticky !important; 
-  top: 0; 
-  z-index: 90 !important; 
+  top: 59px !important;  /* 日付バーの高さ分ずらす */
+  z-index: 900 !important; 
+  /* ▲▲▲ 修正ここまで ▲▲▲ */
   
   background: #fafafa; 
   border-bottom: 1px solid #ddd;
