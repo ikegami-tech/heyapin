@@ -910,31 +910,43 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 const bar = document.createElement('div');
 
                 /* ==============================================
-                   【再修正版】デザインを「左線＋薄い背景」に統一するコード
+                   【最終修正版】CSSの影響を断ち切り、理想のデザインを強制適用
                    ============================================== */
-                let classType = 'default';
+                // 1. 部屋名から「色の数値(RGB)」だけを決める
                 let rgb = '153, 153, 153'; // デフォルト（グレー）
-
                 const rName = (room.roomName || "").trim();
 
-                // 1. 部屋名から「基本の色（RGB）」を決める
                 if (rName.indexOf('会議室') !== -1) {
-                    classType = 'meeting';
-                    rgb = '0, 200, 80';    // 緑
+                    rgb = '0, 200, 80';    // 会議室＝緑
                 } else if (rName.indexOf('応接室') !== -1) {
-                    classType = 'reception';
-                    rgb = '255, 165, 0';   // オレンジ
+                    rgb = '255, 165, 0';   // 応接室＝オレンジ
                 } else if (rName.indexOf('Z') !== -1 || rName.indexOf('Ｚ') !== -1) {
-                    classType = 'z';
-                    rgb = '0, 100, 255';   // 青
+                    rgb = '0, 100, 255';   // Z＝青
                 } 
-                // DBに設定があればそれを使う（予備）
-                else if (room.type && room.type.trim() !== "") {
-                    classType = room.type;
-                }
 
-                bar.className = `v-booking-bar type-${classType}`;
+                // 2. 【重要】クラス名には「色を決める名前(type-xxx)」を入れない！
+                // これにより、CSSファイルに残っている古い設定（緑色の枠など）を無視させます
+                bar.className = 'v-booking-bar'; 
                 
+                // 3. スタイルを直接書き込む（理想の画像：上に太い線＋背景は薄い色）
+                // cssTextを使うことで、他の設定を全て無効化して優先させます
+                bar.style.cssText = `
+                    top: ${topPx + 1}px;
+                    height: ${heightPx - 2}px;
+                    z-index: 5;
+                    position: absolute;
+                    left: 2px;
+                    width: calc(100% - 4px);
+                    background-color: rgba(${rgb}, 0.15) !important;
+                    border: none !important;
+                    border-top: 4px solid rgba(${rgb}, 1.0) !important;
+                    color: #333 !important;
+                    font-size: 0.9em;
+                    line-height: 1.1;
+                    padding: 2px;
+                    box-sizing: border-box;
+                    overflow: hidden;
+                `;
                 // 2. デザインを強制適用（左に太い線、背景は薄く）
                 bar.style.border = 'none'; // 一旦枠線を消す
                 bar.style.borderLeft = `5px solid rgba(${rgb}, 1.0)`; // ★左側に太い線
