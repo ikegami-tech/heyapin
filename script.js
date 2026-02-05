@@ -908,27 +908,43 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
                 // バー要素の作成
                 const bar = document.createElement('div');
-                // 【修正版】名前を見て、クラスだけでなく「色」も直接塗るコード
-let classType = 'default';
-let bgColor = '#e0e0e0'; // デフォルト（灰色）
-
-const rName = (room.roomName || "").trim();
-
-// 部屋名から色を決定
-if (rName.indexOf('会議室') !== -1) {
-    classType = 'meeting';
-    bgColor = 'rgba(0, 200, 80, 0.6)';   // 緑色
-} else if (rName.indexOf('応接室') !== -1) {
-    classType = 'reception';
-    bgColor = 'rgba(255, 165, 0, 0.6)';  // オレンジ色
-} else if (rName.indexOf('Z') !== -1 || rName.indexOf('Ｚ') !== -1) {
-    classType = 'z';
-    bgColor = 'rgba(0, 100, 255, 0.6)';  // 青色
-}
-
-bar.className = `v-booking-bar type-${classType}`;
-bar.style.backgroundColor = bgColor; // ★ここで強制的に色をつける！
-bar.style.color = '#000'; // 文字色は黒で見やすく
+                /* ==============================================
+               【修正版2】理想のデザイン（薄い背景＋濃い上の線）にするコード
+               ============================================== */
+                let classType = 'default';
+                let baseColor = '153, 153, 153'; // デフォルト（グレー）
+            
+                const rName = (room.roomName || "").trim();
+            
+                // 1. 部屋名から「基本の色（RGB）」を決める
+                if (rName.indexOf('会議室') !== -1) {
+                    classType = 'meeting';
+                    baseColor = '0, 200, 80';    // 緑
+                } else if (rName.indexOf('応接室') !== -1) {
+                    classType = 'reception';
+                    baseColor = '255, 165, 0';   // オレンジ
+                } else if (rName.indexOf('Z') !== -1 || rName.indexOf('Ｚ') !== -1) {
+                    classType = 'z';
+                    baseColor = '0, 100, 255';   // 青
+                } 
+                // データベースの設定があればそれを使う場合の処理（予備）
+                else if (room.type && room.type.trim() !== "") {
+                    classType = room.type;
+                    // DB値からの色推測は難しいためデフォルト色のままにするか、
+                    // 必要ならここで条件分岐を追加できます
+                }
+            
+                bar.className = `v-booking-bar type-${classType}`;
+                
+                // 2. デザインを直接指定（CSSが効かなくてもこれで理想の見た目になります）
+                // 背景は薄く（透明度 0.15）
+                bar.style.backgroundColor = `rgba(${baseColor}, 0.15)`;
+                // 上の線は濃く（透明度 1.0）
+                bar.style.borderTop = `3px solid rgba(${baseColor}, 1.0)`;
+                // 左の線も少し濃く
+                bar.style.borderLeft = `1px solid rgba(${baseColor}, 0.5)`;
+                // 文字色は黒
+                bar.style.color = '#333';
                 bar.style.top = (topPx + 1) + "px";
                 bar.style.height = (heightPx - 2) + "px";
                 bar.style.zIndex = "5";
