@@ -317,9 +317,29 @@ header {
   overflow: hidden !important; text-overflow: ellipsis !important;
 }
 
-.type-meeting { background: var(--meeting-bg); border-top: 4px solid var(--meeting-border); }
-.type-reception { background: var(--reception-bg); border-top: 4px solid var(--reception-border); }
-.type-zoom { background: var(--zoom-bg); border-top: 4px solid var(--zoom-border); }
+/* style.css の真ん中あたり (Section 6付近) */
+
+/* ▼▼▼ ここを修正（border-top を border-left に変更） ▼▼▼ */
+.type-meeting { 
+    background: var(--meeting-bg); 
+    border: none; 
+    border-left: 5px solid var(--meeting-border); 
+    color: #333;
+}
+.type-reception { 
+    background: var(--reception-bg); 
+    border: none; 
+    border-left: 5px solid var(--reception-border); 
+    color: #333;
+}
+/* Z部屋用（.type-z と .type-zoom 両方対応させておきます） */
+.type-z, .type-zoom { 
+    background: var(--zoom-bg); 
+    border: none; 
+    border-left: 5px solid var(--zoom-border); 
+    color: #333;
+}
+/* ▲▲▲ 修正ここまで ▲▲▲ */
 
 /* ==============================================
    7. ログ (リスト) 画面
