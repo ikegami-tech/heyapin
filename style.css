@@ -839,38 +839,58 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
     height: 30px !important;
 }
 /* ==============================================
-   追加: スティッキーヘッダー用修正 (style.css)
+   修正: スティッキーヘッダー & 全体スクロール設定 (style.css)
    ============================================== */
 
-/* 部屋名のヘッダー固定 */
-.room-header {
-    position: -webkit-sticky !important; /* Safari用 */
-    position: sticky !important;
-    top: 0;
-    z-index: 20 !important; /* 予約バー(z-index:5)より上にする */
-    background-color: #f8f9fa !important; /* 背景色をつけて裏の線が透けないようにする */
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+/* 1. マップ画面全体のスクロール設定 */
+.map-wrapper {
+    height: 100%;
+    overflow-y: auto; /* ここで縦スクロールさせる */
+    overflow-x: hidden;
+    position: relative;
+    scroll-behavior: smooth;
 }
 
-/* 時間軸のヘッダー(左上の空白)も固定 */
-.time-axis-header {
+/* 2. 日付操作バーの固定 */
+.date-controller {
     position: -webkit-sticky !important;
     position: sticky !important;
     top: 0;
-    z-index: 30 !important; /* 部屋名よりさらに上 */
+    z-index: 40 !important; /* 最前面 */
+    background-color: #f9f9f9 !important;
+    border-bottom: 1px solid #ddd;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* 3. 部屋名ヘッダーの固定 (日付バーの下に来るように調整) */
+.room-header {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    /* 日付バーの高さ(約59px)分ずらして固定 */
+    top: 59px; 
+    z-index: 30 !important;
+    background-color: #f8f9fa !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* 4. 時間軸ヘッダー(左上の空白)の固定 */
+.time-axis-header {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 59px; /* 部屋名と同じ高さに */
+    z-index: 35 !important; /* 部屋名より少し上 */
     background-color: #fff !important;
 }
 
-/* タイムライン領域の高さを制限してスクロールバーを出す */
-#rooms-container-map, 
-#rooms-container-all {
-    /* 縦方向のオーバーフロー制御をCSSで強制する */
-    overflow-y: visible !important; /* コンテナ自体はvisibleにし、親のscroll-areaでスクロールさせる */
+/* 5. カレンダーエリアの高さ制限を撤廃 */
+#map-timeline-section .calendar-scroll-area {
+    height: auto !important; /* 固定高さを解除 */
+    min-height: 500px;
+    overflow-y: visible !important; /* 縦スクロールは親(.map-wrapper)に任せる */
+    overflow-x: auto !important;    /* 横スクロールはこの要素で行う */
 }
 
-/* マップ下のスクロールエリアの高さ固定 */
-#map-timeline-section .calendar-scroll-area {
-    height: 60vh !important; /* 画面の60%の高さに固定 */
-    max-height: 600px;
-    overflow: auto !important; /* ここでスクロールさせる */
+/* タイムライン領域 */
+#rooms-container-map {
+    overflow: visible !important;
 }
