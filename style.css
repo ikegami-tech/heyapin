@@ -838,3 +838,39 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
     margin-bottom: 0 !important;
     height: 30px !important;
 }
+/* ==============================================
+   追加: スティッキーヘッダー用修正 (style.css)
+   ============================================== */
+
+/* 部屋名のヘッダー固定 */
+.room-header {
+    position: -webkit-sticky !important; /* Safari用 */
+    position: sticky !important;
+    top: 0;
+    z-index: 20 !important; /* 予約バー(z-index:5)より上にする */
+    background-color: #f8f9fa !important; /* 背景色をつけて裏の線が透けないようにする */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* 時間軸のヘッダー(左上の空白)も固定 */
+.time-axis-header {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0;
+    z-index: 30 !important; /* 部屋名よりさらに上 */
+    background-color: #fff !important;
+}
+
+/* タイムライン領域の高さを制限してスクロールバーを出す */
+#rooms-container-map, 
+#rooms-container-all {
+    /* 縦方向のオーバーフロー制御をCSSで強制する */
+    overflow-y: visible !important; /* コンテナ自体はvisibleにし、親のscroll-areaでスクロールさせる */
+}
+
+/* マップ下のスクロールエリアの高さ固定 */
+#map-timeline-section .calendar-scroll-area {
+    height: 60vh !important; /* 画面の60%の高さに固定 */
+    max-height: 600px;
+    overflow: auto !important; /* ここでスクロールさせる */
+}
