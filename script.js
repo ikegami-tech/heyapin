@@ -1008,19 +1008,34 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
     const rId = res._resourceId || res.resourceId || res.roomId; 
     document.getElementById('input-room').value = rId;
 
-    // ▼▼▼ 【追加】シリーズIDの有無で表示切り替え ▼▼▼
-    // AWS移行後は res.seriesId が返ってくる前提
-    const currentSeriesId = getVal(res, ['seriesId', 'series_id', 'group_id']); 
+    // ▼▼▼ 修正箇所 ▼▼▼
+    // データに seriesId が入っていなくても、UI確認のために一時的にIDがあることにする
+    // 本番（AWS移行後）では元のコードに戻してください
+    let currentSeriesId = getVal(res, ['seriesId', 'series_id', 'group_id']); 
     
+    // ★テスト用: IDがなくてもあるとみなしてボタンを出す（ここを追加！）
+    if (!currentSeriesId && res) {
+         currentSeriesId = "temp-id-for-test"; // テスト用のダミーID
+         console.log("テスト用にダミーのseriesIdを適用しました");
+    }
+
     if (currentSeriesId) {
-        // シリーズIDがある場合 → 「リンクする」を表示、「新規作成」を隠す
+        // シリーズIDがある場合 → 「リンクする」を表示
         if(editSeriesOption) editSeriesOption.style.display = 'block';
+        
+        // 新規作成用の繰り返しエリアは隠す
         if(createRepeatSection) createRepeatSection.style.display = 'none';
+        
+        // 念のため、既存の「繰り返しチェック」の親要素も非表示にする（IDがない場合の保険）
+        const oldRepeatCheck = document.getElementById('check-repeat');
+        if(oldRepeatCheck && oldRepeatCheck.closest('.form-group')) {
+             // 構造によってはここが効かない場合があるので、基本は create-repeat-section 推奨
+        }
     } else {
-        // 単発の場合 → 「リンクする」は出さない、「新規作成」も編集時は邪魔なので隠すのが一般的
+        // 単発の場合
         if(createRepeatSection) createRepeatSection.style.display = 'none';
     }
-    // ▲▲▲ 追加ここまで ▲▲▲
+    // ▲▲▲ 修正ここまで ▲▲▲
 
     const startObj = new Date(res._startTime || res.startTime);
     const endObj = new Date(res._endTime || res.endTime);
