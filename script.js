@@ -493,7 +493,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     if (container) {
         container.innerHTML = "";
         if (mode === 'map') {
-           container.style.height = "100%";
+          container.style.height = "auto";
         container.style.overflowY = "visible"; 
         } else {
             container.style.height = "100%";
