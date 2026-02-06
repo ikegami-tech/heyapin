@@ -70,11 +70,18 @@ header {
   background: var(--primary); color: white; padding: 10px;
   display: flex; justify-content: space-between; align-items: center;
   flex-shrink: 0; z-index: 100;
+  min-height: 50px; /* 追加: 高さを確保 */
 }
 .user-info { display: flex; align-items: center; font-size: 0.8rem; }
 
-.header-left-group { display: flex; align-items: center; gap: 15px; }
-#header-title { cursor: pointer; font-weight: bold; font-size: 1.1rem; }
+.header-left-group { 
+  display: flex; align-items: center; gap: 15px; 
+  flex-shrink: 0; /* 追加: 画面が狭くなっても潰れないようにする */
+}
+#header-title { 
+  cursor: pointer; font-weight: bold; font-size: 1.1rem; 
+  white-space: nowrap; /* 追加: 勝手に改行(縦書き)されるのを防ぐ */
+}
 #header-title:hover { opacity: 0.8; }
 
 .btn-header-refresh {
