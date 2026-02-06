@@ -211,9 +211,16 @@ function switchFloor(floor) {
     document.querySelectorAll('.floor-map-unit').forEach(u => u.classList.remove('active'));
     document.getElementById(`area-${floor}f`).classList.add('active');
     
-    // マップ画像セット
-    const img = document.getElementById(`map-img-${floor}`);
-    if(!img.src) img.src = mapConfig[floor].image;
+   const img = document.getElementById(`map-img-${floor}`);
+    const imgData = mapConfig[floor].image;
+    
+    if (img && imgData) {
+        // 強制的に再セット
+        img.src = imgData;
+        console.log(`${floor}階の画像をセットしました`);
+    } else {
+        console.error(`${floor}階の画像データが見つかりません。script.jsのIMG_${floor}Fを確認してください。`);
+    }
     
     // エリア描画
     const container = document.getElementById(`overlay-container-${floor}`);
