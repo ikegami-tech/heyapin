@@ -1249,20 +1249,33 @@ async function saveBooking() {
         }
 
     } 
-    // ========== 【パターンB：編集モード & リンクON】 ==========
+   // ========== 【パターンB：編集モード & リンクON】 ==========
     else if (id && targetSeriesId && isSeriesLinkChecked) {
-        // ★ 同じシリーズの「未来の」予約を全て更新対象にする
+        console.log("▼リンク更新処理開始");
+        console.log("ターゲットSeriesID:", targetSeriesId);
+
         const currentStartObj = new Date(originalRes._startTime || originalRes.startTime);
         
         // 条件：同じシリーズID かつ 開始日時がこの予約以降のもの
         const relatedRes = masterData.reservations.filter(r => {
              const rSeriesId = getVal(r, ['seriesId', 'series_id', 'group_id']);
              const rStart = new Date(r._startTime || r.startTime);
-             return rSeriesId === targetSeriesId && rStart >= currentStartObj;
+             
+             // ★修正: 型変換して厳密に比較
+             const isSameSeries = String(rSeriesId) === String(targetSeriesId);
+             
+             // ★修正: ミリ秒単位で比較
+             // (同じ予約を含むため >= を使用)
+             const isFuture = rStart.getTime() >= currentStartObj.getTime() - 1000; 
+
+             return isSameSeries && isFuture;
         });
 
+        console.log(`検索結果: 全予約数=${masterData.reservations.length}, ヒット数=${relatedRes.length}`);
+
         if (relatedRes.length === 0) {
-            // 万が一見つからなければ自分だけ更新
+            // 見つからなければ（自分自身すらIDが一致しないなど）、自分だけをリストに入れる
+            console.warn("リンク対象が見つかりませんでした。自分のみ更新します。");
             relatedRes.push(originalRes);
         }
 
@@ -1283,6 +1296,8 @@ async function saveBooking() {
                 endTime: `${y}/${m}/${d} ${end}`      // 時間統一
             });
         });
+        
+        console.log("更新対象リスト:", reservationList);
     }
     // ========== 【パターンC：単発 / リンク解除 / 単発編集】 ==========
     else {
