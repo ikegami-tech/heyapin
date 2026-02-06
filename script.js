@@ -1251,40 +1251,52 @@ async function saveBooking() {
     } 
    // ========== 【パターンB：編集モード & リンクON】 ==========
     else if (id && targetSeriesId && isSeriesLinkChecked) {
-        console.log("▼リンク更新処理開始");
-        console.log("ターゲットSeriesID:", targetSeriesId);
+        console.log("▼リンク更新処理開始: 日付移動対応版");
 
+        // 1. 日付のズレ（差分）を計算する
+        // 元の予約の日付 (時間切り捨て)
+        const oldStartObj = new Date(originalRes._startTime || originalRes.startTime);
+        const oldDateOnly = new Date(oldStartObj.getFullYear(), oldStartObj.getMonth(), oldStartObj.getDate());
+
+        // 入力された新しい日付 (時間切り捨て)
+        // input type="date" の値 (YYYY-MM-DD) をパース
+        const newDateParts = date.split('-'); 
+        const newDateOnly = new Date(parseInt(newDateParts[0]), parseInt(newDateParts[1]) - 1, parseInt(newDateParts[2]));
+
+        // 差分（ミリ秒）: これで「+1日」や「+7日」などの移動量がわかる
+        const diffMillis = newDateOnly.getTime() - oldDateOnly.getTime();
+
+        // 2. 検索条件（ここは変更なし）
+        // 基準日時（操作している予約の元の日時）
         const currentStartObj = new Date(originalRes._startTime || originalRes.startTime);
         
-        // 条件：同じシリーズID かつ 開始日時がこの予約以降のもの
         const relatedRes = masterData.reservations.filter(r => {
              const rSeriesId = getVal(r, ['seriesId', 'series_id', 'group_id']);
              const rStart = new Date(r._startTime || r.startTime);
              
-             // ★修正: 型変換して厳密に比較
              const isSameSeries = String(rSeriesId) === String(targetSeriesId);
-             
-             // ★修正: ミリ秒単位で比較
-             // (同じ予約を含むため >= を使用)
+             // 操作している予約以降のものを対象とする
              const isFuture = rStart.getTime() >= currentStartObj.getTime() - 1000; 
 
              return isSameSeries && isFuture;
         });
 
-        console.log(`検索結果: 全予約数=${masterData.reservations.length}, ヒット数=${relatedRes.length}`);
-
         if (relatedRes.length === 0) {
-            // 見つからなければ（自分自身すらIDが一致しないなど）、自分だけをリストに入れる
-            console.warn("リンク対象が見つかりませんでした。自分のみ更新します。");
             relatedRes.push(originalRes);
         }
 
+        // 3. 更新リスト作成（日付をずらして適用）
         relatedRes.forEach(r => {
-            // 日付は元の予約のものを維持、時間だけ入力値に変える
-            const rDate = new Date(r._startTime || r.startTime);
-            const y = rDate.getFullYear();
-            const m = ('0' + (rDate.getMonth() + 1)).slice(-2);
-            const d = ('0' + rDate.getDate()).slice(-2);
+            // その予約の元の開始日時
+            const rStartVal = new Date(r._startTime || r.startTime);
+            
+            // ★修正: 元の日付に「差分(diffMillis)」を加える
+            // これで、元が10/1で +1日なら 10/2 に、元が10/8なら 10/9 になります
+            const newDateForRes = new Date(rStartVal.getTime() + diffMillis);
+
+            const y = newDateForRes.getFullYear();
+            const m = ('0' + (newDateForRes.getMonth() + 1)).slice(-2);
+            const d = ('0' + newDateForRes.getDate()).slice(-2);
             
             reservationList.push({
                 isUpdate: true,
@@ -1292,12 +1304,10 @@ async function saveBooking() {
                 resourceId: room,         // 部屋も統一
                 seriesId: targetSeriesId, // ID維持
                 date: `${y}-${m}-${d}`,
-                startTime: `${y}/${m}/${d} ${start}`, // 時間統一
-                endTime: `${y}/${m}/${d} ${end}`      // 時間統一
+                startTime: `${y}/${m}/${d} ${start}`, // 時間は入力値で統一
+                endTime: `${y}/${m}/${d} ${end}`      // 時間は入力値で統一
             });
         });
-        
-        console.log("更新対象リスト:", reservationList);
     }
     // ========== 【パターンC：単発 / リンク解除 / 単発編集】 ==========
     else {
