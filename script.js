@@ -549,6 +549,12 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 if (e.offsetX > e.target.clientWidth || e.offsetY > e.target.clientHeight) {
                     return;
                 }
+                // ▲▲▲ 追加ここまで ▲▲▲
+
+                if (e.target.closest('.v-booking-bar') || 
+                    ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) {
+                    return;
+                }
                 e.preventDefault();
                 isDown = true;
                 hasDragged = false;
