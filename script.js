@@ -543,8 +543,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
 
             scrollArea.onmousedown = (e) => {
                 if (isTouch) return;
-                if (e.target.closest('.v-booking-bar') || 
-                    ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) {
+                
+                // ▼▼▼ 追加: スクロールバー上のクリックならドラッグ処理しない ▼▼▼
+                // 要素の幅より右側(スクロールバー領域)をクリックしていたら無視
+                if (e.offsetX > e.target.clientWidth || e.offsetY > e.target.clientHeight) {
                     return;
                 }
                 e.preventDefault();
