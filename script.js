@@ -205,50 +205,60 @@ function switchTab(tabName) {
 
 function switchFloor(floor) {
     currentFloor = floor;
+    
+    // タブの切り替え
     document.querySelectorAll('.floor-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById(`tab-${floor}f`).classList.add('active');
+    const tab = document.getElementById(`tab-${floor}f`); // バッククォートを使用
+    if(tab) tab.classList.add('active');
     
+    // エリアの表示切り替え
     document.querySelectorAll('.floor-map-unit').forEach(u => u.classList.remove('active'));
-    document.getElementById(`area-${floor}f`).classList.add('active');
+    const areaUnit = document.getElementById(`area-${floor}f`); // バッククォートを使用
+    if(areaUnit) areaUnit.classList.add('active');
     
-   const img = document.getElementById(`map-img-${floor}`);
-    const imgData = mapConfig[floor].image;
+    // 画像とオーバーレイのセット処理
+    const imgId = `map-img-${floor}`; // バッククォートを使用
+    const imgEl = document.getElementById(imgId);
+    const containerId = `overlay-container-${floor}`; // バッククォートを使用
+    const container = document.getElementById(containerId);
     
-    if (img && imgData) {
-        // 強制的に再セット
-        img.src = imgData;
-        console.log(`${floor}階の画像をセットしました`);
-    } else {
-        console.error(`${floor}階の画像データが見つかりません。script.jsのIMG_${floor}Fを確認してください。`);
-    }
-    
-    // エリア描画
-    const container = document.getElementById(`overlay-container-${floor}`);
-    container.innerHTML = "";
-    mapConfig[floor].areas.forEach(area => {
-        const div = document.createElement("div");
-        div.className = "map-click-area";
-        if(area.name.includes("会議室")) div.classList.add("type-meeting");
-        else if(area.name.includes("応接室")) div.classList.add("type-reception");
-        else if(area.name.includes("Z")) div.classList.add("type-z");
+    if (imgEl && mapConfig[floor]) {
+        // 画像を強制的に再セット
+        imgEl.src = mapConfig[floor].image;
         
-        div.style.top = area.top + "%";
-        div.style.left = area.left + "%";
-        div.style.width = area.width + "%";
-        div.style.height = area.height + "%";
-        div.innerText = area.name;
-        div.setAttribute('data-room-id', area.id);
-        div.onclick = function() { 
-            currentMapRoomId = area.id;
-            document.getElementById('map-selected-room-name').innerText = area.name;
-            renderVerticalTimeline('map', true);
-        };
-        container.appendChild(div);
-    });
+        // オーバーレイ（クリックエリア）の生成
+        if (container) {
+            container.innerHTML = ""; // 一旦クリア
+            mapConfig[floor].areas.forEach(area => {
+                const div = document.createElement("div");
+                div.className = "map-click-area";
+                
+                // タイプ別の色分けクラス付与
+                if(area.name.indexOf("会議室") !== -1) div.classList.add("type-meeting");
+                else if(area.name.indexOf("応接室") !== -1) div.classList.add("type-reception");
+                else if(area.name.indexOf("Z") !== -1 || area.name.indexOf("Ｚ") !== -1) div.classList.add("type-z");
+                
+                div.style.top = area.top + "%";
+                div.style.left = area.left + "%";
+                div.style.width = area.width + "%";
+                div.style.height = area.height + "%";
+                div.innerText = area.name;
+                div.setAttribute('data-room-id', area.id);
+                
+                // クリックイベント
+                div.onclick = function(e) { 
+                    e.stopPropagation();
+                    selectRoomFromMap(this);
+                };
+                container.appendChild(div);
+            });
+        }
+    } else {
+        console.error(`Error: Map config or image element not found for floor ${floor}`);
+    }
     
     renderVerticalTimeline('map');
 }
-
 function changeDate(days, inputId) {
   const input = document.getElementById(inputId);
   const d = new Date(input.value);
