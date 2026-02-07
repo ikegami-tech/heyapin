@@ -173,26 +173,33 @@ header {
   overflow: auto; /* ドラッグスクロール用 */
 }
 
-/* マップ画面下のタイムライン専用設定 */
 #map-timeline-section {
   display: block !important;
   width: 100%;
   flex-shrink: 0;
   margin-top: 10px;
-  padding-bottom: 50px; 
+  /* 下部の余白を確保して、最後までスクロールできるようにする */
+  padding-bottom: 100px; 
 }
 
+/* 2. マップ画面専用の高さ固定設定 */
 #map-timeline-section .calendar-scroll-area {
-  height: 65vh !important; 
+  /* ★修正: 高さを固定せず、中身に合わせて伸ばす */
+  height: auto !important; 
   min-height: 400px !important;
-  overflow: auto !important;
+  
+  /* ★修正: 縦スクロールはここでせず、親(.map-wrapper)に任せる */
+  overflow-y: visible !important;
+  /* 横スクロール(部屋が多い場合)は許可 */
+  overflow-x: auto !important;
+
   border-top: 1px solid #ddd;
   border-bottom: 1px solid #ddd;
-  scroll-behavior: smooth;
+  
+  /* パディング等の調整 */
   padding-bottom: 5px; 
   margin-bottom: 20px; 
 }
-
 .time-axis-col { 
   width: 50px; 
   flex-shrink: 0; 
