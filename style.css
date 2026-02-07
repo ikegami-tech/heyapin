@@ -16,9 +16,13 @@ body {
   margin: 0;
   background: #eef1f5;
   color: #333;
-  height: 100vh;
+  /* ▼▼▼ 修正: 高さ固定を廃止し、コンテンツに合わせて伸びるように変更 ▼▼▼ */
+  min-height: 100vh; 
+  height: auto;      
   display: flex;
   flex-direction: column;
+  /* overflow: hidden; を削除または auto に変更 */
+  overflow-y: auto; 
 }
 
 * { box-sizing: border-box; }
@@ -59,15 +63,27 @@ button {
    ============================================== */
 #app-screen {
   display: none; flex-direction: column;
-  height: 100%; max-width: 1280px; width: 100%;
+  /* ▼▼▼ 修正: コンテナの高さを固定せず自動にする ▼▼▼ */
+  min-height: 100vh;
+  height: auto; 
+  max-width: 1280px; width: 100%;
   margin: 0 auto;
   background: white; box-shadow: 0 0 20px rgba(0,0,0,0.05);
+  /* overflow: hidden; を削除 */
+  overflow: visible; 
 }
 
 header {
   background: var(--primary); color: white; padding: 10px;
   display: flex; justify-content: space-between; align-items: center;
   flex-shrink: 0;
+  
+  /* ▼▼▼ 修正: スティッキーヘッダー化の設定 ▼▼▼ */
+  position: sticky;
+  top: 0;
+  z-index: 1000; /* マップや他の要素より上に来るように設定 */
+  width: 100%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* スクロール時に境界がわかるよう影を追加 */
 }
 .user-info { 
   font-size: 0.8rem;
@@ -101,6 +117,9 @@ header {
 .nav-tabs {
   display: flex; background: white; border-bottom: 1px solid #ddd;
   flex-shrink: 0;
+  
+  /* オプション: タブもヘッダーの下に固定したい場合は以下を有効化 */
+  /* position: sticky; top: 58px; z-index: 999; */
 }
 .nav-item {
   flex: 1; text-align: center; padding: 12px;
@@ -111,7 +130,11 @@ header {
 }
 
 .view-container {
-  display: none; flex: 1; overflow: hidden; position: relative;
+  display: none; flex: 1; 
+  /* ▼▼▼ 修正: 内側でのスクロールを解除し、全体スクロールへ ▼▼▼ */
+  overflow: visible; 
+  position: relative;
+  height: auto; /* コンテンツに合わせて伸びる */
 }
 .view-container.active { display: flex; flex-direction: column; }
 
@@ -137,6 +160,9 @@ header {
   background: #f9f9f9; border-bottom: 1px solid #ddd;
   display: flex; gap: 10px; justify-content: center;
   flex-shrink: 0;
+  
+  /* オプション: 日付操作バーも追従させたい場合 */
+  /* position: sticky; top: 60px; z-index: 900; */
 }
 
 /* 1. 全体のコンテナ設定 */
@@ -324,7 +350,12 @@ header {
 /* ==============================================
    7. ログ (リスト) 画面
    ============================================== */
-.log-wrapper { overflow: auto; padding: 10px; }
+.log-wrapper { 
+  /* ▼▼▼ 修正: 内部スクロール廃止 ▼▼▼ */
+  overflow: visible; 
+  padding: 10px; 
+  height: auto; 
+}
 .log-header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .log-header-area h3 { margin: 0; }
 .log-search-box input { padding: 8px; width: 200px; border: 1px solid #ccc; border-radius: 4px; }
@@ -349,11 +380,15 @@ header {
    ============================================== */
 .map-wrapper {
   padding: 10px; background: #f9f9f9;
-  flex: 1; overflow-y: auto; 
+  flex: 1; 
+  /* ▼▼▼ 修正: 内部スクロール廃止、全体スクロールへ ▼▼▼ */
+  overflow: visible;
+  overflow-y: visible; 
   display: flex; flex-direction: column;
   align-items: center; 
   justify-content: flex-start !important; /* 上詰め */
-  height: 100%; width: 100%;
+  height: auto; 
+  width: 100%;
 }
 .floor-selector {
   display: flex; gap: 5px; margin-bottom: 5px;
@@ -710,8 +745,19 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   .detail-meta-info { text-align: left; margin-top: 5px; font-size: 0.7rem; }
 
   /* アプリ画面固定 */
-  body { height: 100dvh; overflow: hidden; }
-  #app-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; margin: 0; border-radius: 0; z-index: 100; }
+  body { 
+    /* ▼▼▼ 修正: モバイルでもスクロールを許可しつつ、アプリライクな挙動を維持 ▼▼▼ */
+    min-height: 100dvh; 
+    height: auto;
+    overflow-y: auto; 
+  }
+  #app-screen { 
+    /* fixedを解除し、自然なスクロールに任せる */
+    position: relative; 
+    top: auto; left: auto; 
+    width: 100%; height: auto; 
+    margin: 0; border-radius: 0; z-index: 100; 
+  }
    
   /* --- 日付コントローラーの修正 --- */
 
