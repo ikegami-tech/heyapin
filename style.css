@@ -9,9 +9,9 @@
   --reception-bg: #e8f5e9; --reception-border: #4caf50;
   --zoom-bg: #fff3e0; --zoom-border: #ff9800;
   --base-hour-height: 100px;
+  --header-height: 58px; /* ヘッダーの高さを定義 */
 }
 
-/* ★修正: 画面全体の高さを100%に固定し、ブラウザのスクロールバーを消す */
 html, body {
   font-family: "Helvetica Neue", Arial, sans-serif;
   margin: 0;
@@ -19,8 +19,12 @@ html, body {
   background: #eef1f5;
   color: #333;
   width: 100%;
-  height: 100%;
-  overflow: hidden; /* 大枠のスクロール禁止 */
+  /* ★修正: 高さは自動にし、ブラウザ本来のスクロールを使う */
+  height: auto;
+  min-height: 100vh;
+  /* ★修正: hiddenを削除し、stickyが効くようにする */
+  overflow-x: hidden; 
+  overflow-y: auto;
 }
 
 body {
@@ -65,24 +69,30 @@ button {
    4. レイアウト (ヘッダー・タブ・メイン)
    ============================================== */
 #app-screen {
-  display: none; /* JSでflexに変更されます */
+  display: none; /* JSでflexに変更 */
   flex-direction: column;
-  height: 100%;      /* 画面いっぱいに広げる */
+  /* ★修正: コンテナの高さ制限とoverflowを解除 */
+  height: auto;
+  min-height: 100vh;
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
   background: white; 
   box-shadow: 0 0 20px rgba(0,0,0,0.05);
-  overflow: hidden;  /* はみ出し防止 */
+  overflow: visible; /* ここ重要 */
 }
 
-/* ★修正: ヘッダー設定 */
+/* ★修正: ヘッダーを完全固定 */
 header {
   background: var(--primary); color: white; padding: 10px;
   display: flex; justify-content: space-between; align-items: center;
-  flex-shrink: 0; /* 縮小させない（高さ固定） */
-  z-index: 100;
-  position: relative;
+  flex-shrink: 0;
+  height: var(--header-height); /* 高さを明示 */
+  
+  /* スティッキー設定 */
+  position: sticky;
+  top: 0;
+  z-index: 1000;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
@@ -91,7 +101,6 @@ header {
   display: flex; align-items: center;
 }
 
-/* ヘッダー更新ボタン */
 .header-left-group {
   display: flex; align-items: center; gap: 15px;
 }
@@ -107,7 +116,6 @@ header {
 .btn-header-refresh:active { transform: translateY(1px); }
 .btn-header-refresh span { font-size: 1.2em; }
 
-/* 更新時刻表示 */
 .last-update-text {
   color: rgba(255, 255, 255, 0.9);
   font-size: 0.85rem; font-weight: 500;
@@ -126,17 +134,16 @@ header {
   border-bottom-color: var(--accent); color: var(--accent); font-weight: bold;
 }
 
-/* ★修正: メインコンテンツエリア */
+/* ★修正: メインエリアのスクロール制限解除 */
 .view-container {
   display: none; 
-  flex: 1;          /* 残りの高さを全て使う */
-  overflow: hidden; /* 二重スクロール防止 */
+  flex: 1;
+  overflow: visible; /* 重要 */
   position: relative;
-  height: 100%;
+  height: auto;
 }
 .view-container.active { display: flex; flex-direction: column; }
 
-/* ローディング画面 */
 #loading {
   position: fixed;
   top: 0; left: 0;
@@ -158,6 +165,9 @@ header {
   background: #f9f9f9; border-bottom: 1px solid #ddd;
   display: flex; gap: 10px; justify-content: center;
   flex-shrink: 0;
+  
+  /* 日付バーも固定したい場合はコメントアウトを外す */
+  /* position: sticky; top: var(--header-height); z-index: 900; */
 }
 
 /* 1. 全体のコンテナ設定 */
@@ -170,51 +180,49 @@ header {
   background: white;
   user-select: none;
   -webkit-user-select: none;
-  overflow: auto; /* ドラッグスクロール用 */
+  /* 横スクロールは許可するが、縦は親に任せる */
+  /* 注意: overflow-x: auto をつけると sticky が効かなくなるブラウザ仕様があるため */
+  /* ここでは一旦 visible にして、はみ出しは body で吸収するか、レイアウトで見せる */
+  overflow: visible; 
 }
 
+/* マップ画面下のタイムライン専用設定 */
 #map-timeline-section {
   display: block !important;
   width: 100%;
   flex-shrink: 0;
   margin-top: 10px;
-  /* 下部の余白を確保して、最後までスクロールできるようにする */
-  padding-bottom: 100px; 
+  padding-bottom: 100px; /* 一番下が隠れないように余白 */
 }
 
-/* 2. マップ画面専用の高さ固定設定 */
 #map-timeline-section .calendar-scroll-area {
-  /* ★修正: 高さを固定せず、中身に合わせて伸ばす */
   height: auto !important; 
   min-height: 400px !important;
-  
-  /* ★修正: 縦スクロールはここでせず、親(.map-wrapper)に任せる */
-  overflow-y: visible !important;
-  /* 横スクロール(部屋が多い場合)は許可 */
-  overflow-x: auto !important;
-
+  overflow: visible !important; /* スクロールバー二重化防止 */
   border-top: 1px solid #ddd;
   border-bottom: 1px solid #ddd;
-  
-  /* パディング等の調整 */
-  padding-bottom: 5px; 
   margin-bottom: 20px; 
 }
+
 .time-axis-col { 
   width: 50px; 
   flex-shrink: 0; 
+  /* 左に固定 */
   position: sticky; left: 0; 
   z-index: 100 !important;
   background: #fff;
   border-right: 1px solid #ddd;
   box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+  /* 上にも固定（ヘッダーの下） */
+  top: var(--header-height); 
 }
 
 .time-axis-header { 
   height: 40px; 
   border-bottom: 1px solid #ddd; 
   background: #f9f9f9;
-  position: sticky; top: 0; 
+  /* 時間軸のヘッダーも固定 */
+  position: sticky; top: var(--header-height); 
   z-index: 110 !important;
 }
 
@@ -246,13 +254,18 @@ header {
   z-index: 10;
 }
 
-/* 部屋名ヘッダーの固定設定 */
+/* ★修正: 部屋名ヘッダーの固定設定 */
 .room-header { 
   height: 40px; 
   display: flex; align-items: center; justify-content: center;
   font-size: 0.8rem; font-weight: bold;
-  position: sticky !important; top: 0; 
+  
+  /* スティッキー設定 */
+  position: sticky !important; 
+  /* 黒ヘッダーの下に来るように位置調整 */
+  top: var(--header-height) !important; 
   z-index: 90 !important; 
+  
   background: #fafafa; 
   border-bottom: 1px solid #ddd;
   padding: 0 5px; text-align: center; word-break: break-all;
@@ -304,12 +317,11 @@ header {
 /* ==============================================
    7. ログ (リスト) 画面
    ============================================== */
-/* ★修正: ログ画面のスクロール設定 */
 .log-wrapper { 
-  overflow-y: auto;   /* ここでスクロールさせる */
+  overflow: visible; 
   padding: 10px; 
-  flex: 1;            /* 高さいっぱい使う */
-  height: 100%;
+  flex: 1; 
+  height: auto;
 }
 .log-header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .log-header-area h3 { margin: 0; }
@@ -333,15 +345,14 @@ header {
 /* ==============================================
    8. マップ (座席) 画面
    ============================================== */
-/* ★修正: マップ画面のスクロール設定 */
 .map-wrapper {
   padding: 10px; background: #f9f9f9;
   flex: 1; 
-  overflow-y: auto; /* ここでスクロールさせる */
+  overflow: visible; /* スクロール制限解除 */
   display: flex; flex-direction: column;
   align-items: center; 
   justify-content: flex-start !important; 
-  height: 100%; 
+  height: auto; 
   width: 100%;
 }
 .floor-selector {
@@ -359,7 +370,6 @@ header {
 .floor-tab.active { background-color: #2c3e50; color: #ffffff; transform: translateY(2px); }
 .floor-tab:hover:not(.active) { background-color: #d5d5d5; color: #333; }
 
-/* マップコンテナ & ユニット */
 #dual-map-container { 
   width: 100%; height: auto; box-sizing: border-box; 
   display: flex; justify-content: center; align-items: center !important;
@@ -372,7 +382,6 @@ header {
   display: flex !important; flex-direction: column; align-items: center; width: 100%;
 }
 
-/* マップ画像ラッパー */
 .map-inner-wrapper {
   position: relative; line-height: 0; overflow: hidden; 
   box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-radius: 4px;
@@ -385,7 +394,6 @@ header {
   object-fit: contain; margin: 0 auto;
 }
 
-/* オーバーレイ & ピン */
 .overlay-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 10; pointer-events: none;
@@ -406,12 +414,10 @@ header {
 .map-click-area.type-reception:hover { background: rgba(255, 165, 0, 0.6) !important; border: 2px solid orange !important; }
 .map-click-area.type-z:hover { background: rgba(0, 100, 255, 0.6) !important; border: 2px solid #0064ff !important; }
 
-/* 部屋詳細テーブル */
 .detail-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 .detail-table th { text-align: left; background: #f9f9f9; padding: 10px; width: 80px; border-bottom: 1px solid #eee; color: #555; font-weight: normal; }
 .detail-table td { padding: 10px; border-bottom: 1px solid #eee; }
 
-/* PC・横長画面表示時のマップ調整 (1024px以上) */
 @media (min-width: 1024px) {
   .floor-selector { display: none !important; }
   .pc-floor-title { display: none !important; }
@@ -445,7 +451,6 @@ header {
 }
 .form-group label { font-weight: bold; font-size: 0.9rem; display: block; margin-top: 10px; }
 
-/* メンバー選択 */
 .group-header { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 5px; }
 .group-chip {
   display: inline-flex; align-items: center; justify-content: center; text-align: center;
@@ -458,7 +463,6 @@ header {
 #group-action-area { display: flex; gap: 5px; }
 #group-action-area .group-chip { font-size: 0.7rem; padding: 2px 8px; margin: 0; height: auto; }
 
-/* シャトルボックス */
 .shuttle-container { display: flex; gap: 10px; margin-top: 5px; height: 200px; }
 .shuttle-box { flex: 1; border: 1px solid #ddd; border-radius: 4px; display: flex; flex-direction: column; background: #fafafa; }
 .shuttle-header { background: #eee; padding: 5px 10px; font-size: 0.8rem; font-weight: bold; text-align: center; border-bottom: 1px solid #ddd; }
@@ -470,7 +474,6 @@ header {
 .shuttle-search { padding: 5px; border-bottom: 1px solid #ddd; }
 .shuttle-search input { width: 100%; margin: 0; padding: 4px; font-size: 0.8rem; }
 
-/* 詳細表示用 */
 #detail-members {
   display: block !important; width: 100% !important; max-height: 210px !important;
   overflow-y: auto !important; background-color: transparent;
@@ -479,7 +482,6 @@ header {
 .detail-member-item { padding: 8px 12px; border-bottom: 1px solid #eee; font-size: 14px; color: #333; line-height: 1.4; text-align: left; }
 .detail-member-item:last-child { border-bottom: none; }
 
-/* メモ入力 */
 textarea#input-note {
   display: block !important; width: 100% !important; height: auto !important; min-height: 100px !important;
   padding: 10px !important; margin-bottom: 15px !important; box-sizing: border-box !important;
@@ -487,7 +489,6 @@ textarea#input-note {
 }
 textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important; visibility: visible !important; }
 
-/* 予約詳細のメタ情報 */
 .detail-header-wrapper {
   display: flex; justify-content: space-between; align-items: flex-end;
   border-bottom: 2px solid var(--accent); padding-bottom: 5px; margin-bottom: 15px;
@@ -495,7 +496,6 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
 .detail-header-wrapper .modal-header-line { border-bottom: none; padding-bottom: 0; margin-bottom: 0; margin-top: 0; }
 .detail-meta-info { text-align: right; font-size: 0.75rem; color: #666; line-height: 1.4; white-space: nowrap; }
 
-/* 備考欄スクロール */
 .note-scroll-area {
   max-height: 150px; overflow-y: auto; word-break: break-all; overflow-wrap: break-word;
   white-space: pre-wrap; font-size: 0.9em; line-height: 1.5; padding-right: 5px;
@@ -680,14 +680,14 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   .detail-header-wrapper { flex-direction: column; align-items: flex-start; }
   .detail-meta-info { text-align: left; margin-top: 5px; font-size: 0.7rem; }
 
-  /* モバイルでも高さを固定 */
   html, body {
     height: 100dvh;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
   #app-screen {
     height: 100%;
-    overflow: hidden;
+    overflow: visible;
   }
    
   .date-controller {
@@ -721,7 +721,6 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   .group-container { max-height: 250px; padding: 8px; }
   .group-chip { display: inline-block; padding: 6px 10px; font-size: 12px; margin: 2px; touch-action: manipulation; }
 
-  /* モーダル */
   #bookingModal .form-row { display: flex !important; flex-wrap: wrap !important; align-items: flex-end !important; gap: 0 !important; }
   #bookingModal .form-row > div:nth-child(1) { flex: 1 1 100% !important; width: 100% !important; max-width: 100% !important; margin-right: 0 !important; margin-bottom: 15px !important; }
   #bookingModal .form-row > div:nth-child(2),
