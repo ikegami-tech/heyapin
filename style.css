@@ -16,13 +16,11 @@ body {
   margin: 0;
   background: #eef1f5;
   color: #333;
-  /* ▼▼▼ 修正: 高さ固定を廃止し、コンテンツに合わせて伸びるように変更 ▼▼▼ */
-  min-height: 100vh; 
-  height: auto;      
+  /* ▼▼▼ 修正: 画面全体の高さを固定し、大枠のスクロールを禁止する ▼▼▼ */
+  height: 100vh;
+  overflow: hidden; 
   display: flex;
   flex-direction: column;
-  /* overflow: hidden; を削除または auto に変更 */
-  overflow-y: auto; 
 }
 
 * { box-sizing: border-box; }
