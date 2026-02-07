@@ -1,8 +1,8 @@
 /* ==============================================
    1. 変数定義 & 基本設定
    ============================================== */
+/* --- 修正ブロック 1/3 --- */
 :root {
-  /* 変数はそのままで、ヘッダーの高さ定義を追加 */
   --primary: #2c3e50;
   --accent: #27ae60;
   --danger: #c0392b;
@@ -10,7 +10,8 @@
   --reception-bg: #e8f5e9; --reception-border: #4caf50;
   --zoom-bg: #fff3e0; --zoom-border: #ff9800;
   --base-hour-height: 100px;
-  --header-height: 60px; /* ★追加: 固定位置の計算用 */
+  /* ★追加: 黒ヘッダーの高さを60pxに定義 */
+  --header-height: 60px;
 }
 
 html, body {
@@ -20,11 +21,11 @@ html, body {
   background: #eef1f5;
   color: #333;
   width: 100%;
-  /* ★修正: 高さはautoにしてブラウザのスクロールを使う */
+  /* ★修正: 画面全体の高さを自動にし、ブラウザのスクロールを使う */
   height: auto;
   min-height: 100vh;
-  /* ★修正: hiddenを削除 */
-  overflow-x: hidden; 
+  /* ★重要: overflowをvisibleまたはautoにして、stickyが効くようにする */
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -70,17 +71,15 @@ button {
    4. レイアウト (ヘッダー・タブ・メイン)
    ============================================== */
 #app-screen {
-  display: none; /* JSでflexに変更 */
+  display: none; /* JSでflexになります */
   flex-direction: column;
-  /* ★修正: 高さ固定を解除 */
   height: auto;
   min-height: 100vh;
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
-  background: white; 
-  box-shadow: 0 0 20px rgba(0,0,0,0.05);
-  /* ★修正: ここもoverflowをvisibleにする(重要) */
+  background: white;
+  /* ★重要: 親要素にoverflow: hiddenがあると固定されないため visible に */
   overflow: visible; 
 }
 
