@@ -939,38 +939,37 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   flex-shrink: 0;
 }
 /* ==============================================
-   ★重要：スティッキーヘッダー完全修正版
-   色合わせ・隙間埋め・はみ出し防止を適用
+   ★重要：スティッキーヘッダー最前面固定版
+   予約リストがヘッダーの上に乗るのを防ぐ設定を追加
    ============================================== */
+
+/* ▼▼▼ 追加：予約リスト全体を「奥」に配置する ▼▼▼ */
+/* これにより、中の予約バーがいくら主張してもヘッダーの下に潜り込みます */
+.calendar-scroll-area {
+  position: relative !important;
+  z-index: 0 !important; 
+}
 
 /* 1. 最前面：日付操作バー (一番上) */
 .date-controller {
   position: sticky;
   top: 0;
-  z-index: 500 !important;
-  /* 背景を白にして透過を防ぐ */
+  z-index: 2500 !important; /* リストの0より圧倒的に手前 */
   background-color: #fff !important; 
-  /* 高さ固定 */
   height: 60px !important;
-  /* 下線をつけて部屋タブとの境界を明確にする */
   border-bottom: 1px solid #ddd !important;
   box-sizing: border-box !important;
   margin-bottom: 0 !important;
   padding: 10px !important;
-  /* はみ出し防止のため不透明度を最大にする */
-  opacity: 1 !important;
 }
 
 /* 2. 2番目：部屋タブの列 (日付の直下) */
 .sticky-room-header-row {
   position: sticky;
-  /* 日付バー(60px)のすぐ下 */
   top: 60px !important; 
-  z-index: 400 !important;
-  /* 背景色を部屋タブと統一 */
+  z-index: 2400 !important; /* 日付より下、リストより上 */
   background-color: #fafafa !important;
   
-  /* 境界線調整：上の日付バーと密着させる */
   border-top: none !important;
   border-bottom: 1px solid #ccc !important;
   margin-top: 0 !important; 
@@ -978,21 +977,21 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   display: flex;
   overflow: hidden; 
   width: 100%;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 影をつけて浮き上がらせる */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 /* 3. 左上の角（スペーサー） */
 .sticky-header-spacer {
   position: sticky;
   left: 0;
-  top: 60px !important; /* 部屋タブと同じ高さ */
-  z-index: 450 !important; /* 部屋タブより手前 */
+  top: 60px !important;
+  z-index: 2450 !important;
   
-  /* ★修正: 色を部屋タブ(#fafafa)に合わせる */
+  /* 色合わせ */
   background-color: #fafafa !important;
   
   border-right: 1px solid #ddd;
-  border-bottom: 1px solid #ccc; /* 下線を部屋タブと合わせる */
+  border-bottom: 1px solid #ccc;
   width: 50px;
   flex-shrink: 0;
   box-sizing: border-box !important;
@@ -1002,9 +1001,9 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
 .time-axis-col {
   position: sticky;
   left: 0;
-  z-index: 300 !important; /* ヘッダーより奥 */
+  z-index: 2300 !important; /* ヘッダーより奥、リストより手前 */
   
-  /* ★修正: 色を部屋タブ(#fafafa)に合わせる */
+  /* 色合わせ */
   background-color: #fafafa !important;
   
   border-right: 1px solid #ddd;
@@ -1012,8 +1011,10 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   flex-shrink: 0;
 }
 
-/* 5. 予約バー（一番奥） */
+/* 5. 予約バー（リストの中身） */
 .v-booking-bar {
+  /* 親の.calendar-scroll-areaがz-index:0なので、
+     ここの数字が大きくてもヘッダー(2500)には勝てなくなります */
   z-index: 10;
 }
 .v-booking-bar:hover {
