@@ -938,3 +938,53 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   width: 50px; /* 時間軸の幅と同じにする */
   flex-shrink: 0;
 }
+/* ==============================================
+   ★重要：スティッキーヘッダーの重なり順（Z-Index）の修正
+   上から順に「日付 > 部屋 > 時間軸 > 中身」となるように設定します
+   ============================================== */
+
+/* 1. 最前面：日付操作バー (一番上) */
+.date-controller {
+  position: sticky;
+  top: 0;
+  z-index: 500 !important; /* 誰よりも手前 */
+  background-color: #f9f9f9; /* 背景色がないと透けるので必須 */
+}
+
+/* 2. 2番目：部屋タブの列 (日付の下) */
+.sticky-room-header-row {
+  position: sticky;
+  /* 日付バーの高さに合わせて調整（約60px） */
+  top: 59px !important; 
+  z-index: 400 !important; /* 時間軸より手前 */
+  background-color: #fff;
+}
+
+/* 3. 左上の角（スペーサー） */
+.sticky-header-spacer {
+  position: sticky;
+  left: 0;
+  z-index: 450 !important; /* 部屋タブと同じ列だが、時間軸より確実に手前 */
+  background-color: #fff;
+  border-right: 1px solid #ddd;
+  border-bottom: 2px solid #ccc;
+}
+
+/* 4. 左側の時間軸 (左端) */
+.time-axis-col {
+  position: sticky;
+  left: 0;
+  /* ★ここが修正のキモです：ヘッダー(400)より奥、予約バー(10)より手前 */
+  z-index: 300 !important; 
+  background-color: #fff;
+  border-right: 1px solid #ddd;
+}
+
+/* 5. 予約バー（一番奥） */
+.v-booking-bar {
+  z-index: 10;
+}
+/* ホバーした時だけ少し浮き上がる */
+.v-booking-bar:hover {
+  z-index: 20;
+}
