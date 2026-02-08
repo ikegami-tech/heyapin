@@ -911,3 +911,30 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   border-right: 1px solid #ddd;
   border-bottom: 1px solid #ddd;
 }
+/* --------------------------------------------------
+   左側のスティッキー（時間軸と左上角）の設定
+   -------------------------------------------------- */
+
+/* 1. 時間軸（縦の列）を左端に固定 */
+.time-axis-col {
+  position: sticky;
+  left: 0;
+  z-index: 80; /* 部屋ヘッダー(99)より下、予約バー(5)より上 */
+  background: #fff;
+  border-right: 1px solid #ddd;
+  
+  /* 影をつけると境界がわかりやすくなります（お好みで） */
+  box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+}
+
+/* 2. 左上の角（部屋タブ列の左端の空白）を左端に固定 */
+.sticky-header-spacer {
+  position: sticky;
+  left: 0;
+  z-index: 101; /* 一番手前に表示 */
+  background: #fff; /* 背景色がないと透けてしまいます */
+  border-right: 1px solid #ddd;
+  border-bottom: 2px solid #ccc; /* 部屋タブの下線と合わせる */
+  width: 50px; /* 時間軸の幅と同じにする */
+  flex-shrink: 0;
+}
