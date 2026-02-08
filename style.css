@@ -939,56 +939,60 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   flex-shrink: 0;
 }
 /* ==============================================
-   ★重要：スティッキーヘッダーの重なり順と位置の修正（最終版）
-   ヘッダー同士の隙間をなくし、コンテンツのはみ出しを防ぎます
+   ★重要：スティッキーヘッダー完全修正版
+   色合わせ・隙間埋め・はみ出し防止を適用
    ============================================== */
 
 /* 1. 最前面：日付操作バー (一番上) */
 .date-controller {
   position: sticky;
   top: 0;
-  z-index: 500 !important; /* 誰よりも手前 */
-  background-color: #f9f9f9; /* 背景色（必須） */
-  
-  /* ★修正: 高さを固定し、下線を削除して密着させる */
+  z-index: 500 !important;
+  /* 背景を白にして透過を防ぐ */
+  background-color: #fff !important; 
+  /* 高さ固定 */
   height: 60px !important;
-  border-bottom: none !important; 
+  /* 下線をつけて部屋タブとの境界を明確にする */
+  border-bottom: 1px solid #ddd !important;
   box-sizing: border-box !important;
   margin-bottom: 0 !important;
-  padding: 10px !important; /* レイアウト崩れ防止 */
+  padding: 10px !important;
+  /* はみ出し防止のため不透明度を最大にする */
+  opacity: 1 !important;
 }
 
 /* 2. 2番目：部屋タブの列 (日付の直下) */
 .sticky-room-header-row {
   position: sticky;
-  /* ★修正: 日付バーの高さ(60px)にぴったり合わせる */
+  /* 日付バー(60px)のすぐ下 */
   top: 60px !important; 
   z-index: 400 !important;
-  background-color: #fff;
+  /* 背景色を部屋タブと統一 */
+  background-color: #fafafa !important;
   
-  /* ★修正: 日付バーとの境界線をここに追加 */
-  border-top: 1px solid #ddd !important;
+  /* 境界線調整：上の日付バーと密着させる */
+  border-top: none !important;
+  border-bottom: 1px solid #ccc !important;
   margin-top: 0 !important; 
   
-  /* レイアウト調整 */
   display: flex;
   overflow: hidden; 
   width: 100%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 影をつけて浮き上がらせる */
 }
 
 /* 3. 左上の角（スペーサー） */
 .sticky-header-spacer {
   position: sticky;
   left: 0;
-  /* ★修正: 部屋タブと同じ高さ位置 */
-  top: 60px !important;
-  z-index: 450 !important; /* 部屋タブと同じ列だが、時間軸より手前 */
-  background-color: #fff;
+  top: 60px !important; /* 部屋タブと同じ高さ */
+  z-index: 450 !important; /* 部屋タブより手前 */
   
-  /* ★修正: 境界線を周囲と合わせる */
-  border-top: 1px solid #ddd !important;
+  /* ★修正: 色を部屋タブ(#fafafa)に合わせる */
+  background-color: #fafafa !important;
+  
   border-right: 1px solid #ddd;
-  border-bottom: 2px solid #ccc;
+  border-bottom: 1px solid #ccc; /* 下線を部屋タブと合わせる */
   width: 50px;
   flex-shrink: 0;
   box-sizing: border-box !important;
@@ -998,8 +1002,11 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
 .time-axis-col {
   position: sticky;
   left: 0;
-  z-index: 300 !important; /* ヘッダーより奥、予約バーより手前 */
-  background-color: #fff;
+  z-index: 300 !important; /* ヘッダーより奥 */
+  
+  /* ★修正: 色を部屋タブ(#fafafa)に合わせる */
+  background-color: #fafafa !important;
+  
   border-right: 1px solid #ddd;
   width: 50px;
   flex-shrink: 0;
