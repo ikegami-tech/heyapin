@@ -133,10 +133,20 @@ header {
    5. タイムライン (カレンダー)
    ============================================== */
 .date-controller {
-  text-align: center; padding: 10px;
-  background: #f9f9f9; border-bottom: 1px solid #ddd;
-  display: flex; gap: 10px; justify-content: center;
+  text-align: center;
+  padding: 10px;
+  background: #f9f9f9;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
   flex-shrink: 0;
+  
+  /* ▼▼▼ 追加: 日付バーを一番上に固定 ▼▼▼ */
+  position: sticky;
+  top: 0;
+  z-index: 100; /* 他の要素より手前に */
 }
 
 /* 1. 全体のコンテナ設定 */
@@ -163,18 +173,20 @@ header {
 }
 
 #map-timeline-section .calendar-scroll-area {
-  /* 画面下ギリギリにならないよう、高さを少し控えめにし、下余白を確保 */
-  height: 65vh !important;       /* ← ★ここを直します */
-  min-height: 400px !important;  /* ← ★ここを直します */
+  /* ▼▼▼ 修正: 高さを中身に合わせて伸ばす（必須） ▼▼▼ */
+  height: auto !important;
+  min-height: auto !important;
   
-  overflow: auto !important;     /* ← ★ここを直します */
+  /* ▼▼▼ 修正: 縦スクロールは親(.map-wrapper)に任せる ▼▼▼ */
+  overflow-y: visible !important;
+  
+  /* 横スクロールは維持 */
+  overflow-x: auto !important;
+
   border-top: 1px solid #ddd;
   border-bottom: 1px solid #ddd;
-  scroll-behavior: smooth;
-
-  /* スクロールバーがコンテンツに被らないように少しパディングを入れる */
-  padding-bottom: 5px; 
-  margin-bottom: 20px; 
+  padding-bottom: 5px;
+  margin-bottom: 20px;
 }
 
 .time-axis-col { 
