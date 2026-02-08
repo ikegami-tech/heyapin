@@ -248,17 +248,19 @@ header {
 }
 
 /* 3. 部屋名ヘッダーの固定設定 */
-.room-header { 
-  height: 40px; 
+.room-header {
+  height: 40px;
   display: flex; align-items: center; justify-content: center;
   font-size: 0.8rem; font-weight: bold;
   
-  /* ★これを入れるだけで固定されます */
-  position: sticky !important; 
-  top: 0; 
-  z-index: 90 !important; 
+  position: sticky !important;
   
-  background: #fafafa; 
+  /* ▼▼▼ 修正: 0 から 60px に変更（日付バーの高さ分ずらす） ▼▼▼ */
+  top: 60px !important; 
+  
+  z-index: 90 !important;
+  
+  background: #fafafa;
   border-bottom: 1px solid #ddd;
   padding: 0 5px; text-align: center; word-break: break-all;
   box-shadow: 0 2px 5px rgba(0,0,0,0.05);
