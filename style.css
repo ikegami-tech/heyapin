@@ -206,14 +206,16 @@ header {
   box-shadow: 2px 0 5px rgba(0,0,0,0.05);
 }
 
-.time-axis-header { 
-  height: 40px; 
-  border-bottom: 1px solid #ddd; 
+.time-axis-header {
+  height: 40px;
+  border-bottom: 1px solid #ddd;
   background: #f9f9f9;
   
-  /* 縦スクロール時に上に張り付く設定 */
-  position: sticky; 
-  top: 0; 
+  position: sticky;
+  
+  /* ▼▼▼ 修正: 0 から 60px に変更 ▼▼▼ */
+  top: 60px !important;
+  
   z-index: 110 !important;
 }
 
