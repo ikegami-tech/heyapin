@@ -3,6 +3,7 @@
    ============================================== */
 // AWSのAPI Gateway URL (本番環境用に書き換えてください)
 const API_URL = "https://script.google.com/macros/s/AKfycbwRT-tfBEJZw1bSdM7waIDITEeNve9boU6detJJUB5fa3cxISVrGyCdAGe8ymPIyluD/exec"; 
+const SESSION_KEY_USER = 'bookingApp_User';
 const SESSION_KEY_TIME = 'bookingApp_LoginTime';  // 保存するキー名(時間)
 const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000;   
 
