@@ -441,7 +441,7 @@ function drawTimeAxis(containerId) {
 
 /* ==============================================
    レンダリング: 垂直タイムライン
-   【修正版: 幅完全固定・ズレ解消・色統一】
+   【修正版: スクロールバー分のズレを自動補正】
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -519,7 +519,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     
     // ドラッグスクロール関連
     let isDown = false;
-    let startX, startY, startScrollLeft, startScrollTop, hasDragged = false, isTouch = false, rafId = null; 
+    let startX, startY, startScrollLeftVal, startScrollTopVal, hasDragged = false, isTouch = false, rafId = null; 
 
     if (scrollableParent) {
         scrollableParent.addEventListener('touchstart', () => { isTouch = true; }, { passive: true });
@@ -545,8 +545,8 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             scrollableParent.style.cursor = "grabbing";
             startX = e.pageX;
             startY = e.pageY;
-            startScrollLeft = scrollableParent.scrollLeft;
-            startScrollTop = vScrollTarget ? vScrollTarget.scrollTop : 0;
+            startScrollLeftVal = scrollableParent.scrollLeft;
+            startScrollTopVal = vScrollTarget ? vScrollTarget.scrollTop : 0;
             
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
@@ -562,8 +562,8 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 const walkX = (currentX - startX) * 1.5;
                 const walkY = (currentY - startY) * 1.5;
                 if (Math.abs(walkX) > 5 || Math.abs(walkY) > 5) hasDragged = true;
-                scrollableParent.scrollLeft = startScrollLeft - walkX;
-                if (vScrollTarget) vScrollTarget.scrollTop = startScrollTop - walkY;
+                scrollableParent.scrollLeft = startScrollLeftVal - walkX;
+                if (vScrollTarget) vScrollTarget.scrollTop = startScrollTopVal - walkY;
                 rafId = null;
             });
         };
@@ -647,12 +647,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     targetRooms.forEach(room => {
         const col = document.createElement('div');
         col.className = 'room-col';
-        
-        // ★修正: JS側でも幅と伸縮禁止を強力に指定
         col.style.width = "120px"; 
         col.style.minWidth = "120px"; 
-        col.style.flex = "0 0 120px"; // 伸び縮みさせない
-        
+        col.style.flex = "0 0 120px"; 
         col.style.position = "relative";
         col.style.borderRight = "1px solid #ddd";
         col.style.overflow = "visible";
@@ -672,8 +669,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             const stickyHeader = document.createElement('div');
             stickyHeader.className = 'sticky-header-item'; 
             stickyHeader.innerText = room.roomName;
-            
-            // ★ヘッダーの幅も固定
             stickyHeader.style.width = "120px";
             stickyHeader.style.minWidth = "120px";
             stickyHeader.style.flex = "0 0 120px";
@@ -840,6 +835,16 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
         
         if (mode === 'map' && headerContainer) {
+            // ★追加: スクロールバー幅分の補正処理
+            // ヘッダーの右側に、下のスクロールバーと同じ幅のpaddingを入れる
+            const scrollBarWidth = scrollableParent.offsetWidth - scrollableParent.clientWidth;
+            if (scrollBarWidth > 0) {
+                headerContainer.style.paddingRight = scrollBarWidth + "px";
+                headerContainer.style.boxSizing = "border-box";
+            } else {
+                headerContainer.style.paddingRight = "0px";
+            }
+
             headerContainer.scrollLeft = scrollableParent.scrollLeft;
             scrollableParent.onscroll = () => {
                 headerContainer.scrollLeft = scrollableParent.scrollLeft;
