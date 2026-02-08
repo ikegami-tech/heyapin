@@ -865,3 +865,49 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
     margin-bottom: 0 !important;
     height: 30px !important;
 }
+/* カレンダー（日付操作部）を最上部に固定 */
+.date-controller {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #f9f9f9;
+  border-bottom: 1px solid #ddd;
+}
+
+/* ★追加：部屋名ヘッダーの列をその下に固定 */
+.sticky-room-header-row {
+  position: sticky;
+  top: 60px; /* カレンダーの高さ分ずらす */
+  z-index: 99;
+  background: #fff;
+  border-bottom: 2px solid #ccc;
+  
+  /* 横並び設定 */
+  display: flex;
+  overflow: hidden; /* スクロールバーは隠す（下の本体と連動させるため） */
+  width: 100%;
+}
+
+/* ヘッダー内の各部屋名の箱 */
+.sticky-header-item {
+  flex: 1 0 120px; /* 下の列幅(120px)と合わせる */
+  min-width: 120px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.8rem;
+  border-right: 1px solid #eee;
+  box-sizing: border-box;
+  background: #fafafa;
+}
+
+/* 時間軸の上の空きスペース（左上の角） */
+.sticky-header-spacer {
+  width: 50px; /* 時間軸の幅と合わせる */
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+}
