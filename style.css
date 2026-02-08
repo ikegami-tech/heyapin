@@ -162,25 +162,21 @@ header {
   padding-bottom: 50px; 
 }
 
-* 2. マップ画面専用の高さ固定設定（修正版） */
 #map-timeline-section .calendar-scroll-area {
-  /* ★修正1: 高さを中身に合わせる（固定しない） */
-  height: auto !important; 
-  min-height: auto !important;
+  /* 画面下ギリギリにならないよう、高さを少し控えめにし、下余白を確保 */
+  height: 65vh !important;       /* ← ★ここを直します */
+  min-height: 400px !important;  /* ← ★ここを直します */
   
-  /* ★修正2: 縦スクロールは親要素(.map-wrapper)に任せる */
-  overflow-y: visible !important; 
-  
-  /* 横スクロールは維持する */
-  overflow-x: auto !important; 
-
+  overflow: auto !important;     /* ← ★ここを直します */
   border-top: 1px solid #ddd;
   border-bottom: 1px solid #ddd;
-  /* scroll-behavior: smooth; は外したほうが動作が安定します */
+  scroll-behavior: smooth;
 
+  /* スクロールバーがコンテンツに被らないように少しパディングを入れる */
   padding-bottom: 5px; 
   margin-bottom: 20px; 
 }
+
 .time-axis-col { 
   width: 50px; 
   flex-shrink: 0; 
@@ -282,10 +278,22 @@ header {
 }
 
 #map-timeline-section .calendar-scroll-area {
-  height: auto !important;
-  min-height: 300px !important;
-  overflow: auto !important; /* 両方向スクロール許可 */
-  display: flex !important;
+  /* ★修正: 高さを中身に合わせて自動で伸ばす */
+  height: auto !important; 
+  min-height: auto !important;
+  
+  /* ★修正: 縦スクロールは画面全体(body)に任せるため visible にする */
+  overflow-y: visible !important; 
+  
+  /* 横スクロールは維持する */
+  overflow-x: auto !important; 
+
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+  /* scroll-behavior: smooth; は削除またはコメントアウト推奨 */
+
+  padding-bottom: 5px; 
+  margin-bottom: 20px; 
 }
 /* ==============================================
    6. 予約バー (.v-booking-bar)
