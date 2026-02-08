@@ -441,7 +441,7 @@ function drawTimeAxis(containerId) {
 
 /* ==============================================
    レンダリング: 垂直タイムライン
-   【修正版: スクロールバー分のズレを自動補正】
+   【修正版: 時間軸のズレ（不要ヘッダー）を削除して位置合わせ】
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -539,7 +539,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         scrollableParent.onmousedown = (e) => {
             if (isTouch) return;
             if (e.target.closest('.v-booking-bar') || ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) return;
-            
             isDown = true;
             hasDragged = false;
             scrollableParent.style.cursor = "grabbing";
@@ -547,7 +546,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             startY = e.pageY;
             startScrollLeftVal = scrollableParent.scrollLeft;
             startScrollTopVal = vScrollTarget ? vScrollTarget.scrollTop : 0;
-            
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
         };
@@ -630,16 +628,21 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
+    // ★修正: 時間軸の描画と不要ヘッダーの削除
     drawTimeAxis(timeAxisId);
     const axisContainer = document.getElementById(timeAxisId);
     if (axisContainer && container) {
-        if (mode === 'all') {
+        if (mode === 'map') {
+            // ★マップモードの場合、drawTimeAxisが作った「ヘッダー(40px)」が邪魔なので削除する
+            const extraHeader = axisContainer.querySelector('.time-axis-header');
+            if (extraHeader) extraHeader.remove();
+            
+            axisContainer.style.height = currentTop + "px";
+            axisContainer.style.overflow = "visible";
+        } else if (mode === 'all') {
             axisContainer.style.height = container.style.height;
             axisContainer.style.overflow = "hidden";
             axisContainer.scrollTop = savedScrollTop;
-        } else {
-            axisContainer.style.height = currentTop + "px";
-            axisContainer.style.overflow = "visible";
         }
         axisContainer.style.display = "block";
     }
@@ -835,8 +838,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
         
         if (mode === 'map' && headerContainer) {
-            // ★追加: スクロールバー幅分の補正処理
-            // ヘッダーの右側に、下のスクロールバーと同じ幅のpaddingを入れる
             const scrollBarWidth = scrollableParent.offsetWidth - scrollableParent.clientWidth;
             if (scrollBarWidth > 0) {
                 headerContainer.style.paddingRight = scrollBarWidth + "px";
