@@ -217,11 +217,15 @@
     <label>用件 (タイトル)</label>
     <input type="text" id="input-title" placeholder="定例会議など">
 
-    <div id="edit-series-option" style="display:none; background:#e8f5e9; padding:10px; border-radius:6px; margin: 10px 0; border:1px solid #c8e6c9;">
+   <div id="edit-series-option" style="display:none; background:#e8f5e9; padding:10px; border-radius:6px; margin: 10px 0; border:1px solid #c8e6c9;">
+        
+        <div id="series-rule-display" style="font-weight:bold; color:#2c3e50; margin-bottom:8px; font-size:0.9rem; padding-bottom:5px; border-bottom:1px dashed #a5d6a7;">
+            </div>
+
         <label style="display:flex; align-items:center; cursor:pointer; gap: 8px; margin:0; color:#2e7d32;">
             <input type="checkbox" id="check-sync-series" checked
                    style="width: 20px !important; height: 20px !important; margin: 0 !important; cursor: pointer; flex-shrink: 0;">
-            <span style="font-weight:bold;">ほかの繰り返し予定も一緒に変更する</span>
+            <span style="font-weight:bold;">この繰り返しの予定も一緒に変更する</span>
         </label>
         <div style="font-size:0.8rem; color:#666; margin-top:5px; padding-left:28px;">
             ※チェックを外して保存すると、この予定は繰り返しから除外され、今後リンクされなくなります（元に戻せません）。
