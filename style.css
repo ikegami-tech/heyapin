@@ -235,7 +235,8 @@ header {
 }
 
 .room-col { 
-  flex: 1 0 120px; min-width: 120px;
+  flex: 1 0 160px; 
+  min-width: 160px;
   border-right: 1px solid #eee; position: relative;
   display: flex; flex-direction: column;
   overflow: visible; z-index: 1;
@@ -978,9 +979,9 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
 /* ★追加: 部屋タブ個別のスタイル (幅固定) */
 .sticky-header-item {
   /* 幅を120pxに完全固定 (伸び縮み禁止) */
-  width: 120px !important;
-  min-width: 120px !important;
-  flex: 0 0 120px !important; 
+  width: 160px !important;
+  min-width: 160px !important;
+  flex: 0 0 160px !important; 
   
   height: 40px;
   display: flex;
