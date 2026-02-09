@@ -1042,29 +1042,30 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   z-index: 20;
 }
 /* ==============================================
-   ★重要修正: ヘッダーと予約枠の幅ズレを強制補正
+   ★重要修正: ヘッダーと予約枠の幅を「広く」統一
    ============================================== */
 
 /* 1. 上の部屋タブ（ヘッダー） */
 .sticky-header-item {
-    /* 幅を 160px に統一 */
-    width: 160px !important;
-    min-width: 160px !important;
-    flex: 0 0 160px !important;
+    /* 幅を 220px に統一 */
+    width: 220px !important;
+    min-width: 220px !important;
+    flex: 0 0 220px !important;
 }
 
 /* 2. 下の予約枠列（ボディ） */
 .room-col {
-    /* JSで指定されている200pxを !important で強制上書きして合わせる */
-    width: 160px !important;
-    min-width: 160px !important;
-    flex: 0 0 160px !important;
+    /* JSの指定を無視して 220px に強制統一 */
+    width: 220px !important;
+    min-width: 220px !important;
+    flex: 0 0 220px !important;
 }
 
-/* 3. 部屋名の文字調整（任意） */
-.sticky-header-item, .room-header {
-    padding: 0 10px !important; /* 文字がはみ出ないように余白調整 */
-    white-space: nowrap;        /* 改行させない */
-    overflow: hidden;           /* はみ出た分は隠す */
-    text-overflow: ellipsis;    /* ...リーダーを表示 */
+/* 3. 部屋名の文字調整 */
+.sticky-header-item {
+    padding: 0 10px !important; 
+    white-space: nowrap;        
+    overflow: hidden;           
+    text-overflow: ellipsis;    
+    justify-content: center;    /* 中央揃え */
 }
