@@ -931,7 +931,7 @@ function formatTimeInput(elm) {
     }
 }
 
-/* ----- 修正後の openModal 関数（ここだけ書き換えてください） ----- */
+/* ----- 修正後の openModal 関数 ----- */
 function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin = 0) {
   const modal = document.getElementById('bookingModal');
   modal.style.display = 'flex';
@@ -942,16 +942,15 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
   originalParticipantIds.clear(); 
   document.getElementById('shuttle-search-input').value = "";
 
-  // ▼▼▼ 【追加】編集用・新規用のエリア表示リセット ▼▼▼
-  // 編集用の「リンクする」エリアを一旦隠す
+  // 編集用・新規用のエリア表示リセット
   const editSeriesOption = document.getElementById('edit-series-option');
+  const seriesRuleDisplay = document.getElementById('series-rule-display'); // ★追加
+  
   if(editSeriesOption) editSeriesOption.style.display = 'none';
-  if(document.getElementById('check-sync-series')) document.getElementById('check-sync-series').checked = true; // デフォルトON
+  if(document.getElementById('check-sync-series')) document.getElementById('check-sync-series').checked = true;
 
-  // 新規用の「繰り返し作成」エリアを表示状態に戻しておく
   const createRepeatSection = document.getElementById('create-repeat-section');
   if(createRepeatSection) createRepeatSection.style.display = 'block';
-  // ▲▲▲ 追加ここまで ▲▲▲
    
   if (res) {
     // === 編集モード ===
@@ -960,38 +959,63 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
     const rId = res._resourceId || res.resourceId || res.roomId; 
     document.getElementById('input-room').value = rId;
 
-    // ▼▼▼ 修正箇所 ▼▼▼
-    // データに seriesId が入っていなくても、UI確認のために一時的にIDがあることにする
-    // 本番（AWS移行後）では元のコードに戻してください
     let currentSeriesId = getVal(res, ['seriesId', 'series_id', 'group_id']); 
     
-    // ★テスト用: IDがなくてもあるとみなしてボタンを出す（ここを追加！）
+    // ★テスト用ダミーID付与（必要なければ削除可）
     if (!currentSeriesId && res) {
-         currentSeriesId = "temp-id-for-test"; // テスト用のダミーID
-         console.log("テスト用にダミーのseriesIdを適用しました");
+         // currentSeriesId = "temp-id-for-test"; 
     }
 
     if (currentSeriesId) {
-        // シリーズIDがある場合 → 「リンクする」を表示
+        // --- シリーズ情報の分析と表示処理 (ここを追加) ---
         if(editSeriesOption) editSeriesOption.style.display = 'block';
-        
-        // 新規作成用の繰り返しエリアは隠す
         if(createRepeatSection) createRepeatSection.style.display = 'none';
+
+        // 同じシリーズIDを持つ予約を全件取得して日付順にソート
+        const seriesItems = masterData.reservations.filter(r => 
+            String(getVal(r, ['seriesId', 'series_id', 'group_id'])) === String(currentSeriesId)
+        ).sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+        let ruleText = "登録条件：不明";
         
-        // 念のため、既存の「繰り返しチェック」の親要素も非表示にする（IDがない場合の保険）
-        const oldRepeatCheck = document.getElementById('check-repeat');
-        if(oldRepeatCheck && oldRepeatCheck.closest('.form-group')) {
-             // 構造によってはここが効かない場合があるので、基本は create-repeat-section 推奨
+        if (seriesItems.length >= 1) {
+            const first = new Date(seriesItems[0].startTime);
+            const last = new Date(seriesItems[seriesItems.length - 1].startTime);
+            const totalCount = seriesItems.length;
+            
+            // 終了日のフォーマット
+            const lastDateStr = `${last.getFullYear()}年${last.getMonth() + 1}月${last.getDate()}日`;
+
+            // 間隔の推測 (2件以上あれば差分を見る)
+            let intervalText = "";
+            if (seriesItems.length >= 2) {
+                const second = new Date(seriesItems[1].startTime);
+                const diffDays = Math.round((second - first) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 1) intervalText = "毎日";
+                else if (diffDays === 7) intervalText = "1週間おき";
+                else if (diffDays === 14) intervalText = "2週間おき";
+                else if (diffDays >= 28 && diffDays <= 31) intervalText = "1ヶ月おき";
+                else intervalText = `${diffDays}日おき`;
+            } else {
+                intervalText = "単発(シリーズ設定あり)";
+            }
+
+            ruleText = `登録条件：${intervalText}、終了日：${lastDateStr} (全${totalCount}回)`;
         }
+
+        if (seriesRuleDisplay) {
+            seriesRuleDisplay.innerText = ruleText;
+        }
+        // ---------------------------------------------------
+
     } else {
-        // 単発の場合
         if(createRepeatSection) createRepeatSection.style.display = 'none';
     }
-    // ▲▲▲ 修正ここまで ▲▲▲
 
     const startObj = new Date(res._startTime || res.startTime);
     const endObj = new Date(res._endTime || res.endTime);
-    // ... (既存の日付セット処理) ...
+    
     const y = startObj.getFullYear();
     const m = ('0' + (startObj.getMonth() + 1)).slice(-2);
     const d = ('0' + startObj.getDate()).slice(-2);
@@ -1005,7 +1029,6 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
     
     const pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
     if (pIds) {
-        // ... (既存の参加者セット処理) ...
         let idList = [];
         if (Array.isArray(pIds)) idList = pIds;
         else if (typeof pIds === 'string') idList = pIds.split(',');
@@ -1032,12 +1055,10 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
     document.getElementById('edit-res-id').value = "";
     if(defaultRoomId) document.getElementById('input-room').value = defaultRoomId;
     
-    // ▼▼▼ 新規作成時は繰り返しオプションをリセット ▼▼▼
     if(document.getElementById('check-repeat')) {
          document.getElementById('check-repeat').checked = false;
          toggleRepeatOptions();
     }
-    // ▲▲▲ ここまで ▲▲▲
 
     const dateInput = document.getElementById('map-date');
     let currentTabDate = dateInput ? dateInput.value : '';
@@ -1064,7 +1085,6 @@ function openModal(res = null, defaultRoomId = null, clickHour = null, clickMin 
   const modalContent = modal.querySelector('.modal-content');
   if (modalContent) modalContent.scrollTop = 0;
 }
-
 function closeModal() { document.getElementById('bookingModal').style.display = 'none'; }
 
 function getParticipantIdsFromRes(res) {
