@@ -441,7 +441,7 @@ function drawTimeAxis(containerId) {
 
 /* ==============================================
    レンダリング: 垂直タイムライン
-   【修正版: 時間軸のズレ（不要ヘッダー）を削除して位置合わせ】
+   【修正版: 自動更新時のスクロール位置維持を修正】
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -488,13 +488,20 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         return;
     }
 
+    // 2. スクロール位置保存
     const scrollableParent = container ? container.closest('.calendar-scroll-area') : null;
     let savedScrollTop = 0, savedScrollLeft = 0;
-    const mapWrapper = document.querySelector('.map-wrapper');
+    const mapWrapper = document.querySelector('.map-wrapper'); // 全体スクロール用
+
+    // ★修正: 自動更新前に現在の位置をしっかり保存
     if (mode === 'map' && mapWrapper) {
         savedScrollTop = mapWrapper.scrollTop;
     } else if (scrollableParent) {
         savedScrollTop = scrollableParent.scrollTop;
+    }
+    
+    // 横スクロール位置は共通で保存
+    if (scrollableParent) {
         savedScrollLeft = scrollableParent.scrollLeft;
     }
 
@@ -539,6 +546,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         scrollableParent.onmousedown = (e) => {
             if (isTouch) return;
             if (e.target.closest('.v-booking-bar') || ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) return;
+            
             isDown = true;
             hasDragged = false;
             scrollableParent.style.cursor = "grabbing";
@@ -546,6 +554,7 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             startY = e.pageY;
             startScrollLeftVal = scrollableParent.scrollLeft;
             startScrollTopVal = vScrollTarget ? vScrollTarget.scrollTop : 0;
+            
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
         };
@@ -628,12 +637,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
-    // ★修正: 時間軸の描画と不要ヘッダーの削除
     drawTimeAxis(timeAxisId);
     const axisContainer = document.getElementById(timeAxisId);
     if (axisContainer && container) {
         if (mode === 'map') {
-            // ★マップモードの場合、drawTimeAxisが作った「ヘッダー(40px)」が邪魔なので削除する
             const extraHeader = axisContainer.querySelector('.time-axis-header');
             if (extraHeader) extraHeader.remove();
             
@@ -831,10 +838,18 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.appendChild(col);
     });
 
+    // ★修正: 最後にスクロール位置を復元
     if (scrollableParent) {
         if (!shouldScroll) {
+            // 横スクロールの復元
             scrollableParent.scrollLeft = savedScrollLeft; 
-            if (mode !== 'map') scrollableParent.scrollTop = savedScrollTop; 
+            
+            // ★重要: マップモード時は親(mapWrapper)の縦スクロールを復元
+            if (mode === 'map' && mapWrapper) {
+                mapWrapper.scrollTop = savedScrollTop; 
+            } else if (mode !== 'map') {
+                scrollableParent.scrollTop = savedScrollTop;
+            }
         }
         
         if (mode === 'map' && headerContainer) {
