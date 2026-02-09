@@ -1391,7 +1391,7 @@ async function saveBooking() {
 }
 
 /* ==============================================
-   詳細モーダル表示 (曜日追加・堅牢版)
+   詳細モーダル表示 (時刻ズレ修正版)
    ============================================== */
 function openDetailModal(res) {
   currentDetailRes = res;
@@ -1400,11 +1400,19 @@ function openDetailModal(res) {
   // 日付文字列を安全にパース
   const safeDate = (str) => new Date(String(str).replace(/-/g, '/'));
   
+  // ★追加: サーバー時刻(UTC)をパースする関数
+  const parseUtcDate = (str) => {
+      if (!str) return null;
+      let s = String(str).trim();
+      s = s.replace(/\//g, '-').replace(' ', 'T');
+      if (!s.endsWith('Z')) s += 'Z'; 
+      return new Date(s);
+  };
+
   const s = safeDate(res._startTime);
   const e = safeDate(res._endTime);
 
   const week = ['日', '月', '火', '水', '木', '金', '土'];
-  // getDay()が取れない場合のガード処理を追加
   const dayIndex = s.getDay();
   const w = isNaN(dayIndex) ? '?' : week[dayIndex];
   
@@ -1420,16 +1428,17 @@ function openDetailModal(res) {
   // 登録者・編集者情報
   const metaContainer = document.getElementById('detail-meta-info');
   if (metaContainer) {
-      const fmt = (dStr) => {
-          if(!dStr) return "-";
-          const d = safeDate(dStr);
-          if(isNaN(d.getTime())) return dStr; 
-          return `${d.getFullYear()}/${('0'+(d.getMonth()+1)).slice(-2)}/${('0'+d.getDate()).slice(-2)} ${('0'+d.getHours()).slice(-2)}:${('0'+d.getMinutes()).slice(-2)}`;
+      const fmt = (dObj) => { // Dateオブジェクトを受け取るように変更
+          if(!dObj || isNaN(dObj.getTime())) return "-";
+          return `${dObj.getFullYear()}/${('0'+(dObj.getMonth()+1)).slice(-2)}/${('0'+dObj.getDate()).slice(-2)} ${('0'+dObj.getHours()).slice(-2)}:${('0'+dObj.getMinutes()).slice(-2)}`;
       };
-      const createdTime = fmt(res.createdAt);
+      
+      // ★修正: UTC変換を適用
+      const createdTime = fmt(parseUtcDate(res.createdAt));
       const createdName = res.createdBy || "-";
-      const updatedTime = fmt(res.updatedAt);
+      const updatedTime = fmt(parseUtcDate(res.updatedAt));
       const updatedName = res.updatedBy || "-";
+      
       let html = `<div>登録 : ${createdTime} ${createdName}</div>`;
       html += `<div>編集 : ${updatedTime} ${updatedName}</div>`;
       metaContainer.innerHTML = html;
@@ -1728,7 +1737,7 @@ function searchLogs() { currentLogPage = 1; renderLogs(); }
 function changeLogPage(direction) { currentLogPage += direction; renderLogs(); }
 
 /* ==============================================
-   ログ一覧描画 (曜日追加・堅牢版)
+   ログ一覧描画 (時刻ズレ修正版)
    ============================================== */
 function renderLogs() {
     const tbody = document.getElementById('log-tbody');
@@ -1738,12 +1747,23 @@ function renderLogs() {
         return;
     }
 
+    // ★追加: AWSからの時刻(UTC)を日本時間に変換する関数
+    const parseUtcDate = (str) => {
+        if (!str) return new Date();
+        let s = String(str).trim();
+        // "YYYY-MM-DD HH:MM:SS" を "YYYY-MM-DDTHH:MM:SSZ" (ISO形式) に変換してUTC扱いにする
+        s = s.replace(/\//g, '-').replace(' ', 'T');
+        if (!s.endsWith('Z')) s += 'Z'; 
+        return new Date(s);
+    };
+
     let allLogs = [...masterData.logs].sort((a, b) => {
-    return new Date(b.timestamp) - new Date(a.timestamp);
-});
+        return parseUtcDate(b.timestamp) - parseUtcDate(a.timestamp);
+    });
+
     const filterText = document.getElementById('log-search-input').value.toLowerCase().trim();
     
-    // 安全な日付パース関数
+    // 安全な日付パース関数 (日付だけの比較用は従来のままでOKだが、表示用はUTC変換を使う)
     const safeDate = (str) => new Date(String(str).replace(/-/g, '/'));
 
     if (filterText) {
@@ -1751,7 +1771,10 @@ function renderLogs() {
         const searchHira = kataToHira(filterText);
 
         allLogs = allLogs.filter(log => {
-            const dateStr = formatDate(safeDate(log.timestamp));
+            // 検索時は日本時間に変換した日付でチェック
+            const d = parseUtcDate(log.timestamp);
+            const dateStr = formatDate(d);
+            
             let roomName = log.resourceName || "";
             const roomObj = masterData.rooms.find(r => String(r.roomId) === String(log.resourceId || log.resourceName));
             if (roomObj) roomName = roomObj.roomName;
@@ -1789,6 +1812,7 @@ function renderLogs() {
     const formatRange = (rangeStr) => {
         if (!rangeStr || !rangeStr.includes(' - ')) return rangeStr;
         const parts = rangeStr.split(' - ');
+        // 予約期間の時刻は手入力値(JST)なので、UTC変換せずそのままパース
         const sDate = safeDate(parts[0]);
         const eDate = safeDate(parts[1]);
         if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) return rangeStr;
@@ -1831,7 +1855,8 @@ function renderLogs() {
 
         const detailHtml = `<strong>${roomDisplay}</strong>${detailLines ? `<br><span style="font-size:0.85em; color:#666;">${detailLines}</span>` : ''}<br><span style="font-size:0.8em; color:#999;">${timeDisplay}</span>`;
 
-        tr.innerHTML = `<td>${formatDate(safeDate(log.timestamp))}</td><td>${log.operatorName}</td><td>${log.action}</td><td>${detailHtml}</td>`;
+        // ★修正: UTC変換した日付を表示
+        tr.innerHTML = `<td>${formatDate(parseUtcDate(log.timestamp))}</td><td>${log.operatorName}</td><td>${log.action}</td><td>${detailHtml}</td>`;
         tbody.appendChild(tr);
     });
 
