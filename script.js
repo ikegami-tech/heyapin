@@ -2282,46 +2282,87 @@ function updateDayDisplay(inputId) {
     }
 }
 /* ==============================================
-   追加: 予約削除機能（これが抜けていました）
+   修正版: 予約削除機能 (シリーズ一括削除対応)
    ============================================== */
 async function deleteBooking() {
-    // 編集中の予約IDを取得
+    // 1. 編集中の予約IDを取得
     const resId = document.getElementById('edit-res-id').value;
+    if (!resId) return; // 新規作成画面などでIDがない場合は何もしない
+
+    // 2. 削除対象を特定する
+    // 「リンクする」チェックボックスの状態を取得
+    const isSeriesLinkChecked = document.getElementById('check-sync-series') && document.getElementById('check-sync-series').checked;
     
-    // IDがない（新規作成画面など）場合は何もしない
-    if (!resId) return;
+    // 現在の予約データをmasterDataから検索
+    const targetRes = masterData.reservations.find(r => String(r.id) === String(resId));
+    if (!targetRes) {
+        alert("予約データが見つかりません。");
+        return;
+    }
 
-    // 確認ダイアログ
-    if (!confirm("本当にこの予約を削除しますか？\n（この操作は取り消せません）")) return;
+    // シリーズIDを取得
+    const seriesId = getVal(targetRes, ['seriesId', 'series_id', 'group_id']);
 
-    // ローディング表示
+    let deleteTargets = [];
+
+    if (isSeriesLinkChecked && seriesId) {
+        // A. チェックON かつ シリーズIDがある場合 
+        // -> 同じシリーズIDを持つ全ての予約を対象にする
+        deleteTargets = masterData.reservations.filter(r => 
+            String(getVal(r, ['seriesId', 'series_id', 'group_id'])) === String(seriesId)
+        );
+    } else {
+        // B. チェックOFF または 単発予約の場合
+        // -> この予約1件だけを対象にする
+        deleteTargets = [targetRes];
+    }
+
+    if (deleteTargets.length === 0) return;
+
+    // 3. 確認ダイアログ (件数に応じてメッセージを変える)
+    let msg = "本当にこの予約を削除しますか？\n（この操作は取り消せません）";
+    if (deleteTargets.length > 1) {
+        msg = `【注意】シリーズ一括削除\n\nリンクされている 全 ${deleteTargets.length} 件 の予約をすべて削除します。\nよろしいですか？\n（この操作は取り消せません）`;
+    }
+
+    if (!confirm(msg)) return;
+
+    // 4. 削除実行 (ループ処理)
     const loadingEl = document.getElementById('loading');
     if(loadingEl) loadingEl.style.display = 'flex';
 
-    // 削除APIを呼び出すパラメータ
-    const params = {
-        action: 'deleteReservation',
-        reservationId: resId,
-        operatorName: currentUser ? currentUser.userName : 'Unknown'
-    };
+    let successCount = 0;
+    let failCount = 0;
 
-    try {
-        // API通信実行
-        const result = await callAPI(params, false); 
-        
-        if(loadingEl) loadingEl.style.display = 'none';
+    // 確実性を高めるため、対象IDを1つずつAPIに送信して削除します
+    for (const res of deleteTargets) {
+        const params = {
+            action: 'deleteReservation',
+            reservationId: res.id,
+            operatorName: currentUser ? currentUser.userName : 'Unknown'
+        };
 
-        if (result.status === 'success') {
-            alert("予約を削除しました");
-            closeModal();       // モーダルを閉じる
-            loadAllData(true);  // 画面を再読み込み
-        } else {
-            alert("削除エラー: " + result.message);
+        try {
+            const result = await callAPI(params, false); 
+            if (result.status === 'success') successCount++;
+            else failCount++;
+        } catch (e) {
+            failCount++;
+            console.error(e);
         }
-    } catch (e) {
-        if(loadingEl) loadingEl.style.display = 'none';
-        console.error(e);
-        alert("通信エラーが発生しました");
+    }
+
+    if(loadingEl) loadingEl.style.display = 'none';
+
+    // 5. 結果表示
+    if (failCount === 0) {
+        alert(`削除しました${deleteTargets.length > 1 ? ' (' + successCount + '件)' : ''}`);
+        closeModal();       // モーダルを閉じる
+        loadAllData(true);  // 画面を再読み込み
+    } else {
+        alert(`完了しましたが、一部エラーが発生しました。\n成功: ${successCount}件\n失敗: ${failCount}件`);
+        closeModal();
+        loadAllData(true);
     }
 }
 /* ==============================================
