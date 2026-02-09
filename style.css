@@ -1069,3 +1069,29 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
     text-overflow: ellipsis;    
     justify-content: center;    /* 中央揃え */
 }
+/* ==============================================
+   ★重要修正: スティッキーヘッダー上の隙間埋め
+   ============================================== */
+
+/* 1. 全体の枠の上部余白をゼロにする (これで隙間がなくなります) */
+.map-wrapper {
+    padding-top: 0 !important;
+}
+
+/* 2. 余白をゼロにした分、中身がいきなり天井にくっつくのを防ぐ */
+/* 床切り替えタブがある場合 */
+.floor-selector {
+    margin-top: 10px !important;
+}
+
+/* PC画面などで床タブが非表示で、マップが直接表示される場合 */
+#dual-map-container {
+    margin-top: 10px !important;
+}
+
+/* 3. 日付バーの背景色を確実に白にして透過を防ぐ（念のため） */
+.date-controller {
+    background-color: #fff !important;
+    /* 影をつけてヘッダーとの境目を綺麗にする（お好みで） */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+}
