@@ -264,7 +264,11 @@ header {
   
   background: #fafafa;
   border-bottom: 1px solid #ddd;
-  padding: 0 5px; text-align: center; word-break: break-all;
+  
+  /* ★修正箇所: 左右の余白を広げる (5px -> 20px) */
+  padding: 0 20px !important; 
+  
+  text-align: center; word-break: break-all;
   box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
