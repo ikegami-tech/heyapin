@@ -236,7 +236,95 @@ function initIdleDetection() {
         }
     }, 5000);
 }
+/* ==============================================
+   PWA 通知関連機能
+   ============================================== */
 
+// 通知許可をリクエストする関数
+function requestNotificationPermission() {
+  if (!("Notification" in window)) {
+    alert("このブラウザは通知に対応していません。");
+    return;
+  }
+
+  Notification.requestPermission().then(permission => {
+    if (permission === "granted") {
+      alert("通知が許可されました。\n予約の10分前に通知します。");
+      // テスト通知
+      new Notification("通知テスト", { body: "この形式で通知が届きます。" });
+    } else {
+      alert("通知が拒否されました。設定から許可してください。");
+    }
+  });
+}
+
+// 10分前の予約があるかチェックする関数
+function checkUpcomingNotifications() {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (!currentUser || !masterData.reservations) return;
+
+  const now = new Date();
+  const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
+
+  // 自分の予約、かつ未来の予約を抽出
+  const myReservations = masterData.reservations.filter(res => {
+    // 参加者IDリストを取得
+    let pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
+    let isParticipant = false;
+    
+    if (pIds) {
+      const pIdStr = String(pIds).replace(/['"]/g, ""); // クリーンアップ
+      const list = pIdStr.split(/[,、\s]+/).map(s => s.trim());
+      // 自分のIDが含まれているか
+      isParticipant = list.includes(String(currentUser.userId));
+    }
+    
+    // 開始時間をDate型に
+    const startTime = new Date(res._startTime || res.startTime);
+    
+    // 終了済みは除外
+    if (startTime < now) return false;
+
+    return isParticipant;
+  });
+
+  myReservations.forEach(res => {
+    const resId = String(res.id);
+    // すでに通知済みならスキップ
+    if (notifiedReservationIds.has(resId)) return;
+
+    const startTime = new Date(res._startTime || res.startTime);
+    const diffMs = startTime - now;
+    const diffMinutes = diffMs / (1000 * 60);
+
+    // 「10分前を切っている」かつ「開始前」の場合に通知
+    // ポーリング間隔(20秒)を考慮し、10分〜0分の間なら通知対象とするが、
+    // 重複通知防止のため Set で管理する
+    if (diffMinutes <= 10 && diffMinutes > 0) {
+        
+        // 部屋名取得
+        const rId = getVal(res, ['resourceId', 'roomId']);
+        const roomObj = masterData.rooms.find(r => String(r.roomId) === String(rId));
+        const roomName = roomObj ? roomObj.roomName : "会議室";
+        const title = getVal(res, ['title', 'subject']) || "予定あり";
+
+        // 通知実行
+        const note = new Notification("まもなく予約開始時間です", {
+            body: `${title}\n場所: ${roomName}\n時間: ${pad(startTime.getHours())}:${pad(startTime.getMinutes())}〜`,
+            icon: "icon-192.png", // 用意したアイコン
+            vibrate: [200, 100, 200]
+        });
+
+        note.onclick = function() {
+            window.focus();
+            this.close();
+        };
+
+        // 通知済みリストに追加
+        notifiedReservationIds.add(resId);
+    }
+  });
+}
 function restartPolling(interval) {
     if (pollingTimer) clearInterval(pollingTimer);
     pollingTimer = setInterval(() => {
