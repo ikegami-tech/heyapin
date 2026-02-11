@@ -59,7 +59,7 @@ let isDeleteMode = false;
 let isEditMode = false;
 let currentDetailRes = null;
 let hourRowHeights = {}; 
-
+let notifiedReservationIds = new Set();
 /* ==============================================
    2. 初期化 & API通信
    ============================================== */
