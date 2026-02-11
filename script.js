@@ -241,6 +241,11 @@ function restartPolling(interval) {
     if (pollingTimer) clearInterval(pollingTimer);
     pollingTimer = setInterval(() => {
         const modalOpen = document.querySelectorAll('.modal[style*="display: flex"]').length > 0;
+        
+        // ▼▼▼ 追加: 通知チェックはモーダルが開いていても実行する ▼▼▼
+        checkUpcomingNotifications();
+        // ▲▲▲ 追加 ▲▲▲
+
         if (!modalOpen) {
             console.log(`自動更新実行 (${interval/1000}秒間隔)`);
             loadAllData(true, true);
