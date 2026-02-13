@@ -479,6 +479,8 @@ function switchFloor(floor) {
 /* ==============================================
    マップの部屋クリック時の処理 (修正版)
    ============================================== */
+/* script.js の selectRoomFromMap 関数内 */
+
 function selectRoomFromMap(element) {
   const roomId = element.getAttribute('data-room-id');
   const roomObj = masterData.rooms.find(r => String(r.roomId) === String(roomId));
@@ -487,15 +489,25 @@ function selectRoomFromMap(element) {
     alert("エラー: 指定された部屋ID (" + roomId + ") が見つかりません。");
     return;
   }
-   activeFilterIds.clear();      // 今の選択を解除して
-  activeFilterIds.add(roomId);  // クリックした部屋を選択済みにする
+
+  // ▼▼▼ 修正: 既存の選択を維持して追加する処理 ▼▼▼
+  
+  // もし「全部屋」モードだった場合は、一旦解除して個別選択モードに切り替える
+  if (activeFilterIds.has('ALL')) {
+      activeFilterIds.delete('ALL');
+  }
+
+  // クリックした部屋をフィルタに追加する (Setなので重複は自動で無視されます)
+  activeFilterIds.add(roomId);
+
   saveFilterState();            // 状態を保存
-  renderTimelineFilters();      // ボタンの見た目を更新(光らせる)
-   
+  renderTimelineFilters();      // ボタンの見た目を更新
+  
+  // ▲▲▲ 修正ここまで ▲▲▲
+
   currentMapRoomId = roomId;
   document.getElementById('map-timeline-section').style.display = 'block';
   
-  // ★修正: 要素が存在する場合だけ文字を更新する（削除済みなら無視してエラー回避）
   const titleEl = document.getElementById('map-selected-room-name');
   if (titleEl) {
       titleEl.innerText = roomObj.roomName;
