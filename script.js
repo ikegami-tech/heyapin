@@ -199,6 +199,7 @@ async function loadAllData(isUpdate = false, isBackground = false) {
 /* script.js */
 
 /* --- ▼▼▼ 追加: 部屋フィルタ機能用の変数と関数 ▼▼▼ --- */
+/* --- ▼▼▼ 追加: 部屋フィルタ機能用の変数と関数 (修正版) ▼▼▼ --- */
 const FILTER_STORAGE_KEY = 'roompin_filter_state_v1';
 let activeFilterIds = new Set(['ALL']); // デフォルトは全表示
 
@@ -222,44 +223,47 @@ function saveFilterState() {
   localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(Array.from(activeFilterIds)));
 }
 
-// フィルタボタンを描画する
-function renderFilterButtons() {
-  const container = document.getElementById('room-filter-container');
+// フィルタボタンを描画する (タイムラインの日付上に表示)
+function renderTimelineFilters() {
+  // ★重要: HTMLに追加した新しいID 'timeline-filter-row' を指定
+  const container = document.getElementById('timeline-filter-row');
   if (!container) return;
   container.innerHTML = "";
 
   // 「全部屋」ボタン
   const allBtn = document.createElement('div');
   const isAll = activeFilterIds.has('ALL');
-  allBtn.className = 'filter-chip' + (isAll ? ' active' : '');
+  // ★クラス名を 'filter-btn' に変更 (CSSに合わせる)
+  allBtn.className = 'filter-btn btn-all' + (isAll ? ' active' : '');
   allBtn.innerText = "全部屋";
   allBtn.onclick = () => {
     activeFilterIds.clear();
     activeFilterIds.add('ALL');
     saveFilterState();
-    renderFilterButtons();
-    renderVerticalTimeline('map'); // タイムライン再描画
+    renderTimelineFilters();
+    renderVerticalTimeline('map'); 
   };
   container.appendChild(allBtn);
 
   // 各部屋のボタン
-  // マスタデータから部屋リストを取得してボタン化
   if (masterData && masterData.rooms) {
-    masterData.rooms.forEach(room => {
+    // 見やすいように部屋名でソート
+    const sortedRooms = [...masterData.rooms].sort((a, b) => a.roomName.localeCompare(b.roomName, 'ja'));
+
+    sortedRooms.forEach(room => {
       const rId = String(room.roomId);
       const btn = document.createElement('div');
       const isActive = activeFilterIds.has(rId);
       
-      btn.className = 'filter-chip' + (isActive ? ' active' : '');
+      // ★クラス名を 'filter-btn' に変更
+      btn.className = 'filter-btn' + (isActive ? ' active' : '');
       btn.innerText = room.roomName;
       
       btn.onclick = () => {
-        // 「全部屋」が選択されていた状態で個別ボタンを押したら、「全部屋」を解除してそのボタンを選択
         if (activeFilterIds.has('ALL')) {
           activeFilterIds.clear();
           activeFilterIds.add(rId);
         } else {
-          // 既に選択済みなら解除、未選択なら追加
           if (activeFilterIds.has(rId)) {
             activeFilterIds.delete(rId);
           } else {
@@ -267,13 +271,12 @@ function renderFilterButtons() {
           }
         }
 
-        // 何も選択されていなければ「全部屋」に戻す（親切設計）
         if (activeFilterIds.size === 0) {
           activeFilterIds.add('ALL');
         }
 
         saveFilterState();
-        renderFilterButtons();
+        renderTimelineFilters();
         renderVerticalTimeline('map');
       };
       
@@ -289,6 +292,7 @@ function initUI() {
   updateRoomSelect();
   renderGroupButtons();
 　loadFilterState();
+   renderTimelineFilters();
   
   currentFloor = 7;
   renderDualMaps(); 
