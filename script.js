@@ -198,14 +198,24 @@ async function loadAllData(isUpdate = false, isBackground = false) {
 }
 /* script.js */
 
-/* --- ▼▼▼ 追加: 部屋フィルタ機能用の変数と関数 ▼▼▼ --- */
-/* --- ▼▼▼ 追加: 部屋フィルタ機能用の変数と関数 (修正版) ▼▼▼ --- */
-const FILTER_STORAGE_KEY = 'roompin_filter_state_v1';
+/* script.js */
+
+/* --- ▼▼▼ 修正: フィルタ機能（ユーザーID紐付け版） ▼▼▼ --- */
+const FILTER_STORAGE_KEY_BASE = 'roompin_filter_state_v1'; // キーのベース名
 let activeFilterIds = new Set(['ALL']); // デフォルトは全表示
 
-// フィルタ状態を読み込む
+// 1. フィルタ状態を読み込む (ユーザーIDを使って専用の保存データを取得)
 function loadFilterState() {
-  const saved = localStorage.getItem(FILTER_STORAGE_KEY);
+  // まだユーザー情報がない場合（ログイン前など）はデフォルトに戻す
+  if (!currentUser || !currentUser.userId) {
+      activeFilterIds = new Set(['ALL']);
+      return;
+  }
+
+  // キー名にユーザーIDを付与する (例: roompin_filter_state_v1_user001)
+  const userKey = `${FILTER_STORAGE_KEY_BASE}_${currentUser.userId}`;
+  const saved = localStorage.getItem(userKey);
+
   if (saved) {
     try {
       const arr = JSON.parse(saved);
@@ -215,12 +225,18 @@ function loadFilterState() {
       }
     } catch (e) { console.error("フィルタ読み込みエラー", e); }
   }
+  
+  // 保存データがない場合は「全部屋」にする
   activeFilterIds = new Set(['ALL']);
 }
 
-// フィルタ状態を保存する
+// 2. フィルタ状態を保存する (ユーザーIDごとのキーで保存)
 function saveFilterState() {
-  localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(Array.from(activeFilterIds)));
+  // ユーザー情報がない場合は保存しない
+  if (!currentUser || !currentUser.userId) return;
+
+  const userKey = `${FILTER_STORAGE_KEY_BASE}_${currentUser.userId}`;
+  localStorage.setItem(userKey, JSON.stringify(Array.from(activeFilterIds)));
 }
 
 // フィルタボタンを描画する (タイムラインの日付上に表示)
