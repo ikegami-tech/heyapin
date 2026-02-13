@@ -487,6 +487,11 @@ function selectRoomFromMap(element) {
     alert("エラー: 指定された部屋ID (" + roomId + ") が見つかりません。");
     return;
   }
+   activeFilterIds.clear();      // 今の選択を解除して
+  activeFilterIds.add(roomId);  // クリックした部屋を選択済みにする
+  saveFilterState();            // 状態を保存
+  renderTimelineFilters();      // ボタンの見た目を更新(光らせる)
+   
   currentMapRoomId = roomId;
   document.getElementById('map-timeline-section').style.display = 'block';
   
