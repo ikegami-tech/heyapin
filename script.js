@@ -196,13 +196,99 @@ async function loadAllData(isUpdate = false, isBackground = false) {
     console.error("通信エラー(バックグラウンド):", e);
   }
 }
+/* script.js */
 
+/* --- ▼▼▼ 追加: 部屋フィルタ機能用の変数と関数 ▼▼▼ --- */
+const FILTER_STORAGE_KEY = 'roompin_filter_state_v1';
+let activeFilterIds = new Set(['ALL']); // デフォルトは全表示
+
+// フィルタ状態を読み込む
+function loadFilterState() {
+  const saved = localStorage.getItem(FILTER_STORAGE_KEY);
+  if (saved) {
+    try {
+      const arr = JSON.parse(saved);
+      if (Array.isArray(arr) && arr.length > 0) {
+        activeFilterIds = new Set(arr);
+        return;
+      }
+    } catch (e) { console.error("フィルタ読み込みエラー", e); }
+  }
+  activeFilterIds = new Set(['ALL']);
+}
+
+// フィルタ状態を保存する
+function saveFilterState() {
+  localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(Array.from(activeFilterIds)));
+}
+
+// フィルタボタンを描画する
+function renderFilterButtons() {
+  const container = document.getElementById('room-filter-container');
+  if (!container) return;
+  container.innerHTML = "";
+
+  // 「全部屋」ボタン
+  const allBtn = document.createElement('div');
+  const isAll = activeFilterIds.has('ALL');
+  allBtn.className = 'filter-chip' + (isAll ? ' active' : '');
+  allBtn.innerText = "全部屋";
+  allBtn.onclick = () => {
+    activeFilterIds.clear();
+    activeFilterIds.add('ALL');
+    saveFilterState();
+    renderFilterButtons();
+    renderVerticalTimeline('map'); // タイムライン再描画
+  };
+  container.appendChild(allBtn);
+
+  // 各部屋のボタン
+  // マスタデータから部屋リストを取得してボタン化
+  if (masterData && masterData.rooms) {
+    masterData.rooms.forEach(room => {
+      const rId = String(room.roomId);
+      const btn = document.createElement('div');
+      const isActive = activeFilterIds.has(rId);
+      
+      btn.className = 'filter-chip' + (isActive ? ' active' : '');
+      btn.innerText = room.roomName;
+      
+      btn.onclick = () => {
+        // 「全部屋」が選択されていた状態で個別ボタンを押したら、「全部屋」を解除してそのボタンを選択
+        if (activeFilterIds.has('ALL')) {
+          activeFilterIds.clear();
+          activeFilterIds.add(rId);
+        } else {
+          // 既に選択済みなら解除、未選択なら追加
+          if (activeFilterIds.has(rId)) {
+            activeFilterIds.delete(rId);
+          } else {
+            activeFilterIds.add(rId);
+          }
+        }
+
+        // 何も選択されていなければ「全部屋」に戻す（親切設計）
+        if (activeFilterIds.size === 0) {
+          activeFilterIds.add('ALL');
+        }
+
+        saveFilterState();
+        renderFilterButtons();
+        renderVerticalTimeline('map');
+      };
+      
+      container.appendChild(btn);
+    });
+  }
+}
+/* --- ▲▲▲ 追加ここまで ▲▲▲ --- */
 /* ==============================================
    3. UI初期化・更新・タブ切り替え
    ============================================== */
 function initUI() {
   updateRoomSelect();
   renderGroupButtons();
+　loadFilterState();
   
   currentFloor = 7;
   renderDualMaps(); 
@@ -271,6 +357,7 @@ function refreshUI() {
   renderLogs();
   renderGroupButtons();
   updateRoomSelect();
+　renderFilterButtons();
 
   if (document.getElementById('view-map-view').classList.contains('active')) {
       if(document.getElementById('map-timeline-section').style.display !== 'none') {
@@ -484,6 +571,9 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
                 });
             }
         });
+       if (!activeFilterIds.has('ALL')) {
+            targetRooms = targetRooms.filter(r => activeFilterIds.has(String(r.roomId)));
+        }
     } else { return; }
 
     const headerContainer = document.getElementById('map-room-headers');
