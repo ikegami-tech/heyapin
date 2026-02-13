@@ -1165,3 +1165,56 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   color: #fff;
   border-color: #2c3e50;
 }
+/* style.css の末尾に追加または修正 */
+
+/* --- タイムライン上の部屋フィルタボタン --- */
+.filter-row-container {
+  padding: 10px 10px 5px 10px;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px; /* ボタン同士の間隔 */
+  align-items: center;
+  
+  /* スクロール時に日付バーと一緒に固定したい場合は以下を追加 */
+  position: sticky;
+  top: 0; 
+  z-index: 2600 !important; /* 日付バー(2500)より手前に */
+}
+
+/* もし .filter-row-container を sticky にする場合、
+   その下の .date-controller の top を 60px くらいずらす必要があります。
+   今回はシンプルに「スクロールしたら隠れる」仕様で良ければ sticky は不要です。
+*/
+
+.filter-btn {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px; /* 角を少し丸める */
+  background: #fff;   /* 通常は白背景 */
+  color: #333;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: bold;
+  user-select: none;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.filter-btn:hover {
+  background-color: #f5f5f5;
+}
+
+/* 選択されている時のスタイル（濃い色に） */
+.filter-btn.active {
+  background-color: #2c3e50; /* テーマカラー(濃い紺)に統一 */
+  color: #fff;
+  border-color: #2c3e50;
+}
+
+/* 「全部屋」ボタンだけ少し区別する場合 */
+.filter-btn.btn-all {
+  font-weight: 900; /* 太字を強める */
+  border-color: #999;
+}
