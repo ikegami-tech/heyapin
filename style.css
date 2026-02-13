@@ -1127,3 +1127,41 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
     /* 影をつけてヘッダーとの境目を綺麗にする（お好みで） */
     box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
 }
+/* style.css */
+
+/* --- 部屋フィルタボタンのスタイル --- */
+.room-filter-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 10px;
+  /* スクロール時に一番上に残したい場合は以下を有効化 */
+  /* position: sticky; top: 0; z-index: 200; */
+}
+
+.filter-chip {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f9f9f9;
+  color: #333;
+  cursor: pointer;
+  font-size: 0.85rem;
+  user-select: none;
+  transition: all 0.2s;
+  font-weight: bold;
+}
+
+.filter-chip:hover {
+  background-color: #eee;
+}
+
+/* 選択中のスタイル */
+.filter-chip.active {
+  background-color: #2c3e50; /* テーマカラーに合わせる */
+  color: #fff;
+  border-color: #2c3e50;
+}
