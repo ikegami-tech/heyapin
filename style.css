@@ -1218,3 +1218,64 @@ textarea#input-note::placeholder { color: #999 !important; opacity: 1 !important
   font-weight: 900; /* 太字を強める */
   border-color: #999;
 }
+/* style.css */
+
+/* --- ★重要: ヘッダー全体をまとめる固定コンテナ --- */
+.sticky-header-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 2000; /* 最前面に */
+  background-color: #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* 下に影を落とす */
+}
+
+/* --- 以前の固定設定をリセット（上書き） --- */
+
+/* 1. フィルタボタンエリア */
+.filter-row-container {
+  position: static !important; /* 固定解除 */
+  top: auto !important;
+  border-bottom: none; /* 区切り線は親または下の要素に任せる */
+  padding-bottom: 5px;
+  background-color: #fff; /* 背景白 */
+}
+
+/* 2. 日付操作バー */
+.date-controller {
+  position: static !important; /* 固定解除 */
+  top: auto !important;
+  border-bottom: 1px solid #eee;
+  z-index: auto !important;
+  height: auto !important;
+  padding: 5px 10px !important;
+}
+
+/* 3. 部屋名ヘッダー行 */
+.sticky-room-header-row {
+  position: static !important; /* 固定解除 */
+  top: auto !important;
+  z-index: auto !important;
+  border-bottom: 1px solid #ccc;
+  background-color: #fafafa;
+}
+
+/* 4. 左上の角（スペーサー） */
+.sticky-header-spacer {
+  /* ここだけは「横スクロール時の左固定」が必要なので sticky left は維持 */
+  position: sticky !important;
+  left: 0;
+  top: auto !important; /* 縦の固定は解除 */
+  z-index: 100 !important;
+  background-color: #fafafa !important;
+  border-right: 1px solid #ddd;
+}
+
+/* 5. 左側の時間軸（下のタイムライン部分） */
+/* これはヘッダーの外にあるので、今まで通り左固定が必要 */
+.time-axis-col {
+  position: sticky;
+  left: 0;
+  z-index: 100 !important;
+  background-color: #fff;
+  border-right: 1px solid #ddd;
+}
