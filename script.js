@@ -1,7 +1,6 @@
 /* ==============================================
    1. 定数定義 & 設定
    ============================================== */
-// AWSのAPI Gateway URL (本番環境用に書き換えてください)
 const API_URL = "https://script.google.com/macros/s/AKfycbwRT-tfBEJZw1bSdM7waIDITEeNve9boU6detJJUB5fa3cxISVrGyCdAGe8ymPIyluD/exec"; 
 const SESSION_KEY_USER = 'bookingApp_User';
 const SESSION_KEY_TIME = 'bookingApp_LoginTime';  // 保存するキー名(時間)
@@ -60,13 +59,28 @@ let isEditMode = false;
 let currentDetailRes = null;
 let hourRowHeights = {}; 
 let notifiedReservationIds = new Set();
+
 /* ==============================================
    2. 初期化 & API通信
    ============================================== */
 window.onload = () => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('SW登録成功'))
+      .catch(err => console.error('SW登録失敗', err));
+  }
+  // ...そのあとに元の onload 処理を続ける
   const d = new Date();
-  if(document.getElementById('timeline-date')) document.getElementById('timeline-date').valueAsDate = d;
-  if(document.getElementById('map-date')) document.getElementById('map-date').valueAsDate = d;
+  
+  // ローカル時間（端末の時間）に基づいて YYYY-MM-DD 文字列を作成
+  const y = d.getFullYear();
+  const m = ('0' + (d.getMonth() + 1)).slice(-2);
+  const day = ('0' + d.getDate()).slice(-2);
+  const todayStr = `${y}-${m}-${day}`;
+
+  // .value に直接文字列をセットする（UTCズレを回避）
+  if(document.getElementById('timeline-date')) document.getElementById('timeline-date').value = todayStr;
+  if(document.getElementById('map-date')) document.getElementById('map-date').value = todayStr;
 
   checkAutoLogin();
   initMapResizer();
@@ -236,104 +250,11 @@ function initIdleDetection() {
         }
     }, 5000);
 }
-/* ==============================================
-   PWA 通知関連機能
-   ============================================== */
 
-// 通知許可をリクエストする関数
-function requestNotificationPermission() {
-  if (!("Notification" in window)) {
-    alert("このブラウザは通知に対応していません。");
-    return;
-  }
-
-  Notification.requestPermission().then(permission => {
-    if (permission === "granted") {
-      alert("通知が許可されました。\n予約の10分前に通知します。");
-      // テスト通知
-      new Notification("通知テスト", { body: "この形式で通知が届きます。" });
-    } else {
-      alert("通知が拒否されました。設定から許可してください。");
-    }
-  });
-}
-
-// 10分前の予約があるかチェックする関数
-function checkUpcomingNotifications() {
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
-  if (!currentUser || !masterData.reservations) return;
-
-  const now = new Date();
-  const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
-
-  // 自分の予約、かつ未来の予約を抽出
-  const myReservations = masterData.reservations.filter(res => {
-    // 参加者IDリストを取得
-    let pIds = getVal(res, ['participantIds', 'participant_ids', '参加者', 'メンバー']);
-    let isParticipant = false;
-    
-    if (pIds) {
-      const pIdStr = String(pIds).replace(/['"]/g, ""); // クリーンアップ
-      const list = pIdStr.split(/[,、\s]+/).map(s => s.trim());
-      // 自分のIDが含まれているか
-      isParticipant = list.includes(String(currentUser.userId));
-    }
-    
-    // 開始時間をDate型に
-    const startTime = new Date(res._startTime || res.startTime);
-    
-    // 終了済みは除外
-    if (startTime < now) return false;
-
-    return isParticipant;
-  });
-
-  myReservations.forEach(res => {
-    const resId = String(res.id);
-    // すでに通知済みならスキップ
-    if (notifiedReservationIds.has(resId)) return;
-
-    const startTime = new Date(res._startTime || res.startTime);
-    const diffMs = startTime - now;
-    const diffMinutes = diffMs / (1000 * 60);
-
-    // 「10分前を切っている」かつ「開始前」の場合に通知
-    // ポーリング間隔(20秒)を考慮し、10分〜0分の間なら通知対象とするが、
-    // 重複通知防止のため Set で管理する
-    if (diffMinutes <= 10 && diffMinutes > 0) {
-        
-        // 部屋名取得
-        const rId = getVal(res, ['resourceId', 'roomId']);
-        const roomObj = masterData.rooms.find(r => String(r.roomId) === String(rId));
-        const roomName = roomObj ? roomObj.roomName : "会議室";
-        const title = getVal(res, ['title', 'subject']) || "予定あり";
-
-        // 通知実行
-        const note = new Notification("まもなく予約開始時間です", {
-            body: `${title}\n場所: ${roomName}\n時間: ${pad(startTime.getHours())}:${pad(startTime.getMinutes())}〜`,
-            icon: "icon-192.png", // 用意したアイコン
-            vibrate: [200, 100, 200]
-        });
-
-        note.onclick = function() {
-            window.focus();
-            this.close();
-        };
-
-        // 通知済みリストに追加
-        notifiedReservationIds.add(resId);
-    }
-  });
-}
 function restartPolling(interval) {
     if (pollingTimer) clearInterval(pollingTimer);
     pollingTimer = setInterval(() => {
         const modalOpen = document.querySelectorAll('.modal[style*="display: flex"]').length > 0;
-        
-        // ▼▼▼ 追加: 通知チェックはモーダルが開いていても実行する ▼▼▼
-        checkUpcomingNotifications();
-        // ▲▲▲ 追加 ▲▲▲
-
         if (!modalOpen) {
             console.log(`自動更新実行 (${interval/1000}秒間隔)`);
             loadAllData(true, true);
@@ -534,7 +455,7 @@ function drawTimeAxis(containerId) {
 
 /* ==============================================
    レンダリング: 垂直タイムライン
-   【修正版: 自動更新時のスクロール位置維持を修正】
+   【修正版: 時間軸のズレ（不要ヘッダー）を削除して位置合わせ】
    ============================================== */
 function renderVerticalTimeline(mode, shouldScroll = false) {
     let container, dateInputId, targetRooms, timeAxisId;
@@ -581,20 +502,13 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         return;
     }
 
-    // 2. スクロール位置保存
     const scrollableParent = container ? container.closest('.calendar-scroll-area') : null;
     let savedScrollTop = 0, savedScrollLeft = 0;
-    const mapWrapper = document.querySelector('.map-wrapper'); // 全体スクロール用
-
-    // ★修正: 自動更新前に現在の位置をしっかり保存
+    const mapWrapper = document.querySelector('.map-wrapper');
     if (mode === 'map' && mapWrapper) {
         savedScrollTop = mapWrapper.scrollTop;
     } else if (scrollableParent) {
         savedScrollTop = scrollableParent.scrollTop;
-    }
-    
-    // 横スクロール位置は共通で保存
-    if (scrollableParent) {
         savedScrollLeft = scrollableParent.scrollLeft;
     }
 
@@ -639,7 +553,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         scrollableParent.onmousedown = (e) => {
             if (isTouch) return;
             if (e.target.closest('.v-booking-bar') || ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(e.target.tagName)) return;
-            
             isDown = true;
             hasDragged = false;
             scrollableParent.style.cursor = "grabbing";
@@ -647,7 +560,6 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
             startY = e.pageY;
             startScrollLeftVal = scrollableParent.scrollLeft;
             startScrollTopVal = vScrollTarget ? vScrollTarget.scrollTop : 0;
-            
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
         };
@@ -684,14 +596,27 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
     for (let h = START_HOUR; h < END_HOUR; h++) hourRowHeights[h] = BASE_HOUR_HEIGHT;
 
     const DYNAMIC_CHARS_PER_LINE = 12;
+    // ...
     const allRelevantReservations = masterData.reservations.filter(res => {
         const startTimeVal = getVal(res, ['startTime', 'start_time', '開始日時', '開始']);
         if (!startTimeVal) return false;
+        
+        // ★修正: Safari用にハイフン(-)をスラッシュ(/)に変換してからDateにする
+        // これをやらないとSafariで Invalid Date になり真っ白になります
+        const safeStart = String(startTimeVal).replace(/-/g, '/');
+        
         const rId = getVal(res, ['resourceId', 'roomId', 'room_id', 'resource_id', '部屋ID']);
         const isTargetRoom = targetRooms.some(r => String(r.roomId) === String(rId));
-        const resDateNum = formatDateToNum(new Date(startTimeVal));
-        res._startTime = startTimeVal;
-        res._endTime = getVal(res, ['endTime', 'end_time', '終了日時', '終了']);
+        
+        // ★修正: 変換した safeStart を使う
+        const resDateNum = formatDateToNum(new Date(safeStart));
+        
+        // ★修正: 内部プロパティにも変換後の値を入れる
+        res._startTime = safeStart;
+        
+        const endTimeVal = getVal(res, ['endTime', 'end_time', '終了日時', '終了']);
+        res._endTime = String(endTimeVal).replace(/-/g, '/');
+        
         res._resourceId = rId;
         return isTargetRoom && (resDateNum === targetDateNum);
     });
@@ -730,10 +655,12 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         }
     }
 
+    // ★修正: 時間軸の描画と不要ヘッダーの削除
     drawTimeAxis(timeAxisId);
     const axisContainer = document.getElementById(timeAxisId);
     if (axisContainer && container) {
         if (mode === 'map') {
+            // ★マップモードの場合、drawTimeAxisが作った「ヘッダー(40px)」が邪魔なので削除する
             const extraHeader = axisContainer.querySelector('.time-axis-header');
             if (extraHeader) extraHeader.remove();
             
@@ -931,18 +858,10 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container.appendChild(col);
     });
 
-    // ★修正: 最後にスクロール位置を復元
     if (scrollableParent) {
         if (!shouldScroll) {
-            // 横スクロールの復元
             scrollableParent.scrollLeft = savedScrollLeft; 
-            
-            // ★重要: マップモード時は親(mapWrapper)の縦スクロールを復元
-            if (mode === 'map' && mapWrapper) {
-                mapWrapper.scrollTop = savedScrollTop; 
-            } else if (mode !== 'map') {
-                scrollableParent.scrollTop = savedScrollTop;
-            }
+            if (mode !== 'map') scrollableParent.scrollTop = savedScrollTop; 
         }
         
         if (mode === 'map' && headerContainer) {
@@ -2061,6 +1980,13 @@ function getVal(obj, keys) {
    10. マップ画像と座標枠の自動同期
    ============================================== */
 function initMapResizer() {
+  // ▼▼▼ 追加: ブラウザが対応していない場合は処理を中断する ▼▼▼
+  if (!('ResizeObserver' in window)) {
+      console.warn('ResizeObserver is not supported on this device.');
+      return; 
+  }
+  // ▲▲▲ 追加ここまで ▲▲▲
+
   const resizeObserver = new ResizeObserver(entries => {
       for (let entry of entries) {
           const img = entry.target;
@@ -2526,4 +2452,80 @@ function generateUUID() {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
+}
+/* ==============================================
+   追加: AWS プッシュ通知登録機能 (デバッグ用)
+   ============================================== */
+
+// ★URLの末尾に " を付け、Public Keyを画像から抽出したものに差し替えました
+// 通知用URL
+const SUBSCRIBE_API_URL = "https://ioo9z4cp14.execute-api.ap-northeast-1.amazonaws.com/default/RoomPin_Debug_Subscribe";
+
+// VAPIDキー（末尾の空白などを除去する .trim() を追加）
+const PUBLIC_VAPID_KEY = "BKOtogrGf8BJz00kR5xQuS5-_Gbkj_hQ_B3IUryPkxlDA9p4rAyZyn77CPTv-mwZnfKkCv8EBl1JXOVvoJfhnJk".trim();
+
+// Safari/iOS対応: Base64URLをUint8Arrayに変換する関数
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// AWSへの登録を実行する関数
+async function registerPushNotification() {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+
+    // Safari/iOSでは必ずこの変換を通す必要があります
+    const applicationServerKey = urlBase64ToUint8Array(PUBLIC_VAPID_KEY);
+
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: applicationServerKey
+    });
+
+    console.log("Push Subscription取得成功:", subscription);
+
+    const response = await fetch(SUBSCRIBE_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: currentUser.userId,
+        subscription: subscription
+      }),
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (response.ok) {
+      alert("プッシュ通知の登録に成功しました！");
+    } else {
+      throw new Error("AWSへの登録に失敗しました");
+    }
+  } catch (error) {
+    console.error("プッシュ通知登録エラー:", error);
+    alert("登録エラー: " + error.message);
+  }
+}
+
+// 通知許可の要求
+function requestNotificationPermission() {
+  if (!("Notification" in window)) {
+    alert("このブラウザは通知に対応していません。");
+    return;
+  }
+  Notification.requestPermission().then(permission => {
+    if (permission === "granted") {
+      registerPushNotification();
+    } else {
+      alert("通知が拒否されました。");
+    }
+  });
 }
