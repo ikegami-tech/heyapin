@@ -462,18 +462,23 @@ function switchTab(tabName) {
 }
 
 function renderDualMaps() {
-    [7, 6].forEach(floor => {
-        const config = mapConfig[floor];
-        if (!config) return;
+    const allFloors = [7, 6, 29];
+
+    allFloors.forEach(floor => {
+        let floorData = null;
+        if (mapConfig.NEXT.data[floor]) floorData = mapConfig.NEXT.data[floor];
+        else if (mapConfig.HONSHA.data[floor]) floorData = mapConfig.HONSHA.data[floor];
+
+        if (!floorData) return;
 
         const imgEl = document.getElementById(`map-img-${floor}`);
-        if (imgEl) imgEl.src = config.image;
+        if (imgEl && floorData.image) imgEl.src = floorData.image;
 
         const container = document.getElementById(`overlay-container-${floor}`);
         if (!container) return;
         container.innerHTML = '';
 
-        config.areas.forEach(area => {
+        floorData.areas.forEach(area => {
             const div = document.createElement("div");
             div.className = "map-click-area"; 
             
@@ -499,22 +504,19 @@ function switchFloor(floor) {
     currentFloor = floor;
     currentMapRoomId = null;
 
-    const mapContainer = document.getElementById('view-map-view');
-    if(mapContainer) {
-        mapContainer.querySelectorAll('.floor-tab').forEach(tab => tab.classList.remove('active'));
-    }
+    // タブのアクティブ化
+    document.querySelectorAll('.floor-tab').forEach(tab => tab.classList.remove('active'));
     const activeTab = document.getElementById(`tab-${floor}f`);
     if(activeTab) activeTab.classList.add('active');
 
-    const area7 = document.getElementById('area-7f');
-    const area6 = document.getElementById('area-6f');
-    if(area7) area7.classList.remove('active');
-    if(area6) area6.classList.remove('active');
+    // マップエリアの表示切り替え
+    document.getElementById('area-7f').classList.remove('active');
+    document.getElementById('area-6f').classList.remove('active');
+    document.getElementById('area-29f').classList.remove('active');
     
     const activeArea = document.getElementById(`area-${floor}f`);
     if(activeArea) {
         activeArea.classList.add('active');
-        // ★修正: サイズ固定リセット
         const wrapper = activeArea.querySelector('.map-inner-wrapper');
         if (wrapper) {
             wrapper.style.width = '';
@@ -525,12 +527,9 @@ function switchFloor(floor) {
     const titleEl = document.getElementById('map-selected-room-name');
     if(titleEl) titleEl.innerText = `${floor}階 予約状況`;
     
-    const timelineSec = document.getElementById('map-timeline-section');
-    if(timelineSec) timelineSec.style.display = 'block';
-
+    // タイムライン再描画
     renderVerticalTimeline('map');
 }
-
 /* ==============================================
    マップの部屋クリック時の処理 (修正版)
    ============================================== */
@@ -627,31 +626,35 @@ function renderVerticalTimeline(mode, shouldScroll = false) {
         container = document.getElementById('rooms-container-all');
         dateInputId = 'timeline-date';
         timeAxisId = 'time-axis-all';
-        const floorConfig = mapConfig[currentTimelineFloor];
-        if (floorConfig) {
-            const floorRoomIds = floorConfig.areas.map(area => String(area.id)); 
-            targetRooms = masterData.rooms.filter(r => floorRoomIds.includes(String(r.roomId)));
-        } else { targetRooms = []; }
+        targetRooms = [];
     } else if (mode === 'map') {
         container = document.getElementById('rooms-container-map');
         dateInputId = 'map-date';
         timeAxisId = 'time-axis-map';
         targetRooms = [];
-        const floorOrder = [7, 6]; 
-        floorOrder.forEach(floor => {
-            const config = mapConfig[floor];
-            if (config && config.areas) {
-                config.areas.forEach(area => {
-                    const room = masterData.rooms.find(r => String(r.roomId) === String(area.id));
-                    if (room) targetRooms.push(room);
-                });
-            }
-        });
-       if (!activeFilterIds.has('ALL')) {
+        
+        // ★修正: 現在の拠点(currentLocation)とフロア(currentFloor)の設定を取得
+        let floorData = null;
+        if (mapConfig[currentLocation] && 
+            mapConfig[currentLocation].data && 
+            mapConfig[currentLocation].data[currentFloor]) {
+                
+            floorData = mapConfig[currentLocation].data[currentFloor];
+        }
+
+        if (floorData && floorData.areas) {
+            floorData.areas.forEach(area => {
+                const room = masterData.rooms.find(r => String(r.roomId) === String(area.id));
+                if (room) targetRooms.push(room);
+            });
+        }
+
+        if (!activeFilterIds.has('ALL')) {
             targetRooms = targetRooms.filter(r => activeFilterIds.has(String(r.roomId)));
         }
     } else { return; }
 
+    // ヘッダー制御 (既存コードへ続く)
     const headerContainer = document.getElementById('map-room-headers');
     if (mode === 'map' && headerContainer) {
         headerContainer.style.display = 'flex';
