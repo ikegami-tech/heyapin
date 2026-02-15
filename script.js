@@ -1,40 +1,63 @@
 /* ==============================================
    1. 定数定義 & 設定
    ============================================== */
-const API_URL = "https://script.google.com/macros/s/AKfycbwRT-tfBEJZw1bSdM7waIDITEeNve9boU6detJJUB5fa3cxISVrGyCdAGe8ymPIyluD/exec"; 
+const API_URL = "https://qjmcdwjdzk.execute-api.ap-northeast-1.amazonaws.com"; 
 const SESSION_KEY_USER = 'bookingApp_User';
 const SESSION_KEY_TIME = 'bookingApp_LoginTime';  // 保存するキー名(時間)
 const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000;   
+let pendingExternalData = null; // SS連携データの一時保存用
 
 // Base64画像データ (省略)
 const IMG_7F = "data:image/png;base64,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"
 const IMG_6F = "data:image/png;base64,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"
+const IMG_29F = "data:image/png;base64,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";
 
 const mapConfig = {
-    7: {
-        image: IMG_7F, 
-        areas: [
-            { id: "Z 角", name: "Z 角", top: 11.1, left: 0.0, width: 12.0, height: 7.1, color: "rgba(0, 100, 255, 0.3)" },
-            { id: "Z 中", name: "Z 中", top: 0.0, left: 56.0, width: 12.0, height: 6.8, color: "rgba(0, 100, 255, 0.3)" },
-            { id: "会議室2", name: "会議室2", top: 15.0, left: 79.0, width: 21.0, height: 22.5, color: "rgba(0, 200, 80, 0.3)" },
-            { id: "会議室1", name: "会議室1", top: 37.3, left: 79.0, width: 21.0, height: 15.0, color: "rgba(0, 200, 80, 0.3)" },
-            { id: "応接室(8人)", name: "応接室(8人)", top: 71.0, left: 0.0, width: 22.5, height: 28.5, color: "rgba(255, 165, 0, 0.3)" },
-            { id: "応接室(6人)", name: "応接室(6人)", top: 76.5, left: 22.6, width: 20.0, height: 23.0, color: "rgba(255, 165, 0, 0.3)" },
-        ]
+    // ■ NEXT拠点
+    "NEXT": {
+        defaultFloor: 7, 
+        floors: [7, 6],
+        data: {
+            7: {
+                image: IMG_7F, 
+                areas: [
+                    { id: "Z 角", name: "Z 角", top: 11.1, left: 0.0, width: 12.0, height: 7.1, color: "rgba(0, 100, 255, 0.3)" },
+                    { id: "Z 中", name: "Z 中", top: 0.0, left: 56.0, width: 12.0, height: 6.8, color: "rgba(0, 100, 255, 0.3)" },
+                    { id: "会議室2", name: "会議室2", top: 15.0, left: 79.0, width: 21.0, height: 22.5, color: "rgba(0, 200, 80, 0.3)" },
+                    { id: "会議室1", name: "会議室1", top: 37.3, left: 79.0, width: 21.0, height: 15.0, color: "rgba(0, 200, 80, 0.3)" },
+                    { id: "応接室(8人)", name: "応接室(8人)", top: 71.0, left: 0.0, width: 22.5, height: 28.5, color: "rgba(255, 165, 0, 0.3)" },
+                    { id: "応接室(6人)", name: "応接室(6人)", top: 76.5, left: 22.6, width: 20.0, height: 23.0, color: "rgba(255, 165, 0, 0.3)" },
+                ]
+            },
+            6: {
+                image: IMG_6F,
+                areas: [
+                    { id: "Ｚ １", name: "Ｚ １", top: 0.0, left: 63.4, width: 6.0, height: 17.7, color: "rgba(0, 100, 255, 0.3)" },
+                    { id: "Ｚ ２", name: "Ｚ ２", top: 0.0, left: 69.3, width: 6.0, height: 17.7, color: "rgba(0, 100, 255, 0.3)" },
+                    { id: "Ｚ ３", name: "Ｚ ３", top: 0.0, left: 75.4, width: 6.0, height: 17.7, color: "rgba(0, 100, 255, 0.3)" },
+                    { id: "応接室(10人)", name: "応接室(10人)", top: 0.0, left: 81.5, width: 18.2, height: 44.2, color: "rgba(255, 165, 0, 0.3)" },
+                    { id: "Ｚ ４", name: "Ｚ ４", top: 44.5, left: 88.8, width: 11.1, height: 7.0, color: "rgba(0, 100, 255, 0.3)" },
+                    { id: "Ｚ ５", name: "Ｚ ５", top: 51.9, left: 88.8, width: 11.1, height: 7.0, color: "rgba(0, 100, 255, 0.3)" },
+                    { id: "Ｚ ６", name: "Ｚ ６", top: 59.0, left: 88.8, width: 11.1, height: 7.2, color: "rgba(0, 100, 255, 0.3)" },
+                    { id: "Ｚ ７", name: "Ｚ ７", top: 66.4, left: 88.8, width: 11.1, height: 7.0, color: "rgba(0, 100, 255, 0.3)" },
+                    { id: "Ｚ ８", name: "Ｚ ８", top: 73.5, left: 88.8, width: 11.1, height: 7.5, color: "rgba(0, 100, 255, 0.3)" },
+                ]
+            }
+        }
     },
-    6: {
-        image: IMG_6F,
-        areas: [
-             { id: "Ｚ １", name: "Ｚ １", top: 0.0, left: 63.4, width: 6.0, height: 17.7, color: "rgba(0, 100, 255, 0.3)" },
-             { id: "Ｚ ２", name: "Ｚ ２", top: 0.0, left: 69.3, width: 6.0, height: 17.7, color: "rgba(0, 100, 255, 0.3)" },
-             { id: "Ｚ ３", name: "Ｚ ３", top: 0.0, left: 75.4, width: 6.0, height: 17.7, color: "rgba(0, 100, 255, 0.3)" },
-             { id: "応接室(10人)", name: "応接室(10人)", top: 0.0, left: 81.5, width: 18.2, height: 44.2, color: "rgba(255, 165, 0, 0.3)" },
-             { id: "Ｚ ４", name: "Ｚ ４", top: 44.5, left: 88.8, width: 11.1, height: 7.0, color: "rgba(0, 100, 255, 0.3)" },
-             { id: "Ｚ ５", name: "Ｚ ５", top: 51.9, left: 88.8, width: 11.1, height: 7.0, color: "rgba(0, 100, 255, 0.3)" },
-             { id: "Ｚ ６", name: "Ｚ ６", top: 59.0, left: 88.8, width: 11.1, height: 7.2, color: "rgba(0, 100, 255, 0.3)" },
-             { id: "Ｚ ７", name: "Ｚ ７", top: 66.4, left: 88.8, width: 11.1, height: 7.0, color: "rgba(0, 100, 255, 0.3)" },
-             { id: "Ｚ ８", name: "Ｚ ８", top: 73.5, left: 88.8, width: 11.1, height: 7.5, color: "rgba(0, 100, 255, 0.3)" },
-        ]
+    // ■ 本社拠点
+    "HONSHA": {
+        defaultFloor: 29,
+        floors: [29],
+        data: {
+            29: {
+                image: IMG_29F,
+                areas: [
+                    // ★仮のボタン（座標合わせ用）
+                    { id: "test_room", name: "テスト会議室", top: 10, left: 10, width: 10, height: 10, color: "rgba(255, 0, 0, 0.5)" }
+                ]
+            }
+        }
     }
 };
 
@@ -51,6 +74,7 @@ let groupCreateSelectedIds = new Set();
 let originalParticipantIds = new Set();
 let currentMapRoomId = null; 
 let currentFloor = 7; 
+let currentLocation = 'NEXT'; // ★追加: 現在の拠点
 let currentTimelineFloor = 7;
 let currentLogPage = 1;
 const LOGS_PER_PAGE = 50;
@@ -64,12 +88,24 @@ let notifiedReservationIds = new Set();
    2. 初期化 & API通信
    ============================================== */
 window.onload = () => {
+  // ▼▼▼ 修正: SW更新時に自動リロードする処理 ▼▼▼
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-      .then(reg => console.log('SW登録成功'))
-      .catch(err => console.error('SW登録失敗', err));
+    // 1. Service Workerを登録
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // 登録成功
+    }).catch(err => console.error('SW登録失敗', err));
+
+    // 2. コントローラー（SW）が切り替わったらリロードする
+    // (sw.jsの skipWaiting() と clients.claim() によって発火します)
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      console.log("新しいバージョンを検知しました。リロードします。");
+      window.location.reload();
+    });
   }
-  // ...そのあとに元の onload 処理を続ける
+checkUrlParamsForLogin();
   const d = new Date();
   
   // ローカル時間（端末の時間）に基づいて YYYY-MM-DD 文字列を作成
@@ -186,8 +222,14 @@ async function loadAllData(isUpdate = false, isBackground = false) {
 
     if (json.status === 'success') {
       masterData = json.data;
-      if (isUpdate) refreshUI();
-      else initUI();
+      if (isUpdate) {
+         refreshUI();
+      } else {
+         initUI();
+         // ▼▼▼ ★ここに追加: 初回ロード時のみ、URLパラメータをチェックして予約画面を開く ▼▼▼
+         checkUrlParamsForBooking(); 
+         // ▲▲▲ 追加ここまで ▲▲▲
+      }
     } else { 
       if (!isBackground) alert("読込エラー: " + json.message); 
     }
@@ -196,9 +238,6 @@ async function loadAllData(isUpdate = false, isBackground = false) {
     console.error("通信エラー(バックグラウンド):", e);
   }
 }
-/* script.js */
-
-/* script.js */
 
 /* --- ▼▼▼ 修正: フィルタ機能（ユーザーID紐付け版） ▼▼▼ --- */
 const FILTER_STORAGE_KEY_BASE = 'roompin_filter_state_v1'; // キーのベース名
@@ -377,7 +416,7 @@ function refreshUI() {
   renderLogs();
   renderGroupButtons();
   updateRoomSelect();
-　renderFilterButtons();
+　renderTimelineFilters();
 
   if (document.getElementById('view-map-view').classList.contains('active')) {
       if(document.getElementById('map-timeline-section').style.display !== 'none') {
@@ -2240,19 +2279,20 @@ function execAvailabilitySearch() {
     }
 }
 /* ==============================================
-   11. 空き状況検索 ⇔ 予約画面連携
+   11. 空き状況検索 ⇔ 予約画面連携 (修正版)
    ============================================== */
 function transitionToBooking(roomName, dateVal, startVal, endVal) {
   document.getElementById('availabilityModal').style.display = 'none';
 
   document.getElementById('edit-res-id').value = ''; 
   document.getElementById('modal-title').innerText = '新規予約';
+  
+  // 基本情報のセット
   document.getElementById('input-date').value = dateVal;
   document.getElementById('input-start').value = startVal;
   document.getElementById('input-end').value = endVal;
-  document.getElementById('input-title').value = ""; 
-  document.getElementById('input-note').value = "";  
   
+  // 部屋の選択
   const roomSelect = document.getElementById('input-room');
   for (let i = 0; i < roomSelect.options.length; i++) {
     if (roomSelect.options[i].text === roomName) {
@@ -2261,12 +2301,40 @@ function transitionToBooking(roomName, dateVal, startVal, endVal) {
     }
   }
 
+  // 参加者の初期化 (ログインユーザーをセット)
   selectedParticipantIds.clear();
   if (typeof currentUser !== 'undefined' && currentUser && currentUser.userId) {
       selectedParticipantIds.add(String(currentUser.userId));
   }
-  document.getElementById('shuttle-search-input').value = ""; 
 
+  // ▼▼▼ SS連携データの復元処理 ▼▼▼
+  if (pendingExternalData) {
+      // 用件と備考をセット
+      if (pendingExternalData.title) document.getElementById('input-title').value = pendingExternalData.title;
+      else document.getElementById('input-title').value = "";
+
+      if (pendingExternalData.note) document.getElementById('input-note').value = pendingExternalData.note;
+      else document.getElementById('input-note').value = "";
+
+      // SSで指定されたユーザーIDを参加者に追加
+      if (pendingExternalData.userId) {
+          const uId = String(pendingExternalData.userId);
+          const targetUser = masterData.users.find(u => String(u.userId) === uId);
+          if (targetUser) {
+              selectedParticipantIds.add(uId);
+          }
+      }
+      
+      // データを使ったらクリアする（次回の手動予約に影響させないため）
+      pendingExternalData = null;
+  } else {
+      // 通常の手動予約時は空にする
+      document.getElementById('input-title').value = ""; 
+      document.getElementById('input-note').value = "";  
+  }
+  // ▲▲▲ 復元処理ここまで ▲▲▲
+
+  document.getElementById('shuttle-search-input').value = ""; 
   renderShuttleLists(); 
 
   document.getElementById('bookingModal').style.display = 'flex';
@@ -2612,16 +2680,28 @@ async function registerPushNotification() {
   try {
     const registration = await navigator.serviceWorker.ready;
 
-    // Safari/iOSでは必ずこの変換を通す必要があります
+    // Safari/iOS/PC共通: VAPIDキーの変換
     const applicationServerKey = urlBase64ToUint8Array(PUBLIC_VAPID_KEY);
 
-    const subscription = await registration.pushManager.subscribe({
+    // 1. まず現在の登録状況を確認する
+    let subscription = await registration.pushManager.getSubscription();
+
+    // 2. もし既に登録が残っていたら、一旦解除(unsubscribe)する
+    // これにより「A subscription with a different applicationServerKey...」のエラーを回避できます
+    if (subscription) {
+      await subscription.unsubscribe();
+      console.log("既存の通知設定を解除しました（再登録のため）");
+    }
+
+    // 3. 新しいキーで改めて登録する
+    subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: applicationServerKey
     });
 
     console.log("Push Subscription取得成功:", subscription);
 
+    // 4. AWSへ送信
     const response = await fetch(SUBSCRIBE_API_URL, {
       method: 'POST',
       body: JSON.stringify({
@@ -2655,4 +2735,115 @@ function requestNotificationPermission() {
       alert("通知が拒否されました。");
     }
   });
+}
+/* ==============================================
+   追加機能: URLパラメータから空き状況検索を開く (SS連携)
+   ============================================== */
+function checkUrlParamsForBooking() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  if (urlParams.get('action') !== 'external_book') return;
+
+  // パラメータの取得
+  const pDate   = urlParams.get('date');
+  const pStart  = urlParams.get('start');
+  const pEnd    = urlParams.get('end');
+  const pTitle  = urlParams.get('title');
+  const pNote   = urlParams.get('note');
+  const pUserId = urlParams.get('user_id'); 
+  const pRoomId = urlParams.get('room_id'); // ※空き検索なので部屋ID指定は検索には使いませんが、保存しておきます
+
+  console.log("外部連携: 空き状況検索を起動します", { pDate, pStart, pUserId });
+
+  // 1. 空き状況検索では入力できないデータ（用件や参加者）を一時保存しておく
+  pendingExternalData = {
+      title: pTitle,
+      note: pNote,
+      userId: pUserId,
+      targetRoomId: pRoomId // 特定の部屋を指定していた場合用
+  };
+
+  // 2. 空き状況検索モーダルを開く
+  openAvailabilityModal();
+
+  // 3. 日付と時間をセット
+  if (pDate) document.getElementById('avail-date').value = pDate;
+  
+  if (pStart) {
+      document.getElementById('avail-start').value = pStart;
+      // 終了時間が指定されていればセット、なければ自動計算
+      if (pEnd) {
+          document.getElementById('avail-end').value = pEnd;
+      } else {
+          autoSetAvailEndTime();
+      }
+  }
+
+  // 4. 自動で検索を実行する (検索ボタンを押したのと同じ状態にする)
+  if (pDate && pStart && (pEnd || document.getElementById('avail-end').value)) {
+      setTimeout(() => {
+          execAvailabilitySearch();
+      }, 300); // モーダルの描画を少し待ってから実行
+  }
+
+  // 5. URLクリーンアップ
+  const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+  window.history.replaceState({path: newUrl}, '', newUrl);
+}
+/* ==============================================
+   修正版: APIキーによる自動ログイン (SS連携)
+   ============================================== */
+async function checkUrlParamsForLogin() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const pUserId = urlParams.get('user_id');
+  const pApiKey = urlParams.get('api_key'); // パスワードの代わりにAPIキーを取得
+
+  const loginInput = document.getElementById('loginId');
+
+  // IDとAPIキーがある場合 -> 自動ログイン試行
+  if (pUserId && pApiKey) {
+      
+      if (loginInput) loginInput.value = pUserId;
+      console.log("SS連携: APIキーによる自動ログインを実行します...");
+
+      document.getElementById('loading').style.display = 'flex';
+
+      // ★APIキーを使ってログインAPIを叩く
+      const url = new URL(API_URL);
+      url.searchParams.append('action', 'login');
+      url.searchParams.append('userId', pUserId);
+      url.searchParams.append('apiKey', pApiKey); // パスワードの代わりにキーを送信
+
+      try {
+        const res = await fetch(url.toString(), { method: 'GET', headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+        const json = await res.json();
+        document.getElementById('loading').style.display = 'none';
+        
+        if (json.status === 'success') {
+          // ログイン成功時の処理
+          currentUser = json.user;
+          document.getElementById('display-user-name').innerText = currentUser.userName;
+          document.getElementById('login-screen').style.display = 'none';
+          document.getElementById('app-screen').style.display = 'flex'; 
+          
+          localStorage.setItem(SESSION_KEY_USER, JSON.stringify(currentUser));
+          localStorage.setItem(SESSION_KEY_TIME, new Date().getTime().toString());
+
+          // データの読み込み開始（これが終わると予約フローに進みます）
+          loadAllData();
+        } else { 
+          alert("自動ログイン失敗: " + json.message); 
+        }
+      } catch (e) {
+        document.getElementById('loading').style.display = 'none';
+        alert("通信エラー: " + e.message);
+      }
+
+      return; 
+  }
+
+  // IDだけの場合など
+  if (pUserId && loginInput) {
+      loginInput.value = pUserId;
+  }
 }
